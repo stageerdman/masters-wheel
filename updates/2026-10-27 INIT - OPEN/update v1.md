@@ -57,7 +57,7 @@ defined once and imported everywhere they're used.
 - [x] Create private GitHub repo `stageerdman/masters-wheel`.
 - [x] Connect the local repo as `origin`.
 - [x] First commit: the full scaffold above.
-- [ ] Push (confirm after commit).
+- [x] Push (`main` tracking `origin/main`).
 
 ## Decisions
 - Kept all four modules (STRUCTURE, CODING, WORKFLOW, UX) — this is a real
