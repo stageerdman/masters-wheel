@@ -1,0 +1,120 @@
+# CLAUDE.md — masters-wheel
+
+Compiled from the global AI Control modules (STRUCTURE, CODING, WORKFLOW, UX)
+and tuned for this project. Regenerate with the `rebuild-claude-md` routine
+when the global modules change. Local additions below the modules are
+preserved across rebuilds.
+
+masters-wheel is a prototype of "Master's Circle": a mastery platform for
+uploading lessons/videos, analyzing performance, and always refocusing on the
+right lesson. Right now it's UI shell only — no backend, no real features.
+Stack: Next.js (App Router) + TypeScript + CSS Modules, deployed to Vercel
+later. No Tailwind, no shadcn — this project uses its own element convention
+instead of a component library (see "Project-specific notes" below).
+
+## Structure
+- Keep the standard AI Control scaffold: `.project`, this `CLAUDE.md`,
+  `.gitignore` (always covering `.env`), `.env` for secrets, `updates/`, and
+  `issues.txt`.
+- **Updates live in `updates/YYYY-MM-DD NAME - OPEN|CLOSED/`.** Each holds
+  `update vX.md` (goal, phased roadmap, live status) and `wiki.md` (durable
+  decisions and lessons). Reopen an update by flipping `CLOSED` → `OPEN`.
+- **Follow Next.js conventions.** App Router under `src/app/`; UI elements
+  under `src/elements/` (see below). Keep it flat and simple — add folders
+  (e.g. `src/lib/`) only when the project genuinely grows into needing them.
+
+## Coding
+- **Modular for isolated context:** every UI element is its own folder, fully
+  self-contained — see "Project-specific notes" for the exact convention.
+  Keep non-UI logic (when it shows up) in small modules with explicit
+  interfaces, low coupling, so any part can be understood and fixed on its own.
+- **Minimal:** build only what's needed; prefer reuse over duplication (a
+  reusable element gets imported, never copy-pasted); don't add abstraction,
+  config, or layers on speculation.
+- **Test what matters:** skip tests for this UI-shell phase (no logic yet).
+  Once real logic lands (lesson analysis, refocusing logic), cover that core
+  logic and risky paths. Most roadmap phases end with tests that lock in what
+  they built.
+- **Idiomatic Next.js/TypeScript:** match surrounding code's naming and
+  idioms; read the neighbors before writing. Use standard Next.js/ESLint
+  tooling rather than inventing house style.
+
+## Workflow
+- **Commit AND push after every change**, one focused logical unit per commit,
+  with plain honest messages. Remote is
+  `github.com/stageerdman/masters-wheel` (private) — nothing important stays
+  local-only. Never commit secrets; `.env` stays gitignored.
+- **Non-trivial work starts with a phased roadmap** recorded in the update's
+  `update vX.md`; track what's done, decided, and next as you go. Most phases
+  end with tests.
+- **Research spikes** for new APIs/libraries/designs (e.g. picking a video
+  storage/transcoding approach later) run *outside* the main code, inside the
+  update folder; capture findings in that update's `wiki.md`.
+- **Act as an orchestrator:** decompose and delegate to focused agents rather
+  than doing everything inline.
+- **Verify by running the actual app** (`npm run dev`), not just a green
+  build, before moving on.
+
+## UX
+- This is a real user-facing surface. For UX work, **launch dedicated
+  UX-expert agents** to think the experience through — several in parallel for
+  different parts of the surface — and synthesize.
+- **Cut everything unnecessary** (Steve Jobs style): the fewest screens,
+  controls, and steps that do the job. Every element must earn its place.
+  Right now the UI is intentionally almost unstyled — elements get dictated
+  and added one at a time, not pre-built.
+- **Minimal visual system:** one font (Geist), a small deliberate color scale
+  via the `--background`/`--foreground` CSS variables in `globals.css`. Expand
+  the scale deliberately as real elements get dictated, not ad-hoc per
+  element.
+- **Reusable, isolated elements** with a clear interface (props), so each can
+  be understood, restyled, or repositioned without touching the rest.
+- Accessible by default: real contrast, keyboard reachability, sensible
+  focus, meaningful labels; fast feedback and honest error states — once
+  there's anything to give feedback on.
+
+<!-- Local project rules below are preserved across CLAUDE.md rebuilds. -->
+## Project-specific notes
+
+### The element convention
+Every UI element is a folder under `src/elements/` (or nested under a parent
+element, see "children" below), named after the element (PascalCase). Inside:
+
+- **`Name.tsx`** — the component. Named export `Name`, matching the folder.
+  Imports its own styling and positioning modules and composes the class
+  names. Contains markup and any trivial inline behavior.
+- **`Name.styles.module.css`** — how the element looks: color, typography,
+  borders, background. Nothing about layout or where it sits in its parent.
+- **`Name.position.module.css`** — where the element sits *within its
+  parent*: display mode, flex/grid child properties, margins relative to
+  siblings. Nothing about color or visual decoration. A parent element is
+  responsible for its children's positioning classes (not the child dictating
+  its own placement), since position is a property of the relationship to the
+  parent, not of the element itself.
+- **`Name.script.ts`** (optional) — add only once client logic outgrows what
+  reads cleanly inline in `Name.tsx` (e.g. non-trivial state machines, event
+  handling shared across instances).
+- **`children/`** (optional) — sub-element folders that only make sense
+  nested inside this specific parent and aren't reused anywhere else. A
+  reusable element (e.g. a standardized side-menu button used in multiple
+  places) lives flat under `src/elements/` instead and gets imported wherever
+  it's needed — never duplicated into a `children/` folder.
+
+Both CSS modules expose a `root` class for the element's outer node at
+minimum, plus additional classes for internal parts as needed. A component
+combines them: `` `${styles.root} ${position.root}` ``.
+
+`src/elements/Canvas/` is the root element (rendered by `src/app/page.tsx`)
+and the live reference example of this convention — copy its shape when
+adding the next element.
+
+### Replicable/standardized elements
+When an element needs a repeatable "standard" (e.g. every side-menu button
+looks and behaves the same way), define that standard as typed props on the
+shared element (e.g. `ButtonProps`) rather than branching styles per call
+site. Each usage passes props; the element enforces the standard once.
+
+### What's deliberately not built yet
+No lesson upload, video, performance analysis, or refocus logic — those come
+later, dictated one at a time. No auth, database, or AI integration, so
+`.env`/`secrets` in `.project` are empty until a phase actually needs one.

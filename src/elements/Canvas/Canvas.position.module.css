@@ -1,0 +1,6 @@
+/* Where this element sits within its parent (body). No visual styling here. */
+.root {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}

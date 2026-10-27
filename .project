@@ -1,0 +1,27 @@
+---
+name: masters-wheel
+github: https://github.com/stageerdman/masters-wheel
+visibility: private
+adopted: 2026-10-27
+claude_md_generated: 2026-10-27
+modules: [STRUCTURE, CODING, WORKFLOW, UX]
+secrets: []
+---
+
+masters-wheel is a prototype of "Master's Circle" — a mastery platform where
+lessons and videos get uploaded, performance gets analyzed, and the system
+always points back to the right lesson to refocus on. Nothing above the UI
+shell is built yet.
+
+This INIT phase builds no features. It only picks the stack (Next.js App
+Router, TypeScript, CSS Modules, no component library) and establishes the
+element architecture: every UI element is its own folder of a component file,
+a styling file, and a positioning file (styling = how it looks, positioning =
+where it sits within its parent), plus an optional script file and an
+optional children/ folder for sub-elements that aren't reused elsewhere.
+Reusable elements (e.g. a standardized side-menu button) are imported wherever
+they're needed rather than duplicated.
+
+Status: scaffolded 2026-10-27. `src/elements/Canvas/` is the root element and
+doubles as the reference example of the convention — see CLAUDE.md. No
+backend, auth, storage, or AI integration yet, so `secrets: []` for now.

@@ -1,0 +1,6 @@
+# Known issues and TODOs (newest first)
+
+2026-10-27  TODO: INIT only built the app shell + element convention. Nothing
+            real is dictated yet (no lessons/videos/performance/refocus UI).
+            Next real element gets added when it's dictated — see
+            "updates/2026-10-27 INIT - OPEN".
