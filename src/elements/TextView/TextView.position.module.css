@@ -1,0 +1,25 @@
+.readOnlyText {
+  padding: 0.25rem;
+}
+
+.transcriptList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.transcriptLine {
+  display: flex;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+}
+
+.editableText {
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  resize: none;
+  padding: 0.75rem;
+}

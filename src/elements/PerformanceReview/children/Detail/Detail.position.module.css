@@ -1,0 +1,32 @@
+.root {
+  flex: 0 0 360px;
+  display: flex;
+  min-height: 0;
+  padding: 1.5rem 1rem;
+  gap: 1rem;
+}
+
+.railSlot {
+  flex-shrink: 0;
+  padding-top: 0.25rem;
+}
+
+.panes {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.divider {
+  height: 1px;
+  flex-shrink: 0;
+}

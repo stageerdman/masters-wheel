@@ -114,6 +114,13 @@ looks and behaves the same way), define that standard as typed props on the
 shared element (e.g. `ButtonProps`) rather than branching styles per call
 site. Each usage passes props; the element enforces the standard once.
 
+### Feature tracking
+`FEATURES.md` at the project root tracks, per page, what's built as UI shell
+(fake data, no backend) vs. what's still to build (real functionality).
+Update it whenever a feature crosses that line — it's the running source of
+truth across updates, since any one `updates/` folder only covers a single
+phase of work.
+
 ### What's deliberately not built yet
 No lesson upload, video, performance analysis, or refocus logic — those come
 later, dictated one at a time. No auth, database, or AI integration, so

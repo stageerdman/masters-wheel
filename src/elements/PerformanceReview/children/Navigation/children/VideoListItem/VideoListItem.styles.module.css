@@ -1,0 +1,35 @@
+.root {
+  background: transparent;
+  border: none;
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+}
+
+.root:hover {
+  background: var(--border);
+}
+
+.active {
+  background: var(--border);
+}
+
+.icon {
+  background: var(--icon-color);
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.date {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+}
+
+.title {
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

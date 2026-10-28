@@ -1,0 +1,18 @@
+.root {
+  background: transparent;
+}
+
+.line {
+  background: var(--muted-foreground);
+  border-radius: 999px;
+  opacity: 0.5;
+  cursor: grab;
+}
+
+.line:hover {
+  opacity: 0.8;
+}
+
+.dragging {
+  opacity: 1;
+}

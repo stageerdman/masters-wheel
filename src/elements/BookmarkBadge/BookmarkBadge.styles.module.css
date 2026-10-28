@@ -1,0 +1,25 @@
+.root {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: var(--badge-color);
+  opacity: 0.45;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.root:hover {
+  opacity: 0.7;
+}
+
+.active {
+  opacity: 1;
+}
+
+.active:hover {
+  opacity: 1;
+}
