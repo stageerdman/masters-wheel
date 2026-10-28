@@ -22,55 +22,67 @@ transcription, backend storage all come later as separate dictated features.
 ## Roadmap
 
 ### Phase 1 — Shell plumbing
-- [ ] Add semantic CSS variables to `globals.css` (success/pending/info,
+- [x] Add semantic CSS variables to `globals.css` (success/pending/info,
       muted-foreground, border, bookmark colors) and switch the app shell to
       a fixed-height layout (header + flexed content) so columns scroll
       internally instead of the page scrolling.
-- [ ] `AppHeader` element (flat, reusable), wired into `layout.tsx` above
+- [x] `AppHeader` element (flat, reusable), wired into `layout.tsx` above
       `{children}`.
 
 ### Phase 2 — Shared bookmark primitive
-- [ ] `BookmarkBadge` (flat): color + 2-letter badge, active/inactive state,
+- [x] `BookmarkBadge` (flat): color + 2-letter badge, active/inactive state,
       click handler, optional drag passthrough props.
-- [ ] `BookmarkRail` (flat): vertical stack of `BookmarkBadge`s, click-only
+- [x] `BookmarkRail` (flat): vertical stack of `BookmarkBadge`s, click-only
       selection. Used as-is by Hero; Detail builds its own richer version.
 
 ### Phase 3 — Page shell
-- [ ] `PerformanceReview` element: 3-column grid (Navigation / Hero / Detail),
+- [x] `PerformanceReview` element: 3-column grid (Navigation / Hero / Detail),
       fake video data fixture, lifts "selected video" state down to Hero and
       Detail.
-- [ ] Wire into `src/app/page.tsx` inside `Canvas`.
+- [x] Wire into `src/app/page.tsx` inside `Canvas`.
 
 ### Phase 4 — Navigation column
-- [ ] `SearchBar` (flat, reusable) — filters the list by title/date text,
+- [x] `SearchBar` (flat, reusable) — filters the list by title/date text,
       client-side only.
-- [ ] `VideoListItem` (nested under Navigation) — activity-type icon (glyph +
+- [x] `VideoListItem` (nested under Navigation) — activity-type icon (glyph +
       color), date row (muted/small), title row.
-- [ ] Scrollable list, click selects a video for Hero/Detail.
+- [x] Scrollable list, click selects a video for Hero/Detail.
 
 ### Phase 5 — Hero column
-- [ ] `MediaPlayer` (flat, reusable) — fake static placeholder, no real
+- [x] `MediaPlayer` (flat, reusable) — fake static placeholder, no real
       playback.
-- [ ] `BookmarkRail` instance switching Main text (read-only) / Transcript
+- [x] `BookmarkRail` instance switching Main text (read-only) / Transcript
       (clickable lines, fake seek — no-op) / Notes (editable) / Core Lessons
-      (editable).
+      (editable). Factored the 4-branch render into a shared `TextView`
+      element so Hero and Detail don't duplicate it.
 
 ### Phase 6 — Detail column
-- [ ] Detail-local draggable rail (`Detail/children/`): same 4 bookmarks +
-      a draggable line in the same vertical list. Reordering a bookmark past
-      the line's position splits the column into two independently-active
-      text panes (top group / bottom group), each with its own active
-      selection. `Detail.script.ts` holds the reorder/split state machine.
+- [x] Detail-local draggable rail (`Detail/children/SplitRail`): same 4
+      bookmarks + a draggable line in the same vertical list. Reordering a
+      bookmark past the line's position splits the column into two
+      independently-active text panes (top group / bottom group), each with
+      its own active selection. `Detail.script.ts` holds the reorder/split
+      state machine.
 
 ### Phase 7 — Tracking + verification
-- [ ] `FEATURES.md` at project root: what's UI-shell-built vs still-to-build
+- [x] `FEATURES.md` at project root: what's UI-shell-built vs still-to-build
       for this page (real transcription, AI analysis, lesson extraction,
       success/fail tagging, backend/storage, auth).
-- [ ] Verify: `npm run dev`, click through list selection, bookmark
-      switching, drag-split, search filter; `npm run build`.
+- [x] `npm run build` and `npm run dev` both clean; SSR HTML checked for
+      correct structure/content. **Not verified**: no connected browser this
+      session, so click-through of drag-reorder/bookmark-switch/search
+      filter is still outstanding — do this before calling the page done.
 
 ## Decisions
-(recorded as made — see `wiki.md`)
+- Fixed a real bug while verifying: two CSS modules (`BookmarkRail`,
+  `SplitRail`) had an empty or missing `.root` rule. Turbopack's CSS-module
+  compiler drops empty rules entirely, so `styles.root` was `undefined` and
+  rendered as the literal string `"undefined"` in `className`. Harmless
+  visually (no rules to apply) but wrong — every element's styles file needs
+  at least one real declaration under `.root`, not just the convention's
+  bare minimum empty block.
+- See `wiki.md` for the rest (drag/reorder model, bookmark visual language,
+  fake-data fixture placement).
 
 ## Next
 - Once this shell is in, future updates dictate: real upload flow, real
