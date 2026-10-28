@@ -90,6 +90,33 @@ Durable decisions and lessons from building the first real page.
   rather than looking like a control. Cursor is `row-resize` (the
   two-headed vertical arrow), matching the drag-to-reposition affordance.
 
+## Correction: the sentinel-array model was the actual bug (2026-10-28)
+The before/after drop-math fix above was real but insufficient — the
+deeper problem was the model itself. Putting the line *inside* the same
+reorderable list as the 4 bookmarks meant moving the line was implemented
+as reordering that shared list, so from the user's point of view dragging
+the line visually reshuffled the bookmarks (even though their relative
+order never actually changed — the list just reflowed around the line's
+new slot). It also meant the line could only ever rest at one of 5
+discrete gaps, not "almost anywhere," which the user explicitly wanted.
+
+Replaced with two fully independent pieces of state in `Detail.script.ts`:
+- `order: ContentKind[]` — just the 4 bookmarks, reordered only by
+  dragging a badge onto another badge (same before/after midpoint logic,
+  now scoped to badges only).
+- `linePx: number | null` — a continuous pixel offset, updated via
+  real-time `pointermove`/`pointerup` window listeners started on the
+  line's own `onPointerDown` (not HTML5 drag-and-drop, which only fires on
+  discrete drop targets and can't track a smooth continuous position).
+  `null` means "resting below all badges" (unsplit default).
+
+Which badges are top/bottom is computed from fixed slot geometry
+(`index * (badgeSize + gap) + badgeSize / 2`) compared against `linePx` —
+pure arithmetic, no DOM measurement needed, since badges always render in
+a fixed-height stack. The line is rendered absolutely-positioned
+(`position: relative` wrapper, `top: linePx`) so moving it never touches
+the badge stack's layout at all.
+
 ## Scope discipline
 - No real video upload, playback, transcription, or AI analysis — all four
   text types are fake/static or locally-editable only. Tracked in

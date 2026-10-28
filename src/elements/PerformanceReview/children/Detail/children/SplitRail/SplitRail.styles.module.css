@@ -6,14 +6,10 @@
   border-top: 2px dashed var(--muted-foreground);
   cursor: row-resize;
   opacity: 0.6;
-  position: relative;
+  touch-action: none;
 }
 
 .line:hover {
-  opacity: 1;
-}
-
-.dragging {
   opacity: 1;
 }
 

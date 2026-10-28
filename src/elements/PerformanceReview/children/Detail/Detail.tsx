@@ -16,7 +16,19 @@ type DetailProps = {
 };
 
 export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }: DetailProps) {
-  const { order, isSplit, activeTop, activeBottom, moveTo, selectTop, selectBottom } = useSplitRail();
+  const {
+    order,
+    trackHeight,
+    linePx,
+    topKinds,
+    isSplit,
+    activeTop,
+    activeBottom,
+    selectTop,
+    selectBottom,
+    reorderTo,
+    handleLinePointerDown,
+  } = useSplitRail();
 
   return (
     <aside className={`${styles.root} ${position.root}`}>
@@ -50,11 +62,15 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
       <div className={position.railSlot}>
         <SplitRail
           order={order}
+          trackHeight={trackHeight}
+          linePx={linePx}
+          topKinds={topKinds}
           activeTop={activeTop}
           activeBottom={activeBottom}
           onSelectTop={selectTop}
           onSelectBottom={selectBottom}
-          onMove={moveTo}
+          onReorder={reorderTo}
+          onLinePointerDown={handleLinePointerDown}
         />
       </div>
     </aside>

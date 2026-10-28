@@ -1,36 +1,40 @@
 "use client";
 
-import { useState, type DragEvent } from "react";
+import { useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { BookmarkBadge, type ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
-import type { RailSlot } from "../../Detail.script";
 import position from "./SplitRail.position.module.css";
 import styles from "./SplitRail.styles.module.css";
 
 type SplitRailProps = {
-  order: RailSlot[];
+  order: ContentKind[];
+  trackHeight: number;
+  linePx: number;
+  topKinds: ContentKind[];
   activeTop: ContentKind;
   activeBottom: ContentKind | null;
   onSelectTop: (kind: ContentKind) => void;
   onSelectBottom: (kind: ContentKind) => void;
-  onMove: (fromIndex: number, toIndex: number) => void;
+  onReorder: (fromIndex: number, insertAt: number) => void;
+  onLinePointerDown: (event: ReactPointerEvent) => void;
 };
 
-// Drag-reorderable rail: one ordered list of 4 bookmarks + a "line". See
-// Detail.script.ts / wiki.md for the model this renders. The drop target is
-// resolved from which half of the hovered slot the pointer is over, so an
-// item can land either before OR after any slot — including after the line,
-// which is what actually creates the split.
+// Badges reorder among themselves via HTML5 drag-and-drop (before/after
+// resolved from which half of the hovered badge the pointer is over). The
+// line is a separate, continuously pointer-dragged divider — see
+// Detail.script.ts for why the two are kept independent.
 export function SplitRail({
   order,
+  trackHeight,
+  linePx,
+  topKinds,
   activeTop,
   activeBottom,
   onSelectTop,
   onSelectBottom,
-  onMove,
+  onReorder,
+  onLinePointerDown,
 }: SplitRailProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-
-  const lineIndex = order.indexOf("line");
 
   function handleDragStart(event: DragEvent<HTMLElement>, index: number) {
     event.dataTransfer.setData("text/plain", String(index));
@@ -47,48 +51,40 @@ export function SplitRail({
     if (dragIndex !== null) {
       const rect = event.currentTarget.getBoundingClientRect();
       const isAfter = event.clientY > rect.top + rect.height / 2;
-      onMove(dragIndex, isAfter ? targetIndex + 1 : targetIndex);
+      onReorder(dragIndex, isAfter ? targetIndex + 1 : targetIndex);
     }
     setDragIndex(null);
   }
 
   return (
-    <div className={`${styles.root} ${position.root}`}>
-      {order.map((slot, index) => {
-        if (slot === "line") {
+    <div className={`${styles.root} ${position.root}`} style={{ height: trackHeight }}>
+      <div className={position.stack}>
+        {order.map((kind, index) => {
+          const isTop = topKinds.includes(kind);
+          const active = isTop ? kind === activeTop : kind === activeBottom;
           return (
-            <div
-              key="line"
-              className={`${styles.line} ${position.line} ${dragIndex === index ? styles.dragging : ""}`}
+            <BookmarkBadge
+              key={kind}
+              kind={kind}
+              active={active}
+              onClick={() => (isTop ? onSelectTop(kind) : onSelectBottom(kind))}
               draggable
               onDragStart={(event) => handleDragStart(event, index)}
               onDragOver={handleDragOver}
               onDrop={(event) => handleDrop(event, index)}
               onDragEnd={() => setDragIndex(null)}
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Drag to split"
             />
           );
-        }
-
-        const isTop = index < lineIndex;
-        const active = isTop ? slot === activeTop : slot === activeBottom;
-
-        return (
-          <BookmarkBadge
-            key={slot}
-            kind={slot}
-            active={active}
-            onClick={() => (isTop ? onSelectTop(slot) : onSelectBottom(slot))}
-            draggable
-            onDragStart={(event) => handleDragStart(event, index)}
-            onDragOver={handleDragOver}
-            onDrop={(event) => handleDrop(event, index)}
-            onDragEnd={() => setDragIndex(null)}
-          />
-        );
-      })}
+        })}
+      </div>
+      <div
+        className={`${styles.line} ${position.line}`}
+        style={{ top: linePx }}
+        onPointerDown={onLinePointerDown}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Drag to split"
+      />
     </div>
   );
 }
