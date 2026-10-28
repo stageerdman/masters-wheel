@@ -16,7 +16,10 @@ type SplitRailProps = {
 };
 
 // Drag-reorderable rail: one ordered list of 4 bookmarks + a "line". See
-// Detail.script.ts / wiki.md for the model this renders.
+// Detail.script.ts / wiki.md for the model this renders. The drop target is
+// resolved from which half of the hovered slot the pointer is over, so an
+// item can land either before OR after any slot — including after the line,
+// which is what actually creates the split.
 export function SplitRail({
   order,
   activeTop,
@@ -26,14 +29,26 @@ export function SplitRail({
   onMove,
 }: SplitRailProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+
   const lineIndex = order.indexOf("line");
+
+  function handleDragStart(event: DragEvent<HTMLElement>, index: number) {
+    event.dataTransfer.setData("text/plain", String(index));
+    event.dataTransfer.effectAllowed = "move";
+    setDragIndex(index);
+  }
 
   function handleDragOver(event: DragEvent<HTMLElement>) {
     event.preventDefault();
   }
 
-  function handleDrop(index: number) {
-    if (dragIndex !== null) onMove(dragIndex, index);
+  function handleDrop(event: DragEvent<HTMLElement>, targetIndex: number) {
+    event.preventDefault();
+    if (dragIndex !== null) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const isAfter = event.clientY > rect.top + rect.height / 2;
+      onMove(dragIndex, isAfter ? targetIndex + 1 : targetIndex);
+    }
     setDragIndex(null);
   }
 
@@ -46,11 +61,13 @@ export function SplitRail({
               key="line"
               className={`${styles.line} ${position.line} ${dragIndex === index ? styles.dragging : ""}`}
               draggable
-              onDragStart={() => setDragIndex(index)}
+              onDragStart={(event) => handleDragStart(event, index)}
               onDragOver={handleDragOver}
-              onDrop={() => handleDrop(index)}
+              onDrop={(event) => handleDrop(event, index)}
               onDragEnd={() => setDragIndex(null)}
-              aria-hidden="true"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Drag to split"
             />
           );
         }
@@ -65,9 +82,9 @@ export function SplitRail({
             active={active}
             onClick={() => (isTop ? onSelectTop(slot) : onSelectBottom(slot))}
             draggable
-            onDragStart={() => setDragIndex(index)}
+            onDragStart={(event) => handleDragStart(event, index)}
             onDragOver={handleDragOver}
-            onDrop={() => handleDrop(index)}
+            onDrop={(event) => handleDrop(event, index)}
             onDragEnd={() => setDragIndex(null)}
           />
         );

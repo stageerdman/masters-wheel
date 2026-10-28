@@ -3,16 +3,26 @@
 }
 
 .line {
-  background: var(--muted-foreground);
-  border-radius: 999px;
-  opacity: 0.5;
-  cursor: grab;
+  border-top: 2px dashed var(--muted-foreground);
+  cursor: row-resize;
+  opacity: 0.6;
+  position: relative;
 }
 
 .line:hover {
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .dragging {
   opacity: 1;
+}
+
+.line::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 100%;
+  width: 12px;
+  height: 2px;
+  background: var(--muted-foreground);
 }

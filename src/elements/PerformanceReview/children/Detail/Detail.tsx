@@ -20,16 +20,6 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
 
   return (
     <aside className={`${styles.root} ${position.root}`}>
-      <div className={position.railSlot}>
-        <SplitRail
-          order={order}
-          activeTop={activeTop}
-          activeBottom={activeBottom}
-          onSelectTop={selectTop}
-          onSelectBottom={selectBottom}
-          onMove={moveTo}
-        />
-      </div>
       <div className={position.panes}>
         <div className={position.pane}>
           <TextView
@@ -56,6 +46,16 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
             </div>
           </>
         )}
+      </div>
+      <div className={position.railSlot}>
+        <SplitRail
+          order={order}
+          activeTop={activeTop}
+          activeBottom={activeBottom}
+          onSelectTop={selectTop}
+          onSelectBottom={selectBottom}
+          onMove={moveTo}
+        />
       </div>
     </aside>
   );
