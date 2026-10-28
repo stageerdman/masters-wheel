@@ -1,100 +1,104 @@
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
 
-const BADGE_SIZE = 28;
-const GAP = 8;
-const SLOT = BADGE_SIZE + GAP;
+const ALL_KINDS: ContentKind[] = ["main", "transcript", "notes", "lessons"];
 
-const INITIAL_ORDER: ContentKind[] = ["main", "transcript", "notes", "lessons"];
+type DragInfo = {
+  startY: number;
+  startLinePx: number;
+  railHeight: number;
+};
 
-function reorder(order: ContentKind[], fromIndex: number, insertAt: number): ContentKind[] {
-  if (fromIndex === insertAt) return order;
-  const next = [...order];
-  const [moved] = next.splice(fromIndex, 1);
-  const adjusted = fromIndex < insertAt ? insertAt - 1 : insertAt;
-  next.splice(adjusted, 0, moved);
-  return next;
-}
-
-// The 4 bookmarks live in their own reorderable list (drag badge-to-badge,
-// never touched by the line). The line is a second, independent piece of
-// state: a continuous pixel offset, dragged with real-time pointer tracking
-// and clamped to the badge stack's height — it can rest almost anywhere,
-// not just snapped between slots. Whichever badges currently sit above the
-// line's pixel position (by their fixed slot geometry) are the top group;
-// the rest are the bottom group. See wiki.md for why this replaced the
-// earlier single-shared-list model.
+// One rail spans the Detail column's full height. The 4 bookmarks are
+// pinned at its top; the line is a second, fully independent piece of
+// state — a continuous pixel offset draggable across that whole height,
+// not just the badge cluster. Dragging a bookmark past wherever the line
+// currently sits attaches it there (the split); dragging it back above
+// detaches it. See wiki.md for the full reasoning and what this replaced.
 export function useSplitRail() {
-  const [order, setOrder] = useState<ContentKind[]>(INITIAL_ORDER);
-  const [linePx, setLinePx] = useState<number | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const [linePx, setLinePx] = useState<number | null>(null); // null = resting at the very bottom (unsplit)
+  const [bottomKind, setBottomKind] = useState<ContentKind | null>(null);
   const [activeTop, setActiveTop] = useState<ContentKind>("main");
-  const [activeBottom, setActiveBottom] = useState<ContentKind | null>(null);
-  const dragRef = useRef<{ startY: number; startLinePx: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ kind: ContentKind; offsetY: number } | null>(null);
+  const dragRef = useRef<DragInfo | null>(null);
 
-  const trackHeight = order.length * SLOT - GAP;
-  const resolvedLinePx = linePx === null ? trackHeight : linePx;
+  const topKinds = ALL_KINDS.filter((kind) => kind !== bottomKind);
+  const isSplit = bottomKind !== null;
+  const resolvedTop = topKinds.includes(activeTop) ? activeTop : topKinds[0];
 
-  let splitIndex = order.length;
-  for (let i = 0; i < order.length; i += 1) {
-    const slotCenter = i * SLOT + BADGE_SIZE / 2;
-    if (slotCenter >= resolvedLinePx) {
-      splitIndex = i;
-      break;
+  function beginLineDrag(event: ReactPointerEvent) {
+    event.preventDefault();
+    const rail = railRef.current;
+    if (!rail) return;
+    const rect = rail.getBoundingClientRect();
+    const startLinePx = linePx ?? rect.height;
+    dragRef.current = { startY: event.clientY, startLinePx, railHeight: rect.height };
+
+    function handleMove(moveEvent: PointerEvent) {
+      if (!dragRef.current) return;
+      const delta = moveEvent.clientY - dragRef.current.startY;
+      const next = Math.min(dragRef.current.railHeight, Math.max(0, dragRef.current.startLinePx + delta));
+      setLinePx(next);
     }
+
+    function handleUp() {
+      dragRef.current = null;
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    }
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
   }
 
-  const topKinds = order.slice(0, splitIndex);
-  const bottomKinds = order.slice(splitIndex);
-  const isSplit = bottomKinds.length > 0;
+  function beginBadgeDrag(event: ReactPointerEvent, kind: ContentKind) {
+    event.preventDefault();
+    const rail = railRef.current;
+    if (!rail) return;
+    const rect = rail.getBoundingClientRect();
+    const threshold = linePx ?? rect.height;
+    dragRef.current = { startY: event.clientY, startLinePx: threshold, railHeight: rect.height };
+    setDragOffset({ kind, offsetY: 0 });
 
-  const resolvedTop = topKinds.includes(activeTop) ? activeTop : topKinds[0];
-  const resolvedBottom = isSplit
-    ? activeBottom && bottomKinds.includes(activeBottom)
-      ? activeBottom
-      : bottomKinds[0]
-    : null;
+    function handleMove(moveEvent: PointerEvent) {
+      if (!dragRef.current) return;
+      setDragOffset({ kind, offsetY: moveEvent.clientY - dragRef.current.startY });
+    }
 
-  const handleLinePointerDown = useCallback(
-    (event: ReactPointerEvent) => {
-      event.preventDefault();
-      dragRef.current = { startY: event.clientY, startLinePx: resolvedLinePx };
-
-      function handleMove(moveEvent: PointerEvent) {
-        if (!dragRef.current) return;
-        const delta = moveEvent.clientY - dragRef.current.startY;
-        const next = Math.min(trackHeight, Math.max(0, dragRef.current.startLinePx + delta));
-        setLinePx(next);
+    function handleUp(upEvent: PointerEvent) {
+      const rail2 = railRef.current;
+      if (dragRef.current && rail2) {
+        const railRect = rail2.getBoundingClientRect();
+        const cursorY = upEvent.clientY - railRect.top;
+        if (cursorY > dragRef.current.startLinePx) {
+          setBottomKind(kind);
+          setLinePx(dragRef.current.startLinePx);
+        } else if (bottomKind === kind) {
+          setBottomKind(null);
+        }
       }
+      dragRef.current = null;
+      setDragOffset(null);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    }
 
-      function handleUp() {
-        dragRef.current = null;
-        window.removeEventListener("pointermove", handleMove);
-        window.removeEventListener("pointerup", handleUp);
-      }
-
-      window.addEventListener("pointermove", handleMove);
-      window.addEventListener("pointerup", handleUp);
-    },
-    [resolvedLinePx, trackHeight]
-  );
-
-  function reorderTo(fromIndex: number, insertAt: number) {
-    setOrder((prev) => reorder(prev, fromIndex, insertAt));
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
   }
 
   return {
-    order,
-    trackHeight,
-    linePx: resolvedLinePx,
+    railRef,
+    linePx,
     topKinds,
-    bottomKinds,
+    bottomKind,
     isSplit,
     activeTop: resolvedTop,
-    activeBottom: resolvedBottom,
     selectTop: setActiveTop,
-    selectBottom: setActiveBottom,
-    reorderTo,
-    handleLinePointerDown,
+    beginLineDrag,
+    beginBadgeDrag,
+    dragOffset,
   };
 }

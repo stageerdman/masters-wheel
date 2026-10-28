@@ -117,6 +117,41 @@ a fixed-height stack. The line is rendered absolutely-positioned
 (`position: relative` wrapper, `top: linePx`) so moving it never touches
 the badge stack's layout at all.
 
+## Second correction: the line's range was still too small (2026-10-28)
+The fix above clamped `linePx` to the *badge stack's* height (~136px) —
+still wrong. The user's actual intent: one rail spans the Detail column's
+*entire* height; the line is draggable across that whole range (e.g.
+parked at the vertical middle of the screen) completely independent of
+the 4 badges; dragging the line alone never touches the badges at all;
+and only a deliberate drag of a *badge* past wherever the line currently
+sits creates the split — the badge then visually attaches right under
+the line.
+
+Rebuilt once more, now with a clearer two-state design:
+- `bottomKind: ContentKind | null` — at most one bookmark is "attached"
+  below the line at a time (confirmed binary: one active above, one
+  below). `topKinds` is simply the other 3, always in fixed canonical
+  order — no bookmark-to-bookmark reordering, since nothing depends on
+  their relative order once attach/detach is purely a top/bottom toggle.
+- `linePx: number | null` — pixels from the top of the *rail*, which is
+  sized to the Detail column's full height (`height: 100%`, measured via
+  a ref + `getBoundingClientRect()`), not the badge cluster. `null` means
+  resting at the very bottom (unsplit default) — rendered via CSS
+  `bottom: 0` so no measurement is needed before the first drag.
+- Both the line and the badges drag via the same real-time
+  `pointerdown`/`pointermove`/`pointerup` mechanism (not HTML5
+  drag-and-drop at all anymore). A dragged badge gets a `translateY`
+  transform following the cursor without affecting layout; on release,
+  comparing the cursor's position to the line's current position decides
+  attach (below) vs. stay/return (above). Dragging the line only ever
+  updates `linePx` — it has no path that touches `bottomKind`, so it
+  structurally cannot move a badge.
+- Once attached, the badge renders in its own absolutely-positioned slot
+  pinned to `linePx + gap`, not inside the top badge stack — so dragging
+  the line afterward (resizing) carries the attached badge and both text
+  panes' proportions along with it (`topPane` gets `flex: 0 0 ${linePx}px`,
+  bottom pane fills the remainder).
+
 ## Scope discipline
 - No real video upload, playback, transcription, or AI analysis — all four
   text types are fake/static or locally-editable only. Tracked in

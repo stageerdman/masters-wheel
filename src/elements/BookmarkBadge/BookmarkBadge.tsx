@@ -1,4 +1,4 @@
-import type { DragEvent } from "react";
+import type { PointerEvent } from "react";
 import position from "./BookmarkBadge.position.module.css";
 import styles from "./BookmarkBadge.styles.module.css";
 
@@ -15,23 +15,10 @@ type BookmarkBadgeProps = {
   kind: ContentKind;
   active: boolean;
   onClick?: () => void;
-  draggable?: boolean;
-  onDragStart?: (event: DragEvent<HTMLElement>) => void;
-  onDragOver?: (event: DragEvent<HTMLElement>) => void;
-  onDrop?: (event: DragEvent<HTMLElement>) => void;
-  onDragEnd?: (event: DragEvent<HTMLElement>) => void;
+  onPointerDown?: (event: PointerEvent<HTMLButtonElement>) => void;
 };
 
-export function BookmarkBadge({
-  kind,
-  active,
-  onClick,
-  draggable,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
-}: BookmarkBadgeProps) {
+export function BookmarkBadge({ kind, active, onClick, onPointerDown }: BookmarkBadgeProps) {
   const meta = BOOKMARK_META[kind];
   return (
     <button
@@ -39,13 +26,9 @@ export function BookmarkBadge({
       className={`${styles.root} ${position.root} ${active ? styles.active : ""}`}
       style={{ "--badge-color": meta.color } as React.CSSProperties}
       onClick={onClick}
+      onPointerDown={onPointerDown}
       aria-pressed={active}
       aria-label={kind}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
     >
       {meta.label}
     </button>

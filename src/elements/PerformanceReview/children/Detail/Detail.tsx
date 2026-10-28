@@ -17,23 +17,25 @@ type DetailProps = {
 
 export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }: DetailProps) {
   const {
-    order,
-    trackHeight,
+    railRef,
     linePx,
     topKinds,
+    bottomKind,
     isSplit,
     activeTop,
-    activeBottom,
     selectTop,
-    selectBottom,
-    reorderTo,
-    handleLinePointerDown,
+    beginLineDrag,
+    beginBadgeDrag,
+    dragOffset,
   } = useSplitRail();
 
   return (
     <aside className={`${styles.root} ${position.root}`}>
       <div className={position.panes}>
-        <div className={position.pane}>
+        <div
+          className={position.pane}
+          style={isSplit && linePx !== null ? { flex: `0 0 ${linePx}px` } : undefined}
+        >
           <TextView
             kind={activeTop}
             video={video}
@@ -43,12 +45,12 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
             onLessonsChange={onLessonsChange}
           />
         </div>
-        {isSplit && activeBottom && (
+        {isSplit && bottomKind && (
           <>
             <div className={`${styles.divider} ${position.divider}`} aria-hidden="true" />
             <div className={position.pane}>
               <TextView
-                kind={activeBottom}
+                kind={bottomKind}
                 video={video}
                 notes={notes}
                 lessons={lessons}
@@ -61,16 +63,15 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
       </div>
       <div className={position.railSlot}>
         <SplitRail
-          order={order}
-          trackHeight={trackHeight}
+          railRef={railRef}
           linePx={linePx}
           topKinds={topKinds}
+          bottomKind={bottomKind}
           activeTop={activeTop}
-          activeBottom={activeBottom}
           onSelectTop={selectTop}
-          onSelectBottom={selectBottom}
-          onReorder={reorderTo}
-          onLinePointerDown={handleLinePointerDown}
+          onLinePointerDown={beginLineDrag}
+          onBadgePointerDown={beginBadgeDrag}
+          dragOffset={dragOffset}
         />
       </div>
     </aside>

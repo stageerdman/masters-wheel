@@ -8,7 +8,7 @@
 
 .railSlot {
   flex-shrink: 0;
-  padding-top: 0.25rem;
+  height: 100%;
 }
 
 .panes {

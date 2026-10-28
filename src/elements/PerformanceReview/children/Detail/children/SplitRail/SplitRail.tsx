@@ -1,90 +1,82 @@
 "use client";
 
-import { useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
+import type { RefObject } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { BookmarkBadge, type ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
 import position from "./SplitRail.position.module.css";
 import styles from "./SplitRail.styles.module.css";
 
+const ATTACH_GAP = 8;
+
 type SplitRailProps = {
-  order: ContentKind[];
-  trackHeight: number;
-  linePx: number;
+  railRef: RefObject<HTMLDivElement | null>;
+  linePx: number | null;
   topKinds: ContentKind[];
+  bottomKind: ContentKind | null;
   activeTop: ContentKind;
-  activeBottom: ContentKind | null;
   onSelectTop: (kind: ContentKind) => void;
-  onSelectBottom: (kind: ContentKind) => void;
-  onReorder: (fromIndex: number, insertAt: number) => void;
   onLinePointerDown: (event: ReactPointerEvent) => void;
+  onBadgePointerDown: (event: ReactPointerEvent, kind: ContentKind) => void;
+  dragOffset: { kind: ContentKind; offsetY: number } | null;
 };
 
-// Badges reorder among themselves via HTML5 drag-and-drop (before/after
-// resolved from which half of the hovered badge the pointer is over). The
-// line is a separate, continuously pointer-dragged divider — see
-// Detail.script.ts for why the two are kept independent.
+// One rail, full column height. Bookmarks are pinned at the top; the line
+// is an independent, continuously-draggable divider spanning the whole
+// rail. Dragging a bookmark past the line's current position attaches it
+// there (creating the split); dragging it back above detaches it. See
+// Detail.script.ts for the state machine this renders.
 export function SplitRail({
-  order,
-  trackHeight,
+  railRef,
   linePx,
   topKinds,
+  bottomKind,
   activeTop,
-  activeBottom,
   onSelectTop,
-  onSelectBottom,
-  onReorder,
   onLinePointerDown,
+  onBadgePointerDown,
+  dragOffset,
 }: SplitRailProps) {
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-
-  function handleDragStart(event: DragEvent<HTMLElement>, index: number) {
-    event.dataTransfer.setData("text/plain", String(index));
-    event.dataTransfer.effectAllowed = "move";
-    setDragIndex(index);
-  }
-
-  function handleDragOver(event: DragEvent<HTMLElement>) {
-    event.preventDefault();
-  }
-
-  function handleDrop(event: DragEvent<HTMLElement>, targetIndex: number) {
-    event.preventDefault();
-    if (dragIndex !== null) {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const isAfter = event.clientY > rect.top + rect.height / 2;
-      onReorder(dragIndex, isAfter ? targetIndex + 1 : targetIndex);
-    }
-    setDragIndex(null);
+  function transformFor(kind: ContentKind) {
+    return dragOffset && dragOffset.kind === kind ? `translateY(${dragOffset.offsetY}px)` : undefined;
   }
 
   return (
-    <div className={`${styles.root} ${position.root}`} style={{ height: trackHeight }}>
-      <div className={position.stack}>
-        {order.map((kind, index) => {
-          const isTop = topKinds.includes(kind);
-          const active = isTop ? kind === activeTop : kind === activeBottom;
-          return (
+    <div ref={railRef} className={`${styles.root} ${position.root}`}>
+      <div className={position.topStack}>
+        {topKinds.map((kind) => (
+          <div key={kind} style={{ transform: transformFor(kind) }}>
             <BookmarkBadge
-              key={kind}
               kind={kind}
-              active={active}
-              onClick={() => (isTop ? onSelectTop(kind) : onSelectBottom(kind))}
-              draggable
-              onDragStart={(event) => handleDragStart(event, index)}
-              onDragOver={handleDragOver}
-              onDrop={(event) => handleDrop(event, index)}
-              onDragEnd={() => setDragIndex(null)}
+              active={kind === activeTop}
+              onClick={() => onSelectTop(kind)}
+              onPointerDown={(event) => onBadgePointerDown(event, kind)}
             />
-          );
-        })}
+          </div>
+        ))}
       </div>
+
       <div
         className={`${styles.line} ${position.line}`}
-        style={{ top: linePx }}
+        style={linePx === null ? { bottom: 0 } : { top: linePx }}
         onPointerDown={onLinePointerDown}
         role="separator"
         aria-orientation="horizontal"
         aria-label="Drag to split"
       />
+
+      {bottomKind && linePx !== null && (
+        <div
+          className={position.attached}
+          style={{ top: linePx + ATTACH_GAP, transform: transformFor(bottomKind) }}
+        >
+          <BookmarkBadge
+            kind={bottomKind}
+            active
+            onClick={() => {}}
+            onPointerDown={(event) => onBadgePointerDown(event, bottomKind)}
+          />
+        </div>
+      )}
     </div>
   );
 }
