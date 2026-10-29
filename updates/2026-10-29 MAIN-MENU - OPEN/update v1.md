@@ -81,3 +81,19 @@ wordmark to act as the "go home" link, swapping its label/logo per page.
 ## Next
 Training and Chat with AI stay inert until their own update dictates what
 they do.
+
+## Follow-up — header/logo polish (2026-10-29)
+- [x] `AppHeader` hides itself entirely on `/` (Main Menu) — checks
+      `usePathname()` against a small hidden-route list and renders `null`.
+      Main Menu is now genuinely chrome-free, nothing above the wallpaper.
+- [x] `NavMenu`'s panel chrome (glass background, border, blur) removed —
+      the left menu is fully transparent, just the wallpaper and the list
+      items themselves.
+- [x] Logo replaced with the new transparent-background artwork. The
+      source PNG had a lot of empty transparent canvas around the medallion
+      (loop at top, padding on the sides), which made it look vertically
+      off against the wordmark even though the flex box itself was
+      centered — trimmed to its visible bounding box with `sharp` before
+      saving into `public/`, so the image's own box now matches its visual
+      content and `align-items: center` actually centers it against the
+      text.

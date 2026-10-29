@@ -2,15 +2,24 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useHeaderActions } from "./AppHeader.context";
 import { ActionIsland } from "./children/ActionIsland/ActionIsland";
 import position from "./AppHeader.position.module.css";
 import styles from "./AppHeader.styles.module.css";
 
+// Main Menu is the minimal front door — no chrome above it.
+const HEADER_HIDDEN_ROUTES = ["/"];
+
 export function AppHeader() {
   const { island, brand } = useHeaderActions();
+  const pathname = usePathname();
   const label = brand?.label ?? "Master's Circle";
   const showLogo = brand?.showLogo ?? false;
+
+  if (HEADER_HIDDEN_ROUTES.includes(pathname)) {
+    return null;
+  }
 
   return (
     <header className={`${styles.root} ${position.root}`} data-construction>
@@ -20,7 +29,7 @@ export function AppHeader() {
             <Image
               src="/masters-wheel-logo.png"
               alt=""
-              width={28}
+              width={22}
               height={28}
               className={`${styles.logo} ${position.logo}`}
               data-construction
