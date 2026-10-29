@@ -1,0 +1,8 @@
+/* Where this element sits within its parent (Canvas). No visual styling here. */
+.root {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}

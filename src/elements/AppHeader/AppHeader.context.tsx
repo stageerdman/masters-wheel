@@ -21,16 +21,24 @@ export type HeaderIsland = {
   onStateChange: (id: string) => void;
 } | null;
 
+export type HeaderBrand = {
+  label: string;
+  showLogo: boolean;
+} | null;
+
 type HeaderActionsContextValue = {
   island: HeaderIsland;
   setIsland: (island: HeaderIsland) => void;
+  brand: HeaderBrand;
+  setBrand: (brand: HeaderBrand) => void;
 };
 
 const HeaderActionsContext = createContext<HeaderActionsContextValue | null>(null);
 
 export function HeaderActionsProvider({ children }: { children: ReactNode }) {
   const [island, setIsland] = useState<HeaderIsland>(null);
-  const value = useMemo(() => ({ island, setIsland }), [island]);
+  const [brand, setBrand] = useState<HeaderBrand>(null);
+  const value = useMemo(() => ({ island, setIsland, brand, setBrand }), [island, brand]);
   return <HeaderActionsContext.Provider value={value}>{children}</HeaderActionsContext.Provider>;
 }
 

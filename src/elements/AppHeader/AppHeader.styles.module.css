@@ -8,3 +8,16 @@
   font-size: var(--text-size-heading);
   font-weight: 600;
 }
+
+.wordmarkLink {
+  border-radius: 0.25rem;
+}
+
+.wordmarkLink:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.logo {
+  border-radius: 0.25rem;
+  object-fit: contain;
+}

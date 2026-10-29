@@ -1,0 +1,17 @@
+/* Where this element sits within NavMenu's list. No visual styling here. */
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.marker {
+  width: 1em;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.label {
+  flex: 1;
+}

@@ -1,0 +1,11 @@
+.root {
+  list-style: none;
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  backdrop-filter: blur(6px);
+}
+
+.root:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}

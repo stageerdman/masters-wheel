@@ -4,6 +4,28 @@ Running tracker: what's built (as UI shell — fake data, no backend) vs. what
 still needs to be dictated and built. Update this whenever a feature moves
 between the two lists. Each page gets its own section as pages get added.
 
+## Main Menu page
+
+### Built (UI shell only — no real functionality behind it)
+- [x] `MainMenu` at `/`: wallpaper background, left `NavMenu` (4 items:
+      Performance Review, Analytics, Training, Chat with AI), right
+      `SidePanel` (empty until Analytics is activated)
+- [x] `NavMenu`: arrow-key highlight + Enter activates; mouse hover
+      highlights, click activates (same effect as keyboard); highlighted
+      item shows an arrow marker
+- [x] Performance Review activation navigates to `/performance-review`
+- [x] Analytics activation shows a fake `AnalyticsPanel` (static numbers) in
+      the right panel — doesn't navigate
+- [x] Training / Chat with AI: listed, selectable, inert (no behavior
+      dictated yet)
+- [x] `AppHeader` wordmark is now a link home (`/`) and is brand-aware via
+      `HeaderActionsContext` — shows "Master's Circle" by default, swaps to
+      "Performance Review" + logo while that page is mounted
+
+### To build (real functionality — not started)
+- [ ] Training and Chat with AI behavior (not dictated yet)
+- [ ] Real analytics data (currently static fake numbers)
+
 ## Performance Review page
 
 ### Built (UI shell only — no real functionality behind it)

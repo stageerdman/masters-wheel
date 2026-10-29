@@ -1,0 +1,9 @@
+/* Where this element sits within MainMenu. No visual styling here. */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 16rem;
+  padding: 1.5rem 1rem;
+  align-self: center;
+}

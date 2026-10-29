@@ -33,7 +33,7 @@ const STATE_OPTIONS: HeaderIslandOption[] = CALL_STATE_ORDER.map((id) => ({
 }));
 
 export function PerformanceReview() {
-  const { setIsland } = useHeaderActions();
+  const { setIsland, setBrand } = useHeaderActions();
   const [selectedId, setSelectedId] = useState(FAKE_VIDEOS[0].id);
   const [edits, setEdits] = useState<Edits>({});
 
@@ -56,6 +56,11 @@ export function PerformanceReview() {
     return () => setIsland(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected.id, selected.state]);
+
+  useEffect(() => {
+    setBrand({ label: "Performance Review", showLogo: true });
+    return () => setBrand(null);
+  }, [setBrand]);
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>

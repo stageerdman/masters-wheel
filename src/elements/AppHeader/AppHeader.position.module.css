@@ -11,6 +11,16 @@
   justify-self: start;
 }
 
+.wordmarkLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo {
+  flex-shrink: 0;
+}
+
 .islandArea {
   justify-self: center;
 }
