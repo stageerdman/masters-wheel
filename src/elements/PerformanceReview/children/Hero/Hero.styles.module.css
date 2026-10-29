@@ -1,9 +1,9 @@
 .root {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .title {
-  font-size: 1.1rem;
+  font-size: var(--text-size-heading);
   font-weight: 600;
 }

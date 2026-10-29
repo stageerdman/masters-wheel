@@ -1,21 +1,21 @@
 .root {
-  background: var(--border);
+  background: var(--color-border);
   border-radius: 8px;
-  color: var(--muted-foreground);
+  color: var(--color-text-muted);
 }
 
 .playButton {
   width: 48px;
   height: 48px;
   border-radius: 999px;
-  background: var(--background);
+  background: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
-  color: var(--foreground);
+  font-size: var(--text-size-body);
+  color: var(--color-text);
 }
 
 .label {
-  font-size: 0.8rem;
+  font-size: var(--text-size-label);
 }

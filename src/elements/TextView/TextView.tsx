@@ -16,16 +16,26 @@ type TextViewProps = {
 // seeking is a no-op for now — no real media to scrub. See FEATURES.md.
 export function TextView({ kind, video, notes, lessons, onNotesChange, onLessonsChange }: TextViewProps) {
   if (kind === "main") {
-    return <p className={`${styles.readOnlyText} ${position.readOnlyText}`}>{video.mainText}</p>;
+    return (
+      <p className={`${styles.readOnlyText} ${position.readOnlyText}`} data-construction>
+        {video.mainText}
+      </p>
+    );
   }
 
   if (kind === "transcript") {
     return (
-      <ul className={position.transcriptList}>
+      <ul className={position.transcriptList} data-construction>
         {video.transcript.map((line) => (
           <li key={line.time}>
-            <button type="button" className={`${styles.transcriptLine} ${position.transcriptLine}`}>
-              <span className={styles.transcriptTime}>{line.time}</span>
+            <button
+              type="button"
+              className={`${styles.transcriptLine} ${position.transcriptLine}`}
+              data-construction
+            >
+              <span className={styles.transcriptTime} data-construction>
+                {line.time}
+              </span>
               <span>{line.text}</span>
             </button>
           </li>
@@ -38,6 +48,7 @@ export function TextView({ kind, video, notes, lessons, onNotesChange, onLessons
     return (
       <textarea
         className={`${styles.editableText} ${position.editableText}`}
+        data-construction
         value={notes}
         onChange={(event) => onNotesChange(event.target.value)}
         placeholder="Notes"
@@ -48,6 +59,7 @@ export function TextView({ kind, video, notes, lessons, onNotesChange, onLessons
   return (
     <textarea
       className={`${styles.editableText} ${position.editableText}`}
+      data-construction
       value={lessons}
       onChange={(event) => onLessonsChange(event.target.value)}
       placeholder="Core lessons"

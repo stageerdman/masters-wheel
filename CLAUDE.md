@@ -64,9 +64,9 @@ instead of a component library (see "Project-specific notes" below).
   Right now the UI is intentionally almost unstyled — elements get dictated
   and added one at a time, not pre-built.
 - **Minimal visual system:** one font (Geist), a small deliberate color scale
-  via the `--background`/`--foreground` CSS variables in `globals.css`. Expand
-  the scale deliberately as real elements get dictated, not ad-hoc per
-  element.
+  and 4 text sizes, all as CSS variables in `globals.css` — see "Styling
+  standards" below. Expand the scale deliberately as real elements get
+  dictated, not ad-hoc per element.
 - **Reusable, isolated elements** with a clear interface (props), so each can
   be understood, restyled, or repositioned without touching the rest.
 - Accessible by default: real contrast, keyboard reachability, sensible
@@ -107,6 +107,60 @@ combines them: `` `${styles.root} ${position.root}` ``.
 `src/elements/Canvas/` is the root element (rendered by `src/app/page.tsx`)
 and the live reference example of this convention — copy its shape when
 adding the next element.
+
+### Styling standards
+All design tokens live as CSS variables in `src/app/globals.css`, grouped
+into two tiers:
+
+- **Core UI palette (exactly 5):** `--color-surface`, `--color-text`,
+  `--color-text-muted`, `--color-border`, `--color-accent`. This is the full
+  color budget for chrome — backgrounds, text, borders, focus states. Don't
+  add a 6th without deliberately deciding to expand the scale.
+- **Category palette (exempt from the budget above):** `--color-status-*`
+  (activity-type icons) and `--color-bookmark-*` (bookmark badges), plus
+  `--color-on-chip` (text/glyph color sitting on top of either). These exist
+  because each value *is* a visual identity for a distinct category — a
+  dollar-sign icon and a training icon must differ, a transcript bookmark and
+  a notes bookmark must differ. Collapsing them into the core-5 would destroy
+  the distinction they exist to draw. Add a new category color only when a
+  genuinely new category is dictated, never as a substitute for a core color.
+- **Text sizes (exactly 4):** `--text-size-heading` (section/page headings),
+  `--text-size-body` (primary reading content — transcript/notes/lessons/main
+  text), `--text-size-label` (control and list text — inputs, titles, small
+  labels), `--text-size-micro` (smallest meta text — dates, badge labels).
+- **Font:** `--font-family-base`, declared once on `body` in `globals.css`.
+  No element sets its own `font-family`.
+
+**Standing rule — always reference the variables.** No `Name.styles.module.css`
+(or inline style) may hardcode a color or a `font-size` literal. If a new
+value is needed, either reuse an existing variable or extend this token set
+in `globals.css` first — never drop a one-off hex code or rem value into an
+element's stylesheet. A dynamic per-instance color (e.g. which bookmark color
+a badge renders) is passed through a local CSS custom property set inline
+(see `--badge-color` in `BookmarkBadge.tsx`, `--icon-color` in
+`VideoListItem.tsx`), which itself resolves to one of the category variables
+above — never a raw hex value.
+
+### Construction outlines
+A dev-only wireframe mode exists to see every element's box boundaries at a
+glance. Two pieces, both in `src/app/globals.css`:
+
+- `--construction-outlines` (`1` = on, `0` = off) and `--color-construction`
+  — the single switch and color for the whole app. Flip the variable to `0`
+  to turn every outline off; this file is the one place that controls it.
+- A global rule on the `[data-construction]` attribute selector that draws
+  the outline on anything carrying it.
+
+**Convention:** every element's root node, and every internal node that
+carries its own `styles.*` or `position.*` class, gets a bare
+`data-construction` attribute in its `.tsx`. New elements follow the same
+rule as they're added — any visually distinct box should be discoverable in
+construction mode, not just top-level containers.
+
+**The `outline` CSS property is reserved for this exclusively.** Nothing
+else may set `outline` — real focus rings, etc. use `box-shadow` instead
+(see `SearchBar.styles.module.css`). This keeps "I see an outline on screen"
+unambiguous: it always means construction mode, never real UI.
 
 ### Replicable/standardized elements
 When an element needs a repeatable "standard" (e.g. every side-menu button

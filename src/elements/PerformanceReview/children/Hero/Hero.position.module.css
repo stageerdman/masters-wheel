@@ -15,8 +15,12 @@
   min-height: 0;
 }
 
-.title {
+.titleBlock {
   grid-area: title;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
   padding-right: calc(28px + 1rem);
 }
 

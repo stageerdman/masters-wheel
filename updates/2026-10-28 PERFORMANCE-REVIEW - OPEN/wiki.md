@@ -152,6 +152,75 @@ Rebuilt once more, now with a clearer two-state design:
   panes' proportions along with it (`topPane` gets `flex: 0 0 ${linePx}px`,
   bottom pane fills the remainder).
 
+## Styling standards introduced (2026-10-29)
+Audited every element's CSS for hardcoded colors/font-sizes while verifying
+the Detail split-rail stayed minimal. Found 8 distinct literal font-sizes and
+~10 distinct colors scattered across modules (some via named variables like
+`--background`, some as bare hex like `#ffffff`). Consolidated into a single
+token set in `globals.css`:
+- Core UI palette, exactly 5: `--color-surface/text/text-muted/border/accent`
+  (renamed from `--background`/`--foreground`/`--muted-foreground`/`--border`;
+  `--color-accent` is new, replacing an ad-hoc reuse of the category color
+  `--color-info` as a focus-ring color in `SearchBar`).
+- Category palette (exempt — see CLAUDE.md "Styling standards" for why):
+  `--color-status-*` (was `--color-success/pending/info`) and
+  `--color-bookmark-*`, plus a new `--color-on-chip` replacing the two bare
+  `#ffffff` literals used for text sitting on a colored chip.
+- Exactly 4 text sizes: `--text-size-heading/body/label/micro`, each mapped
+  to one purpose (was 8 unrelated rem values, including a couple of
+  implicit-default cases — e.g. `TextView`'s editable/read-only panels had
+  no declared font-size at all and silently inherited the browser default).
+Full rule and variable list now live in CLAUDE.md under "Styling standards" —
+durable across updates, not just this one. Going forward, no element's
+stylesheet may hardcode a color or font-size literal; it must reference one
+of these variables or the set gets deliberately extended first.
+
+## Header dynamic island architecture (2026-10-29)
+`AppHeader` renders in `layout.tsx`, above `{children}` — it has no natural
+way to see a page's state (e.g. "which video is selected, what's its call
+state"). Rather than moving `AppHeader` into the page (breaking the
+reusable-across-pages intent from Phase 1) or hardcoding Performance-Review
+knowledge into `AppHeader`, added a small context module,
+`AppHeader/AppHeader.context.tsx` (sibling file, same "doesn't fit the
+Name.tsx/styles/position/script convention" exception as
+`PerformanceReview.data.ts`). `HeaderActionsProvider` wraps `<AppHeader />`
+and `{children}` in `layout.tsx`; a page calls `setIsland(...)` (via
+`useHeaderActions`) to populate the dynamic island, and clears it on
+unmount. The island's shape is generic (`stateOptions: {id, glyph, color,
+label}[]`, `activeStateId`, `onStateChange`) — `AppHeader` and its children
+know nothing about `CallState` specifically, so a future second page can
+populate the island with a different option set without touching
+`AppHeader`.
+
+Tradeoff accepted: the island is empty for one render until the page's
+`useEffect` fires (SSR has no island at all). Imperceptible in practice,
+revisit only if it becomes visible.
+
+## Call-state rename + standalone icons (2026-10-29)
+The fake `activityType` field (`success`/`followup`/`training`) became
+`state` (`CallState`: `closed`/`training`/`postponed`/`failed`), dictated
+alongside the header's state-change dropdown — the dropdown needed the exact
+same icon set already used by the Navigation list, so the glyph/color/label
+mapping (`CALL_STATE_META`) moved out of `VideoListItem` into
+`PerformanceReview.data.ts` as the one shared source, consumed by both
+`VideoListItem` and the header's `StateMenu`. Added a `failed` state (red
+✕) since the user's dictated list needed a 4th state with no existing
+mapping.
+
+Also changed the Navigation list icons from a colored circle+glyph chip to
+a bare colored glyph (no background shape) — a direct user correction after
+seeing the original chip version.
+
+`--color-status-success/pending/info` renamed to
+`--color-status-closed/postponed/training` to match the new vocabulary,
+plus a new `--color-status-failed`. New category-exempt token
+`--color-action-training-ground` (orange) added for the sword button —
+treated as a genuinely new category (a header action, not a status or
+bookmark) per CLAUDE.md's "add a new category color only when a genuinely
+new category is dictated" rule, rather than reusing `--color-bookmark-notes`
+(same hue, wrong category) or expanding the core-5 (the AI button reuses
+`--color-accent` directly since blue was already the core accent).
+
 ## Scope discipline
 - No real video upload, playback, transcription, or AI analysis — all four
   text types are fake/static or locally-editable only. Tracked in

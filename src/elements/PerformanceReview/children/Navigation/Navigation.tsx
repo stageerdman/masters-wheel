@@ -20,11 +20,11 @@ export function Navigation({ videos, selectedId, onSelect }: NavigationProps) {
   );
 
   return (
-    <nav className={`${styles.root} ${position.root}`}>
-      <div className={position.searchSlot}>
+    <nav className={`${styles.root} ${position.root}`} data-construction>
+      <div className={position.searchSlot} data-construction>
         <SearchBar value={query} onChange={setQuery} placeholder="Search sessions" />
       </div>
-      <ul className={`${styles.list} ${position.list}`}>
+      <ul className={`${styles.list} ${position.list}`} data-construction>
         {filtered.map((video) => (
           <li key={video.id}>
             <VideoListItem

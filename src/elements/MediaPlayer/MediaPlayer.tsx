@@ -8,11 +8,13 @@ type MediaPlayerProps = {
 // Fake placeholder — no real playback yet. See FEATURES.md.
 export function MediaPlayer({ title }: MediaPlayerProps) {
   return (
-    <div className={`${styles.root} ${position.root}`}>
-      <div className={styles.playButton} aria-hidden="true">
+    <div className={`${styles.root} ${position.root}`} data-construction>
+      <div className={styles.playButton} data-construction aria-hidden="true">
         ▶
       </div>
-      <span className={styles.label}>{title}</span>
+      <span className={styles.label} data-construction>
+        {title}
+      </span>
     </div>
   );
 }

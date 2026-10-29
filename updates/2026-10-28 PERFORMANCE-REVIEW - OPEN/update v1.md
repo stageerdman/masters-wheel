@@ -73,6 +73,30 @@ transcription, backend storage all come later as separate dictated features.
       session, so click-through of drag-reorder/bookmark-switch/search
       filter is still outstanding — do this before calling the page done.
 
+### Phase 8 — Header dynamic island + Hero meta panel
+- [x] `AppHeader` rebuilt as a 3-area grid (logo left / dynamic island
+      centered / reserved right). Dynamic island is populated per-page via a
+      new `HeaderActionsContext` (`AppHeader.context.tsx`), since `AppHeader`
+      lives in `layout.tsx` above every page and has no direct access to a
+      page's state.
+- [x] Dynamic island: AI re-analyze (blue, inert for now) — state dropdown
+      (center, live) — training-ground sword (orange, inert for now).
+- [x] Renamed the fake `activityType` field to `state` (`CallState`: closed/
+      training/postponed/failed) and centralized its glyph/color/label in
+      `CALL_STATE_META`, shared by the Navigation list icons and the
+      header's state dropdown so both read one source of truth.
+- [x] Navigation list icons changed from a colored circle+glyph chip to a
+      standalone colored glyph (no background shape).
+- [x] `CurrencyCombobox` (flat, reusable): typeahead currency picker —
+      type a code/name, arrow keys or Enter to select.
+- [x] Hero: `MetaPanel` child (3-dot toggle under the title) — offered
+      amount + currency, 200-char description. Description also drives the
+      Navigation row's hover tooltip.
+- [x] `npm run build`, `npm run lint`, `tsc --noEmit` all clean.
+- [ ] **Not verified**: no connected browser extension this session — same
+      gap as Phase 7. Click-through of the state dropdown, meta panel
+      expand/collapse, and currency typeahead is still outstanding.
+
 ## Decisions
 - Fixed a real bug while verifying: two CSS modules (`BookmarkRail`,
   `SplitRail`) had an empty or missing `.root` rule. Turbopack's CSS-module

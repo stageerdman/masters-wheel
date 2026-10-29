@@ -1,0 +1,39 @@
+.root {
+  background: transparent;
+}
+
+.input {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: var(--text-size-label);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.input:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.suggestions {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.suggestion {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: var(--text-size-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggestion:hover,
+.highlighted {
+  background: var(--color-border);
+}

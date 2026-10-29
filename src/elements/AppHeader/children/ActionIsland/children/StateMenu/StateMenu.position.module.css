@@ -1,0 +1,22 @@
+.root {
+  position: relative;
+  display: flex;
+}
+
+.glyphButton {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 6px;
+  z-index: 10;
+}

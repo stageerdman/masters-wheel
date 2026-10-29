@@ -11,7 +11,7 @@ type BookmarkRailProps = {
 
 export function BookmarkRail({ active, onSelect }: BookmarkRailProps) {
   return (
-    <div className={`${styles.root} ${position.root}`}>
+    <div className={`${styles.root} ${position.root}`} data-construction>
       {ORDER.map((kind) => (
         <BookmarkBadge
           key={kind}

@@ -11,6 +11,7 @@ export function SearchBar({ value, onChange, placeholder }: SearchBarProps) {
   return (
     <input
       className={`${styles.root} ${position.root}`}
+      data-construction
       type="search"
       value={value}
       onChange={(event) => onChange(event.target.value)}

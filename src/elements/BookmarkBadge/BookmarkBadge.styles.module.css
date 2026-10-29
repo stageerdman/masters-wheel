@@ -5,8 +5,8 @@
   border: none;
   background: var(--badge-color);
   opacity: 0.45;
-  color: #ffffff;
-  font-size: 0.65rem;
+  color: var(--color-on-chip);
+  font-size: var(--text-size-micro);
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;

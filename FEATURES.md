@@ -10,16 +10,23 @@ between the two lists. Each page gets its own section as pages get added.
 - [x] App header (global orientation bar)
 - [x] 3-column layout: Navigation / Hero / Detail
 - [x] Navigation: search bar (client-side filter over fake list)
-- [x] Navigation: scrollable video list, activity-type icon (success/
-      follow-up/training), date + title rows
+- [x] Navigation: scrollable video list, call-state icon (closed/training/
+      postponed/failed, standalone colored glyph), date + title rows,
+      description shown as a hover tooltip
 - [x] Hero: title, static media placeholder, bookmark rail (Main text /
       Transcript / Notes / Core Lessons)
 - [x] Hero: Main text (read-only fake text)
 - [x] Hero: Transcript (fake lines, click is a no-op — no real video to seek)
 - [x] Hero: Notes (locally editable, not persisted)
 - [x] Hero: Core Lessons (locally editable, not persisted)
+- [x] Hero: collapsible meta panel (3-dot toggle under the title) — offered
+      amount + currency (typeahead combobox), 200-char description
 - [x] Detail: draggable bookmark rail, reorderable, splits into two
       independent text panes when a bookmark crosses the line
+- [x] Header: 3-area layout (logo / dynamic island / reserved), dynamic
+      island shows the active call's state (clickable, changes it), plus an
+      inert AI-reanalyze button and an inert "send to training ground"
+      button
 
 ### To build (real functionality — not started)
 - [ ] Real video/audio upload + storage
@@ -27,11 +34,12 @@ between the two lists. Each page gets its own section as pages get added.
 - [ ] Real transcription generation
 - [ ] Transcript lines actually seeking the video
 - [ ] AI analysis of the call/session (currently no content type for this at
-      all — needs its own bookmark + content type)
+      all — needs its own bookmark + content type; the header's AI button is
+      currently a no-op placeholder)
 - [ ] AI-assisted core lesson extraction (currently just a free-text field)
-- [ ] Marking a session successful/failed (currently just a fixed fake tag
-      used to pick the Navigation icon)
-- [ ] Notes/Core Lessons persistence (currently local component state, lost
-      on refresh)
+- [ ] "Take it to the training ground" button (currently a no-op placeholder
+      — behavior not yet dictated)
+- [ ] Notes/Core Lessons/state/offered-amount/description persistence
+      (currently local component state, lost on refresh)
 - [ ] Backend data model + storage for videos/notes/lessons/transcripts
 - [ ] Auth (not started — no users yet)

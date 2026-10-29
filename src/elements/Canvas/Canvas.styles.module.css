@@ -1,5 +1,5 @@
 /* How this element looks. No layout/positioning here. */
 .root {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-surface);
+  color: var(--color-text);
 }

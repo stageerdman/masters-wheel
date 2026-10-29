@@ -30,10 +30,11 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
   } = useSplitRail();
 
   return (
-    <aside className={`${styles.root} ${position.root}`}>
-      <div className={position.panes}>
+    <aside className={`${styles.root} ${position.root}`} data-construction>
+      <div className={position.panes} data-construction>
         <div
           className={position.pane}
+          data-construction
           style={isSplit && linePx !== null ? { flex: `0 0 ${linePx}px` } : undefined}
         >
           <TextView
@@ -47,8 +48,12 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
         </div>
         {isSplit && bottomKind && (
           <>
-            <div className={`${styles.divider} ${position.divider}`} aria-hidden="true" />
-            <div className={position.pane}>
+            <div
+              className={`${styles.divider} ${position.divider}`}
+              data-construction
+              aria-hidden="true"
+            />
+            <div className={position.pane} data-construction>
               <TextView
                 kind={bottomKind}
                 video={video}
@@ -61,7 +66,7 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
           </>
         )}
       </div>
-      <div className={position.railSlot}>
+      <div className={position.railSlot} data-construction>
         <SplitRail
           railRef={railRef}
           linePx={linePx}

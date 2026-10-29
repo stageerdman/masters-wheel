@@ -41,8 +41,8 @@ export function SplitRail({
   }
 
   return (
-    <div ref={railRef} className={`${styles.root} ${position.root}`}>
-      <div className={position.topStack}>
+    <div ref={railRef} className={`${styles.root} ${position.root}`} data-construction>
+      <div className={position.topStack} data-construction>
         {topKinds.map((kind) => (
           <div key={kind} style={{ transform: transformFor(kind) }}>
             <BookmarkBadge
@@ -57,6 +57,7 @@ export function SplitRail({
 
       <div
         className={`${styles.line} ${position.line}`}
+        data-construction
         style={linePx === null ? { bottom: 0 } : { top: linePx }}
         onPointerDown={onLinePointerDown}
         role="separator"
@@ -67,6 +68,7 @@ export function SplitRail({
       {bottomKind && linePx !== null && (
         <div
           className={position.attached}
+          data-construction
           style={{ top: linePx + ATTACH_GAP, transform: transformFor(bottomKind) }}
         >
           <BookmarkBadge

@@ -1,10 +1,10 @@
 .root {
-  background: var(--background);
-  border-bottom: 1px solid var(--border);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .wordmark {
-  color: var(--foreground);
-  font-size: 0.95rem;
+  color: var(--color-text);
+  font-size: var(--text-size-heading);
   font-weight: 600;
 }

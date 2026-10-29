@@ -3,7 +3,7 @@
 }
 
 .line {
-  border-top: 2px dashed var(--muted-foreground);
+  border-top: 2px dashed var(--color-text-muted);
   cursor: row-resize;
   opacity: 0.6;
   touch-action: none;
@@ -20,5 +20,5 @@
   right: 100%;
   width: 12px;
   height: 2px;
-  background: var(--muted-foreground);
+  background: var(--color-text-muted);
 }

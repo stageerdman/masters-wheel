@@ -1,7 +1,19 @@
 // Fake fixture data — no backend yet. Delete this file once real data
 // arrives rather than growing it. See FEATURES.md.
 
-export type ActivityType = "success" | "followup" | "training";
+export type CallState = "closed" | "training" | "postponed" | "failed";
+
+export const CALL_STATE_ORDER: CallState[] = ["closed", "training", "postponed", "failed"];
+
+// Shared glyph/color/label per call state — same visual language used by the
+// Navigation list icons and the header's state-change dropdown, so both read
+// off this one source of truth instead of duplicating the mapping.
+export const CALL_STATE_META: Record<CallState, { glyph: string; color: string; label: string }> = {
+  closed: { glyph: "$", color: "var(--color-status-closed)", label: "Closed" },
+  training: { glyph: "●", color: "var(--color-status-training)", label: "Training" },
+  postponed: { glyph: "→", color: "var(--color-status-postponed)", label: "Postponed" },
+  failed: { glyph: "✕", color: "var(--color-status-failed)", label: "Failed" },
+};
 
 export type TranscriptLine = {
   time: string;
@@ -10,19 +22,22 @@ export type TranscriptLine = {
 
 export type VideoRecord = {
   id: string;
-  activityType: ActivityType;
+  state: CallState;
   date: string;
   title: string;
   mainText: string;
   transcript: TranscriptLine[];
   notes: string;
   lessons: string;
+  offeredAmount: number | null;
+  offeredCurrency: string | null;
+  description: string;
 };
 
 export const FAKE_VIDEOS: VideoRecord[] = [
   {
     id: "1",
-    activityType: "success",
+    state: "closed",
     date: "2026-10-02",
     title: "John Frank (20k)",
     mainText:
@@ -35,10 +50,13 @@ export const FAKE_VIDEOS: VideoRecord[] = [
     ],
     notes: "Follow up with onboarding team re: extra seats by Friday.",
     lessons: "Leading with response-time metrics landed well — reuse in next pitch.",
+    offeredAmount: 20000,
+    offeredCurrency: "USD",
+    description: "Renewal plus pro-tier upsell; fast response time was the deciding factor.",
   },
   {
     id: "2",
-    activityType: "followup",
+    state: "postponed",
     date: "2026-09-28",
     title: "Maria Santos",
     mainText:
@@ -50,10 +68,13 @@ export const FAKE_VIDEOS: VideoRecord[] = [
     ],
     notes: "Send revised quote without analytics add-on. Check back in 1 week.",
     lessons: "",
+    offeredAmount: null,
+    offeredCurrency: null,
+    description: "Budget approval pending; needs a revised quote without the analytics add-on.",
   },
   {
     id: "3",
-    activityType: "training",
+    state: "training",
     date: "2026-09-20",
     title: "Objection handling — module 4",
     mainText:
@@ -65,10 +86,13 @@ export const FAKE_VIDEOS: VideoRecord[] = [
     ],
     notes: "Need more reps on anchoring before discounting.",
     lessons: "Anchor to ROI before offering any discount — don't lead with price.",
+    offeredAmount: null,
+    offeredCurrency: null,
+    description: "Role-play session on price objections, reviewed with team lead.",
   },
   {
     id: "4",
-    activityType: "success",
+    state: "closed",
     date: "2026-09-15",
     title: "Dave Chen (8k)",
     mainText: "Quick turnaround renewal, no major objections.",
@@ -78,10 +102,13 @@ export const FAKE_VIDEOS: VideoRecord[] = [
     ],
     notes: "",
     lessons: "",
+    offeredAmount: 8000,
+    offeredCurrency: "USD",
+    description: "Quick turnaround renewal, same terms as last year, no objections.",
   },
   {
     id: "5",
-    activityType: "followup",
+    state: "failed",
     date: "2026-09-10",
     title: "Priya Patel",
     mainText: "Needs sign-off from her director before moving forward.",
@@ -91,10 +118,13 @@ export const FAKE_VIDEOS: VideoRecord[] = [
     ],
     notes: "Check in next Monday if no word.",
     lessons: "",
+    offeredAmount: null,
+    offeredCurrency: null,
+    description: "Director sign-off fell through after two follow-ups; deal did not close.",
   },
   {
     id: "6",
-    activityType: "training",
+    state: "training",
     date: "2026-09-01",
     title: "Cold open practice — module 1",
     mainText: "First pass at the new cold-open script.",
@@ -104,5 +134,8 @@ export const FAKE_VIDEOS: VideoRecord[] = [
     ],
     notes: "Script felt long — cut the first two lines.",
     lessons: "Shorter cold opens hold attention better in the first 10 seconds.",
+    offeredAmount: null,
+    offeredCurrency: null,
+    description: "First pass at the new cold-open script, trimmed the opener.",
   },
 ];
