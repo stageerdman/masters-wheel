@@ -8,15 +8,15 @@
 // creates a record. See this update's wiki.md for why.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
+import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import {
   createRecordFromFile,
+  heroStreamUrl,
   importTranscriptFile,
   listRecords,
   readDoc,
   readTranscript,
-  resolveHeroPath,
   writeDoc,
   writeMeta,
   writeTranscript,
@@ -48,7 +48,6 @@ export function usePerformanceReviewData() {
   const [isTranscriptUploadOpen, setIsTranscriptUploadOpen] = useState(false);
   const [transcriptUploadError, setTranscriptUploadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [resolvedHero, setResolvedHero] = useState<{ id: string; src: string } | null>(null);
 
   const docTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const metaTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -126,25 +125,14 @@ export function usePerformanceReviewData() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
-  // Resolve the selected record's hero file to a playable convertFileSrc
-  // URL. Derived (not reset synchronously) so there's never a stale-id
-  // flash: `heroSrc` below falls back to null itself whenever the resolved
-  // id doesn't match what's currently selected.
-  useEffect(() => {
-    const summary = summaries.find((item) => item.id === selectedId);
-    if (!summary?.heroFileName || !isTauri()) return;
-    let cancelled = false;
-    resolveHeroPath(summary.id, summary.heroFileName)
-      .then((absolutePath) => {
-        if (!cancelled) setResolvedHero({ id: summary.id, src: convertFileSrc(absolutePath) });
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedId, summaries]);
-
-  const heroSrc = resolvedHero && resolvedHero.id === selectedId ? resolvedHero.src : null;
+  // The selected record's hero file, as a URL onto the local media server
+  // (see src/lib/records' heroStreamUrl) — a synchronous string build, no
+  // async resolution needed since it no longer depends on documentDir().
+  const selectedSummary = summaries.find((item) => item.id === selectedId);
+  const heroSrc =
+    selectedSummary?.heroFileName && isTauri()
+      ? heroStreamUrl(selectedSummary.id, selectedSummary.heroFileName)
+      : null;
 
   const videos: VideoRecord[] = summaries.map((summary) => ({
     id: summary.id,

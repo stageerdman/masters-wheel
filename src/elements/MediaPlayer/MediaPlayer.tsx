@@ -7,8 +7,8 @@ type MediaPlayerProps = {
   src: string | null;
 };
 
-// Plays the record's real hero file (src is a convertFileSrc URL resolved
-// by PerformanceReview.script.ts). Falls back to the old static
+// Plays the record's real hero file (src is a local-media-server URL built
+// by PerformanceReview.script.ts's heroStreamUrl). Falls back to the old static
 // placeholder only if the record has no hero file yet — see FEATURES.md.
 // Forwards its ref to the underlying <video> so a transcript line click
 // elsewhere on the page can seek/play it (see Transcript's onSeek).

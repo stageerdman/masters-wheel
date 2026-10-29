@@ -13,8 +13,6 @@ import {
   readTextFile,
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
-import { documentDir, join } from "@tauri-apps/api/path";
-
 const STORAGE_DIR_NAME = "Master's Circle";
 const BASE_DIR = BaseDirectory.Document;
 
@@ -269,9 +267,15 @@ export async function createRecordFromFile(sourcePath: string): Promise<RecordSu
   return { id, heroFileName, ...meta };
 }
 
-// Resolves a record's hero file to an absolute filesystem path, suitable
-// for passing to Tauri's `convertFileSrc` for real video playback.
-export async function resolveHeroPath(id: string, heroFileName: string): Promise<string> {
-  const documentsPath = await documentDir();
-  return join(documentsPath, STORAGE_DIR_NAME, id, heroFileName);
+// Hero videos are served by a tiny local HTTP server (see
+// src-tauri/src/media_server.rs) rather than Tauri's `asset://` protocol /
+// `convertFileSrc`. That protocol buffers an entire file into memory for
+// any request lacking a Range header, which made the longest recordings
+// in this library (~1.5GB+) fail to load at all — a real HTTP server
+// streams regardless of size. Must stay in sync with media_server.rs's
+// PORT constant.
+const MEDIA_SERVER_PORT = 47821;
+
+export function heroStreamUrl(id: string, heroFileName: string): string {
+  return `http://127.0.0.1:${MEDIA_SERVER_PORT}/${encodeURIComponent(id)}/${encodeURIComponent(heroFileName)}`;
 }

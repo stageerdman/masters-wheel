@@ -137,9 +137,13 @@ between the two lists. Each page gets its own section as pages get added.
       window-level drag-drop, not a sandboxed HTML5 drop, with a visible
       drop-zone highlight while hovering) — both copy the file in as
       `hero.<ext>` and seed a fresh, unclassified (`state: null`) record
-- [x] Real media playback: `MediaPlayer` plays a record's actual hero file
-      via Tauri's `convertFileSrc`; the old static placeholder only shows
-      if a record has no hero file
+- [x] Real media playback: `MediaPlayer` plays a record's actual hero file,
+      streamed by a small local HTTP server (`src-tauri/src/media_server.rs`,
+      `127.0.0.1:47821`) rather than Tauri's `asset://` protocol/
+      `convertFileSrc` — that protocol buffers an entire file into memory
+      for any request without a Range header, which made the longest
+      recordings in this library (~1.5GB+) fail to load at all. The old
+      static placeholder only shows if a record has no hero file.
 - [x] AI analysis and Notes are both real, editable `.md` files on disk
       (debounced writes), not in-memory fakes
 - [x] Title, meeting date, closed date, state, offered amount/currency,
