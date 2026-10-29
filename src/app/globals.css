@@ -38,7 +38,7 @@
   /* Construction mode — dev-only wireframe overlay, never shipped, exempt
      from every budget above. Flip --construction-outlines to 0 to turn
      every outline in the app off at once; back to 1 to turn them all on. */
-  --construction-outlines: 1;
+  --construction-outlines: 0;
   --color-construction: #ff2d78;
 }
 
