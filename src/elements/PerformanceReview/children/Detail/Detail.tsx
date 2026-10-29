@@ -15,6 +15,9 @@ type DetailProps = {
   onNotesChange: (value: string) => void;
   onLessonsChange: (value: string) => void;
   onAiAnalysisChange: (value: string) => void;
+  onRequestTranscriptUpload: () => void;
+  onSeekTranscript: (seconds: number) => void;
+  onRenameTranscriptSpeaker: (from: string, to: string) => void;
 };
 
 export function Detail({
@@ -25,6 +28,9 @@ export function Detail({
   onNotesChange,
   onLessonsChange,
   onAiAnalysisChange,
+  onRequestTranscriptUpload,
+  onSeekTranscript,
+  onRenameTranscriptSpeaker,
 }: DetailProps) {
   const {
     railRef,
@@ -56,6 +62,9 @@ export function Detail({
             onNotesChange={onNotesChange}
             onLessonsChange={onLessonsChange}
             onAiAnalysisChange={onAiAnalysisChange}
+            onRequestTranscriptUpload={onRequestTranscriptUpload}
+            onSeekTranscript={onSeekTranscript}
+            onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
           />
         </div>
         {isSplit && bottomKind && (
@@ -75,6 +84,9 @@ export function Detail({
                 onNotesChange={onNotesChange}
                 onLessonsChange={onLessonsChange}
                 onAiAnalysisChange={onAiAnalysisChange}
+                onRequestTranscriptUpload={onRequestTranscriptUpload}
+                onSeekTranscript={onSeekTranscript}
+                onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
               />
             </div>
           </>

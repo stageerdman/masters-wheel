@@ -54,11 +54,6 @@ export const CALL_STATE_META: Record<
   },
 };
 
-export type TranscriptLine = {
-  time: string;
-  text: string;
-};
-
 export type VideoRecord = {
   id: string;
   // A freshly created record starts unclassified (null) rather than
@@ -69,8 +64,9 @@ export type VideoRecord = {
   // Auto-filled the moment state first becomes "closed"; editable after.
   closedDate: string | null;
   title: string;
-  // No real transcription yet (deferred to a later update) — always [].
-  transcript: TranscriptLine[];
+  // Raw transcript.md contents, or null if none has been imported yet.
+  // Parsed on demand by the Transcript element (src/lib/transcript).
+  transcriptRaw: string | null;
   notes: string;
   aiAnalysis: string;
   // Deliberately in-memory only this round — not persisted, see wiki.md.

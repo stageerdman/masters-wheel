@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useHeaderActions, type HeaderIslandOption } from "@/elements/AppHeader/AppHeader.context";
+import { TranscriptUploadModal } from "@/elements/TranscriptUploadModal/TranscriptUploadModal";
 import { CALL_STATE_META, CALL_STATE_ORDER, type CallState } from "./PerformanceReview.data";
-import { usePerformanceReviewData, useRecordDrop } from "./PerformanceReview.script";
+import { usePerformanceReviewData, useRecordDrop, useTranscriptDrop } from "./PerformanceReview.script";
 import { Navigation } from "./children/Navigation/Navigation";
 import { Hero } from "./children/Hero/Hero";
 import { Detail } from "./children/Detail/Detail";
@@ -36,9 +37,28 @@ export function PerformanceReview() {
     updateMetaField,
     toggleReviewed,
     addRecordsFromPaths,
+    isTranscriptUploadOpen,
+    transcriptUploadError,
+    openTranscriptUpload,
+    closeTranscriptUpload,
+    importTranscript,
+    renameTranscriptSpeaker,
   } = usePerformanceReviewData();
 
-  const isDragActive = useRecordDrop(addRecordsFromPaths);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  function seekTranscript(seconds: number) {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+    videoEl.currentTime = seconds;
+    videoEl.play();
+  }
+
+  // Mutually exclusive: the video drop handler is disabled while the
+  // transcript upload modal owns window-level drops, and vice versa — see
+  // PerformanceReview.script.ts.
+  const isDragActive = useRecordDrop(addRecordsFromPaths, !isTranscriptUploadOpen);
+  const isTranscriptDragActive = useTranscriptDrop(importTranscript, isTranscriptUploadOpen);
 
   useEffect(() => {
     setIsland({
@@ -77,6 +97,7 @@ export function PerformanceReview() {
           <Hero
             video={selected}
             heroSrc={heroSrc}
+            videoRef={videoRef}
             notes={selected.notes}
             lessons={selected.lessons}
             aiAnalysis={selected.aiAnalysis}
@@ -89,6 +110,9 @@ export function PerformanceReview() {
             onDateChange={(value) => updateMetaField("date", value)}
             onClosedDateChange={(value) => updateMetaField("closedDate", value)}
             onTitleChange={(value) => updateMetaField("title", value)}
+            onRequestTranscriptUpload={openTranscriptUpload}
+            onSeekTranscript={seekTranscript}
+            onRenameTranscriptSpeaker={renameTranscriptSpeaker}
           />
           <Detail
             video={selected}
@@ -98,6 +122,9 @@ export function PerformanceReview() {
             onNotesChange={onNotesChange}
             onLessonsChange={onLessonsChange}
             onAiAnalysisChange={onAiAnalysisChange}
+            onRequestTranscriptUpload={openTranscriptUpload}
+            onSeekTranscript={seekTranscript}
+            onRenameTranscriptSpeaker={renameTranscriptSpeaker}
           />
         </>
       ) : (
@@ -114,6 +141,13 @@ export function PerformanceReview() {
           </p>
         </div>
       )}
+      <TranscriptUploadModal
+        isOpen={isTranscriptUploadOpen}
+        isDragActive={isTranscriptDragActive}
+        error={transcriptUploadError}
+        onFileSelected={importTranscript}
+        onClose={closeTranscriptUpload}
+      />
     </div>
   );
 }

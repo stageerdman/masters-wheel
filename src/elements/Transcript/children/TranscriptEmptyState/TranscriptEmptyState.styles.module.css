@@ -1,0 +1,21 @@
+.root {
+  background: transparent;
+}
+
+.text {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.button {
+  background: var(--color-accent);
+  color: var(--color-on-chip);
+  border: none;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:hover {
+  opacity: 0.9;
+}

@@ -28,6 +28,15 @@
   --color-on-chip: #ffffff;
   --color-action-training-ground: #ea580c;
 
+  /* Speaker identity in a transcript — each value distinguishes one
+     diarized voice from the others, same reasoning as the status/bookmark
+     colors above. Cycles if a transcript ever has more speakers than
+     colors. */
+  --color-speaker-1: #2563eb;
+  --color-speaker-2: #d97706;
+  --color-speaker-3: #0d9488;
+  --color-speaker-4: #7c3aed;
+
   /* Single font. */
   --font-family-base: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 

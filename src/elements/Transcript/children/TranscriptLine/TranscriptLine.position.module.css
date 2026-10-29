@@ -1,0 +1,18 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.3rem 0.6rem 0.3rem 0.65rem;
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.text {
+  width: 100%;
+}

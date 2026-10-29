@@ -59,6 +59,12 @@ function metaPath(id: string) {
   return `${recordDir(id)}/meta.json`;
 }
 
+const TRANSCRIPT_FILE_NAME = "transcript.md";
+
+function transcriptPath(id: string) {
+  return `${recordDir(id)}/${TRANSCRIPT_FILE_NAME}`;
+}
+
 function emptyMeta(title: string): RecordMetaFields {
   return {
     title,
@@ -168,6 +174,30 @@ export async function writeMeta(id: string, partial: Partial<RecordMetaFields>):
   }
   const next: RecordMetaFields = { ...current, ...partial };
   await writeTextFile(metaPath(id), JSON.stringify(next, null, 2), { baseDir: BASE_DIR });
+}
+
+// Reads a record's transcript.md. Returns null if none has been imported
+// yet — this module doesn't parse it, that's src/lib/transcript's job.
+export async function readTranscript(id: string): Promise<string | null> {
+  try {
+    return await readTextFile(transcriptPath(id), { baseDir: BASE_DIR });
+  } catch {
+    return null;
+  }
+}
+
+// Overwrites transcript.md with already-serialized text (canonical form
+// after import, or after a speaker rename).
+export async function writeTranscript(id: string, text: string): Promise<void> {
+  await writeTextFile(transcriptPath(id), text, { baseDir: BASE_DIR });
+}
+
+// Copies an arbitrary transcript file in as transcript.md — same
+// cross-filesystem copy pattern createRecordFromFile uses for hero files —
+// then reads it back so the caller can parse/validate/normalize it.
+export async function importTranscriptFile(id: string, sourcePath: string): Promise<string> {
+  await copyFile(sourcePath, transcriptPath(id), { toPathBaseDir: BASE_DIR });
+  return readTextFile(transcriptPath(id), { baseDir: BASE_DIR });
 }
 
 function basenameOf(path: string): string {

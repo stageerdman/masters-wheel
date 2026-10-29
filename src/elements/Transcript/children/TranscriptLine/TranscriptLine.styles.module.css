@@ -1,0 +1,29 @@
+.root {
+  background: transparent;
+  border: none;
+  border-left: 3px solid var(--speaker-color);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.root:hover {
+  background: var(--color-border);
+}
+
+.speaker {
+  color: var(--speaker-color);
+  font-size: var(--text-size-label);
+  font-weight: 600;
+}
+
+.time {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}
+
+.text {
+  color: var(--color-text);
+  font-size: var(--text-size-body);
+}

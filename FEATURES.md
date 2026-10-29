@@ -91,7 +91,7 @@ between the two lists. Each page gets its own section as pages get added.
 - [x] `NavMenu` items aren't text-selectable (they're controls, not
       reading content)
 - [x] `AppHeader` wordmark is now a link home (`/`) and is brand-aware via
-      `HeaderActionsContext` — shows "Master's Circle" by default, swaps to
+      `HeaderActionsContext` — shows "Master's Wheel" by default, swaps to
       "Performance Review" + logo while that page is mounted; header is
       hidden entirely on Main Menu (`/`)
 
@@ -111,8 +111,6 @@ between the two lists. Each page gets its own section as pages get added.
       as a hover tooltip
 - [x] Hero: title (click to rename inline), bookmark rail (AI analysis /
       Transcript / Notes / Core Lessons)
-- [x] Hero: Transcript (no real lines yet — always empty; click is a
-      no-op, no real video to seek)
 - [x] Hero: Core Lessons (locally editable, not persisted — deliberately
       deferred this round, see this update's wiki.md)
 - [x] Hero: collapsible meta panel (3-dot toggle under the title) —
@@ -129,7 +127,7 @@ between the two lists. Each page gets its own section as pages get added.
 
 ### Built (real functionality)
 - [x] Real local storage: every record is a real folder under
-      `~/Documents/Master's Circle/`, created on demand; `meta.json` holds
+      `~/Documents/Master's Wheel/`, created on demand; `meta.json` holds
       structured fields (title, meeting date, closed date, state, offered
       amount/currency, description); `user_notes.md`/`ai_analysis.md` are
       created lazily — only once the user actually types something
@@ -155,10 +153,20 @@ between the two lists. Each page gets its own section as pages get added.
 - [x] Open count: how many times each record has been selected/opened is
       tracked and persisted to `meta.json` (no UI surface yet — logged
       for future use)
+- [x] Transcript: real `transcript.md` per record, imported via a
+      dedicated "Upload a transcript" popup (own drag & drop zone, kept
+      deliberately separate from the page's video drop so the two never
+      collide — see this update's wiki.md) or a native file picker.
+      Currently recognizes one source format (frontmatter + `**Speaker**
+      [mm:ss]` blocks); `src/lib/transcript` is built to accept more
+      formats later without changing the UI. Imported transcripts are
+      rewritten to one canonical, standardized timestamp format on disk.
+      Lines are color-coded per speaker, clicking a line seeks + plays the
+      real video, right-click renames a speaker everywhere (UI and the
+      source file).
 
 ### To build (real functionality — not started)
 - [ ] Real transcription generation
-- [ ] Transcript lines actually seeking the video
 - [ ] Real AI analysis generation (the slot is now a real, editable file —
       something still has to actually write useful content into it; the
       header's AI button is still a no-op placeholder)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import { MediaPlayer } from "@/elements/MediaPlayer/MediaPlayer";
 import { BookmarkRail } from "@/elements/BookmarkRail/BookmarkRail";
 import { TextView } from "@/elements/TextView/TextView";
@@ -13,6 +13,7 @@ import styles from "./Hero.styles.module.css";
 type HeroProps = {
   video: VideoRecord;
   heroSrc: string | null;
+  videoRef: RefObject<HTMLVideoElement | null>;
   notes: string;
   lessons: string;
   aiAnalysis: string;
@@ -25,11 +26,15 @@ type HeroProps = {
   onDateChange: (value: string) => void;
   onClosedDateChange: (value: string | null) => void;
   onTitleChange: (value: string) => void;
+  onRequestTranscriptUpload: () => void;
+  onSeekTranscript: (seconds: number) => void;
+  onRenameTranscriptSpeaker: (from: string, to: string) => void;
 };
 
 export function Hero({
   video,
   heroSrc,
+  videoRef,
   notes,
   lessons,
   aiAnalysis,
@@ -42,6 +47,9 @@ export function Hero({
   onDateChange,
   onClosedDateChange,
   onTitleChange,
+  onRequestTranscriptUpload,
+  onSeekTranscript,
+  onRenameTranscriptSpeaker,
 }: HeroProps) {
   const [active, setActive] = useState<ContentKind>("ai");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -97,7 +105,7 @@ export function Hero({
         />
       </div>
       <div className={position.mediaSlot} data-construction>
-        <MediaPlayer title={video.title} src={heroSrc} />
+        <MediaPlayer ref={videoRef} title={video.title} src={heroSrc} />
       </div>
       <div className={position.railSlot} data-construction>
         <BookmarkRail active={active} onSelect={setActive} />
@@ -112,6 +120,9 @@ export function Hero({
           onNotesChange={onNotesChange}
           onLessonsChange={onLessonsChange}
           onAiAnalysisChange={onAiAnalysisChange}
+          onRequestTranscriptUpload={onRequestTranscriptUpload}
+          onSeekTranscript={onSeekTranscript}
+          onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
         />
       </div>
     </section>
