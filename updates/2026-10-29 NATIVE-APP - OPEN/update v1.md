@@ -21,15 +21,15 @@ on this machine (`cargo`/`rustc` confirmed installed).
 ## Roadmap
 
 ### Phase 1 — Static export groundwork
-- [ ] `next.config.ts`: add `output: "export"` so the UI can be bundled as
+- [x] `next.config.ts`: add `output: "export"` so the UI can be bundled as
       static files Tauri can load with no Node server at runtime.
-- [ ] `images: { unoptimized: true }` (static export can't run the Next.js
+- [x] `images: { unoptimized: true }` (static export can't run the Next.js
       Image Optimization API; `AppHeader` uses `next/image`).
-- [ ] Check `cacheComponents` / `partialPrefetching` compatibility with
+- [x] Check `cacheComponents` / `partialPrefetching` compatibility with
       static export — both are dynamic-rendering features that may not
       apply to a fully static build. Resolve whatever `npm run build`
       surfaces; document the call in Decisions below.
-- [ ] `npm run build` succeeds and produces `out/` with all routes
+- [x] `npm run build` succeeds and produces `out/` with all routes
       (`/`, `/performance-review`, `/agents`) as static HTML.
 
 ### Phase 2 — Tauri shell
@@ -55,7 +55,16 @@ on this machine (`cargo`/`rustc` confirmed installed).
 - [ ] Update `FEATURES.md` / `README.md` to reflect native packaging.
 
 ## Decisions
-(fill in as Phase 1 resolves the cacheComponents/export question)
+- Removed `cacheComponents: true` and `partialPrefetching: true` from
+  `next.config.ts`. Confirmed by running `npm run build` with both still
+  set alongside `output: "export"`: Next.js threw `Error: Invariant: PPR
+  cannot be enabled in export mode` during the build (pages compiled and
+  prerendered fine, then the build step itself failed on that invariant).
+  PPR/cache-components are dynamic-rendering features with no meaning once
+  everything is pre-rendered to static HTML ahead of time, so dropping them
+  is correct, not a workaround. Removing both made `npm run build` succeed
+  cleanly, producing `out/index.html`, `out/performance-review.html`, and
+  `out/agents.html`.
 
 ## Next
 Backend work starts in its own update once dictated. At that point decide

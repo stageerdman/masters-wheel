@@ -8,6 +8,15 @@
   pivot away from "deploy to Vercel later" as a hosted website — the app
   is now a bundled native binary. Vercel hosting isn't ruled out forever,
   just not the current direction.
+- Dropped `cacheComponents: true` and `partialPrefetching: true` from
+  `next.config.ts`. Tested directly: with `output: "export"` and both
+  flags still on, `npm run build` fails with `Error: Invariant: PPR
+  cannot be enabled in export mode` — pages still prerender, but the
+  build step throws after. PPR and Cache Components exist to manage a
+  dynamic/streaming render; a static export has already fully
+  prerendered every route ahead of time, so there's nothing left for
+  them to do. Removing both, build succeeds and produces `out/` with all
+  3 routes as plain static HTML.
 - The dev loop (`tauri dev`) is configured to point at the user's
   already-running `npm run dev` server on :3000 rather than spawning its
   own — this project's standing rule is to never kill/restart that
