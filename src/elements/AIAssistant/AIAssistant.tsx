@@ -1,17 +1,26 @@
 "use client";
 
 import { AIAssistantTrigger } from "./children/AIAssistantTrigger/AIAssistantTrigger";
+import { AIAssistantWindow } from "./children/AIAssistantWindow/AIAssistantWindow";
 import { useAIAssistant } from "./AIAssistant.script";
 import position from "./AIAssistant.position.module.css";
 import styles from "./AIAssistant.styles.module.css";
 
 // Lives on top of every environment. Mounted once from the root layout.
 export function AIAssistant() {
-  const { isOpen, open } = useAIAssistant();
+  const { phase, open, collapse, finishCollapse } = useAIAssistant();
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      {!isOpen && <AIAssistantTrigger onOpen={open} />}
+      {phase === "closed" ? (
+        <AIAssistantTrigger onOpen={open} />
+      ) : (
+        <AIAssistantWindow
+          isClosing={phase === "closing"}
+          onCollapse={collapse}
+          onCollapsed={finishCollapse}
+        />
+      )}
     </div>
   );
 }

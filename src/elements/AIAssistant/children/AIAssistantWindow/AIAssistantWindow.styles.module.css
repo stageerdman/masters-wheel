@@ -1,0 +1,66 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transform-origin: bottom left;
+  transform: scale(0.15);
+  opacity: 0;
+  transition:
+    transform 250ms ease-out,
+    opacity 250ms ease-out;
+}
+
+.entered {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.closing {
+  transform: scale(0.15);
+  opacity: 0;
+  transition:
+    transform 210ms ease-in,
+    opacity 210ms ease-in;
+}
+
+.header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.collapseButton {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.collapseButton:hover {
+  color: var(--color-text);
+}
+
+.collapseButton:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.collapseGlyph {
+  display: block;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.content {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .entered,
+  .closing {
+    transform: none;
+    transition: opacity 80ms linear;
+  }
+}

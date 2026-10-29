@@ -1,0 +1,50 @@
+/* Where this sits within AIAssistant's root, and its own sizing. The
+   left-docked geometry is the only one that exists until drag-to-dock
+   (Phase 3) adds "center" and "hybrid". */
+.root {
+  display: flex;
+  flex-direction: column;
+  width: clamp(300px, 22vw, 400px);
+  height: clamp(420px, 38vh, 560px);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 0.5rem;
+}
+
+.collapseButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.collapseGlyph {
+  width: 12px;
+  height: 2px;
+}
+
+.dragHandle {
+  flex: 1;
+  height: 100%;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+}
