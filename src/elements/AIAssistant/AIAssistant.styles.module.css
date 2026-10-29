@@ -1,0 +1,4 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  color: var(--color-accent);
+}

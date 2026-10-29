@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { AIAssistant } from "@/elements/AIAssistant/AIAssistant";
 import { AppHeader } from "@/elements/AppHeader/AppHeader";
 import { HeaderActionsProvider } from "@/elements/AppHeader/AppHeader.context";
 import "./globals.css";
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppHeader />
           {children}
         </HeaderActionsProvider>
+        <AIAssistant />
       </body>
     </html>
   );

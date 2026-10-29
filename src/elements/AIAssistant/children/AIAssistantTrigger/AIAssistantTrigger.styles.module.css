@@ -1,0 +1,66 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.root:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.rings {
+  display: block;
+}
+
+.ringOuter,
+.ringMiddle,
+.ringInner {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  transform-origin: 16px 16px;
+}
+
+/* Each ring is an open arc (dash leaves a gap) — "unfinished" circles —
+   rotating at a different speed and direction so they drift in and out
+   of phase and never look complete. */
+.ringOuter {
+  stroke-width: 1.5px;
+  stroke-dasharray: 62 26;
+  animation: spin-cw 8s linear infinite;
+}
+
+.ringMiddle {
+  stroke-width: 1.5px;
+  stroke-dasharray: 42 18;
+  animation: spin-ccw 6s linear infinite;
+}
+
+.ringInner {
+  stroke-width: 1.5px;
+  stroke-dasharray: 22 9;
+  animation: spin-cw 4s linear infinite;
+}
+
+@keyframes spin-cw {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-ccw {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ringOuter,
+  .ringMiddle,
+  .ringInner {
+    animation: none;
+  }
+}

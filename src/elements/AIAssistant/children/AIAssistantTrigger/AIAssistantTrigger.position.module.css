@@ -1,0 +1,10 @@
+/* Where this sits within AIAssistant's root — a fixed hit target, not a
+   flex child of a wider layout. */
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}

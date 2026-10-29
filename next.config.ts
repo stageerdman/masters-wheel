@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   // We use CLAUDE.md (AI Control), not AGENTS.md — stop Next.js from regenerating it.
   agentRules: false,
+  // The bottom-left dev indicator badge is replaced by our own AIAssistant trigger.
+  devIndicators: false,
 };
 
 export default nextConfig;

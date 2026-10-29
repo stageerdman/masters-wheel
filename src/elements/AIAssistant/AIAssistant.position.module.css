@@ -1,0 +1,10 @@
+/* Fixed, global placement — mounted once in the root layout, not a child
+   of any particular page layout. Deliberately the highest z-index in the
+   app: nothing should ever be designed to cover it. */
+.root {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 2147483000;
+  display: flex;
+}
