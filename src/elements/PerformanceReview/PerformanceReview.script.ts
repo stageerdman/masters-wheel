@@ -52,7 +52,7 @@ export function usePerformanceReviewData() {
         setSummaries(loaded);
         setSelectedId((current) => current ?? loaded[0]?.id ?? null);
       })
-      .catch(() => {});
+      .catch((error) => console.error("Failed to load records:", error));
     return () => {
       cancelled = true;
     };
@@ -165,8 +165,8 @@ export function usePerformanceReviewData() {
     for (const path of paths) {
       try {
         created.push(await createRecordFromFile(path));
-      } catch {
-        // Skip files that failed to import.
+      } catch (error) {
+        console.error("Failed to import file:", path, error);
       }
     }
     if (created.length === 0) return;
@@ -191,16 +191,24 @@ export function usePerformanceReviewData() {
 // Registers Tauri's native window-level drag-and-drop while the caller is
 // mounted. A sandboxed HTML5 `drop` handler only hands back `File` blobs,
 // not a real filesystem path — `onDragDropEvent` gives the real path we
-// need to copy the file into the record's folder.
+// need to copy the file into the record's folder. Also tracks enter/leave
+// so the caller can show a drop-zone highlight while something's hovering.
 export function useRecordDrop(onFilesDropped: (paths: string[]) => void) {
+  const [isDragActive, setIsDragActive] = useState(false);
+
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     getCurrentWebview()
       .onDragDropEvent((event) => {
-        if (event.payload.type === "drop") {
+        if (event.payload.type === "enter" || event.payload.type === "over") {
+          setIsDragActive(true);
+        } else if (event.payload.type === "drop") {
+          setIsDragActive(false);
           onFilesDropped(event.payload.paths);
+        } else if (event.payload.type === "leave") {
+          setIsDragActive(false);
         }
       })
       .then((fn) => {
@@ -210,10 +218,12 @@ export function useRecordDrop(onFilesDropped: (paths: string[]) => void) {
           unlisten = fn;
         }
       })
-      .catch(() => {});
+      .catch((error) => console.error("Failed to register drag-and-drop listener:", error));
     return () => {
       cancelled = true;
       unlisten?.();
     };
   }, [onFilesDropped]);
+
+  return isDragActive;
 }

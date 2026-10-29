@@ -32,7 +32,7 @@ export function PerformanceReview() {
     addRecordsFromPaths,
   } = usePerformanceReviewData();
 
-  useRecordDrop(addRecordsFromPaths);
+  const isDragActive = useRecordDrop(addRecordsFromPaths);
 
   useEffect(() => {
     setIsland({
@@ -86,6 +86,13 @@ export function PerformanceReview() {
         <div className={position.emptyState} data-construction>
           <p className={styles.emptyStateText} data-construction>
             No records yet — add one from the list on the left.
+          </p>
+        </div>
+      )}
+      {isDragActive && (
+        <div className={`${styles.dropOverlay} ${position.dropOverlay}`} data-construction aria-hidden="true">
+          <p className={styles.dropOverlayText} data-construction>
+            Drop to add a record
           </p>
         </div>
       )}
