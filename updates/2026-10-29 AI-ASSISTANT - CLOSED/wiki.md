@@ -153,10 +153,59 @@ rather than just the one being dragged. Documented rather than solved:
 fixing it would mean abandoning the free auto-centering for that dock
 state, which isn't worth it for a corner-resize affordance in a prototype.
 
+## v3: Option/Alt freeform placement (persisted) + decoupled side menu
+Two more follow-up asks.
+
+**Option-modifier freeform placement.** Holding Option/Alt while starting
+a header drag or a corner resize switches that specific gesture from
+"snap to a preset" to "place/size it exactly where released," committing
+a 4th `dockState`, `"custom"`, with an explicit `{ left, top, width,
+height }` in pixels. This is intentionally a *per-gesture* modifier, not
+a mode toggle — checked once via `event.altKey` at the gesture's
+pointerdown, so a normal (non-Option) drag from a custom placement still
+snaps back to the nearest preset exactly like it would from any other
+dock state. The custom placement is written to `localStorage`
+(`ai-assistant-custom-placement`) on release and read back on mount via
+`useEffect` (not a lazy `useState` initializer, since `localStorage`
+doesn't exist during SSR — reading it in the initializer would crash the
+server render; reading it post-mount avoids a hydration mismatch at the
+cost of a one-render flash from the default to the saved placement,
+which is an accepted, ordinary tradeoff for this kind of hydration and
+not the "cascading setState in an effect" anti-pattern the lint rule
+generically warns about — hence the scoped disable comment around it).
+Resizing while already in `"custom"` keeps the *left* edge and the
+*bottom* edge fixed (mirrors the preset resize's bottom-anchored feel)
+and grows from the top-right corner, same as the ephemeral preset
+resize — the only difference is where the result gets stored and whether
+it survives redocking.
+
+**Side menu decoupled from dock state.** The history/agent sidebar used
+to only exist in the hybrid dock (`dockState === "hybrid"`). It's now a
+standalone toggle (`isSideMenuOpen`) controlled by a header button, valid
+in any dock state — including the narrow left dock, where it's
+necessarily cramped (180px of a ~340px window) but still functional,
+since the ask was explicitly to decouple it. Implemented as a
+`position: absolute` overlay that slides in via `transform: translateX`
+over the chat column (which always keeps full width) rather than a flex
+sibling that shares row space — "pop...over," not "push the chat aside."
+The sidebar is always mounted (so the slide transition has something to
+animate); nothing currently removes it from the tab order while visually
+hidden off-screen, which is a known, deferred a11y gap alongside the
+others below.
+
+Header layout changed to accommodate this: the side-menu toggle moved to
+the left, the collapse (h-line) button moved to the right, and both now
+share one `.headerButton` class (previously `.collapseButton`, used by
+only one button) since they're visually identical chrome.
+
 ## Deliberately deferred (not blocking v1)
-- `dockState` persistence across reloads (currently always resets).
-- Keyboard-only path to cycle dock states (accessibility gap, needs an
-  owner once the pointer-drag version is stable).
+- `dockState` persistence across reloads for the 3 presets (Option-placed
+  "custom" placements persist via localStorage now; left/center/hybrid
+  still always reset to left on reload).
+- Keyboard-only path to cycle dock states or toggle the side menu
+  (accessibility gap, needs an owner once the pointer-drag version is
+  stable). The side menu's hidden-but-still-mounted overlay also isn't
+  removed from the tab order while closed.
 - Whether a dropped-in agent should ever produce fake reply text — no,
   for now; there's no multi-agent logic to simulate convincingly yet, so a
   system line + chip is the honest amount of fakery for UI-shell phase.

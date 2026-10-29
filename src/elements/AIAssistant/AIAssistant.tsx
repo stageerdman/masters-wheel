@@ -34,6 +34,9 @@ export function AIAssistant() {
     manualSize,
     isResizing,
     onResizeHandlePointerDown,
+    customPlacement,
+    isSideMenuOpen,
+    toggleSideMenu,
   } = useWindowDock();
 
   // Left dock stays compact; center and hybrid both get the roomier feel.
@@ -61,6 +64,9 @@ export function AIAssistant() {
           manualSize={manualSize}
           isResizing={isResizing}
           onResizeHandlePointerDown={onResizeHandlePointerDown}
+          customPlacement={customPlacement}
+          isSideMenuOpen={isSideMenuOpen}
+          onToggleSideMenu={toggleSideMenu}
           sessions={sessions}
           onSelectSession={selectSession}
           agents={agents}

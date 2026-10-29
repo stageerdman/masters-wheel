@@ -17,18 +17,35 @@ between the two lists. Each page gets its own section as pages get added.
       auto-growing composer, empty "Ask anything." state; sending only
       appends the user's own message — no fake AI reply yet
 - [x] Drag the header to snap the window between 3 docked forms — left
-      (small, default), center (larger), hybrid (widest, chat + sidebar)
-      — with a drop-zone highlight while dragging; disabled below 640px
-      viewport width
-- [x] Hybrid sidebar: `HistoryList` (switch between fake past sessions)
-      and `AgentRoster` (click an agent to open a dedicated session with
-      it, or drag one onto the chat to add it alongside — shows an
-      `ActiveAgentChip` + a muted system line, no fake agent reply)
+      (small, default, bottom-left), hybrid (bigger, same left edge,
+      reaches past the viewport's midpoint), center (same size as
+      hybrid, horizontally centered) — all bottom-flush, top-rounded
+      corners only; a ghost-box preview of the exact landing geometry
+      shows while dragging, with the targeted zone highlighted; disabled
+      below 640px viewport width
+- [x] Drag the window's top-right corner to manually resize whichever
+      dock is active; redocking (dragging the header again) always
+      snaps back to that zone's predefined size
+- [x] Hold Option/Alt while dragging the header or resizing to place/size
+      the window exactly where you want instead of snapping to a preset
+      — persists to `localStorage` and becomes the window's default
+      placement on future visits, until you Option-place it again or
+      drag normally to return to the presets
+- [x] Header's side-menu button (left) toggles `HistoryList` +
+      `AgentRoster` as an overlay over the chat column, independent of
+      dock state (works at any size, not just the wider docks); collapse
+      button moved to the header's right side
+- [x] `HistoryList` switches between fake past sessions; `AgentRoster`
+      lets you click an agent to open a dedicated session with it, or
+      drag one onto the chat to add it alongside — shows an
+      `ActiveAgentChip` + a muted system line, no fake agent reply
 
 ### To build (real functionality — not started)
 - [ ] Real AI backend/model wiring (currently 100% static/local state)
-- [ ] Persisting sessions/dock state across reloads (currently resets)
-- [ ] Keyboard-only path to cycle dock states (drag is pointer-only)
+- [ ] Persisting chat sessions across reloads (dock placement can now
+      persist via Option-place; sessions/messages still reset)
+- [ ] Keyboard-only path to cycle dock states / toggle the side menu
+      (currently pointer-only)
 
 ## Main Menu page
 

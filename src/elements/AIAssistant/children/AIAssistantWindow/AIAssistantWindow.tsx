@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { DragEvent, PointerEvent as ReactPointerEvent, RefObject } from "react";
-import type { Agent, ChatSession, DockState } from "@/elements/AIAssistant/AIAssistant.script";
+import type { Agent, ChatSession, CustomPlacement, DockState } from "@/elements/AIAssistant/AIAssistant.script";
 import { ActiveAgentChip } from "./children/ActiveAgentChip/ActiveAgentChip";
 import { AgentRoster } from "./children/AgentRoster/AgentRoster";
 import { Composer } from "./children/Composer/Composer";
@@ -28,6 +28,9 @@ type AIAssistantWindowProps = {
   manualSize: { width: number; height: number } | null;
   isResizing: boolean;
   onResizeHandlePointerDown: (event: ReactPointerEvent) => void;
+  customPlacement: CustomPlacement | null;
+  isSideMenuOpen: boolean;
+  onToggleSideMenu: () => void;
   sessions: ChatSession[];
   onSelectSession: (id: string) => void;
   agents: Agent[];
@@ -40,6 +43,7 @@ const DOCK_CLASS: Record<DockState, string> = {
   left: position.dockLeft,
   center: position.dockCenter,
   hybrid: position.dockHybrid,
+  custom: position.dockCustom,
 };
 
 export function AIAssistantWindow({
@@ -58,6 +62,9 @@ export function AIAssistantWindow({
   manualSize,
   isResizing,
   onResizeHandlePointerDown,
+  customPlacement,
+  isSideMenuOpen,
+  onToggleSideMenu,
   sessions,
   onSelectSession,
   agents,
@@ -96,10 +103,17 @@ export function AIAssistantWindow({
   if (dragOffset) {
     Object.assign(inlineStyle, { "--drag-x": `${dragOffset.x}px`, "--drag-y": `${dragOffset.y}px` });
   }
-  // Manual resize overrides width/height (and top, so the bottom edge
-  // stays flush) directly — it only applies to a committed dock state,
-  // never mid-expand/collapse, and clears the moment the window redocks.
-  if (manualSize && !showCollapsedGeometry) {
+  if (dockState === "custom" && customPlacement && !showCollapsedGeometry) {
+    // A saved/just-placed custom spot — exact pixels, takes over entirely.
+    Object.assign(inlineStyle, {
+      left: `${customPlacement.left}px`,
+      top: `${customPlacement.top}px`,
+      width: `${customPlacement.width}px`,
+      height: `${customPlacement.height}px`,
+    });
+  } else if (manualSize && !showCollapsedGeometry) {
+    // Ephemeral resize of a preset — overrides width/height (and top, so
+    // the bottom edge stays flush); clears the moment the window redocks.
     Object.assign(inlineStyle, {
       width: `${manualSize.width}px`,
       height: `${manualSize.height}px`,
@@ -121,18 +135,31 @@ export function AIAssistantWindow({
       <div className={`${styles.header} ${position.header}`} data-construction>
         <button
           type="button"
-          className={`${styles.collapseButton} ${position.collapseButton}`}
+          className={`${styles.headerButton} ${position.headerButton}`}
           data-construction
-          onClick={onCollapse}
-          aria-label="Collapse AI assistant"
+          onClick={onToggleSideMenu}
+          aria-label={isSideMenuOpen ? "Collapse side menu" : "Expand side menu"}
+          aria-pressed={isSideMenuOpen}
         >
-          <span className={`${styles.collapseGlyph} ${position.collapseGlyph}`} data-construction />
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <rect x="2.5" y="3" width="11" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+            <line x1="6.5" y1="3" x2="6.5" y2="13" stroke="currentColor" strokeWidth="1.3" />
+          </svg>
         </button>
         <div
           className={`${styles.dragHandle} ${position.dragHandle}`}
           data-construction
           onPointerDown={onHeaderPointerDown}
         />
+        <button
+          type="button"
+          className={`${styles.headerButton} ${position.headerButton}`}
+          data-construction
+          onClick={onCollapse}
+          aria-label="Collapse AI assistant"
+        >
+          <span className={`${styles.collapseGlyph} ${position.collapseGlyph}`} data-construction />
+        </button>
       </div>
       <div
         className={position.resizeHandle}
@@ -141,12 +168,13 @@ export function AIAssistantWindow({
         onPointerDown={onResizeHandlePointerDown}
       />
       <div className={`${styles.content} ${position.content}`} data-construction>
-        {dockState === "hybrid" && (
-          <div className={`${styles.sidebar} ${position.sidebar}`} data-construction>
-            <HistoryList sessions={sessions} activeId={activeSession.id} onSelect={onSelectSession} />
-            <AgentRoster agents={agents} onSelect={onSelectAgent} />
-          </div>
-        )}
+        <div
+          className={`${styles.sidebar} ${position.sidebar} ${isSideMenuOpen ? position.sidebarOpen : ""}`}
+          data-construction
+        >
+          <HistoryList sessions={sessions} activeId={activeSession.id} onSelect={onSelectSession} />
+          <AgentRoster agents={agents} onSelect={onSelectAgent} />
+        </div>
         <div
           className={`${styles.chatColumn} ${position.chatColumn} ${isDragOver ? styles.dragOver : ""}`}
           data-construction

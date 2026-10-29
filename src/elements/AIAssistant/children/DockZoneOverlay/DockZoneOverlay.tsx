@@ -6,13 +6,16 @@ type DockZoneOverlayProps = {
   activeZone: DockState | null;
 };
 
-const GHOST_CLASS: Record<DockState, string> = {
+// "custom" (Option-placed) has no ghost preview — it isn't a snap target.
+type PresetDockState = Exclude<DockState, "custom">;
+
+const GHOST_CLASS: Record<PresetDockState, string> = {
   left: position.ghostLeft,
   hybrid: position.ghostHybrid,
   center: position.ghostCenter,
 };
 
-const ZONES: DockState[] = ["left", "hybrid", "center"];
+const ZONES: PresetDockState[] = ["left", "hybrid", "center"];
 
 // Ghost previews of the 3 dock geometries — exactly where and how big the
 // window will land — shown only while dragging the window's header; the

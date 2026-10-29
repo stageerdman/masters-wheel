@@ -1,11 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { AGENTS, HISTORY_FIXTURES } from "./children/AIAssistantWindow/AIAssistantWindow.data";
 
 export type AssistantPhase = "closed" | "open" | "closing";
 export type ChatMessageRole = "user" | "assistant" | "system";
 export type ChatMessage = { id: string; role: ChatMessageRole; text: string };
-export type DockState = "left" | "center" | "hybrid";
+export type DockState = "left" | "center" | "hybrid" | "custom";
 export type Agent = { id: string; name: string; tagline: string; initial: string };
 export type ChatSession = {
   id: string;
@@ -152,17 +152,57 @@ function resolveDockState(clientX: number): DockState {
 const MIN_MANUAL_WIDTH_PX = 260;
 const MIN_MANUAL_HEIGHT_PX = 320;
 
-// Drag-to-dock state machine: which of the 3 discrete geometries is
-// committed (dockState), which zone the cursor is currently over while
-// dragging (dragZone, drives the drop-zone affordance), and the raw
-// pointer delta since pointerdown (dragOffset, drives 1:1 cursor-follow
-// while dragging). Mirrors useSplitRail's pointer-event shape: attach
-// window listeners on pointerdown, tear them down on pointerup.
+export type CustomPlacement = { left: number; top: number; width: number; height: number };
+
+// Holding Option/Alt during a header drag or a corner resize switches
+// that gesture from "snap to one of the 3 presets" to "place/size it
+// exactly where I want," persisted across reloads — a lightweight way to
+// retune the assistant's default position without touching CSS.
+const CUSTOM_PLACEMENT_STORAGE_KEY = "ai-assistant-custom-placement";
+
+function loadCustomPlacement(): CustomPlacement | null {
+  try {
+    const raw = localStorage.getItem(CUSTOM_PLACEMENT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      typeof parsed?.left === "number" &&
+      typeof parsed?.top === "number" &&
+      typeof parsed?.width === "number" &&
+      typeof parsed?.height === "number"
+    ) {
+      return parsed;
+    }
+  } catch {
+    // Storage unavailable or malformed — fall back to the presets.
+  }
+  return null;
+}
+
+function saveCustomPlacement(placement: CustomPlacement) {
+  try {
+    localStorage.setItem(CUSTOM_PLACEMENT_STORAGE_KEY, JSON.stringify(placement));
+  } catch {
+    // Storage disabled (e.g. private browsing) — placement just won't persist.
+  }
+}
+
+// Drag-to-dock state machine: which of the 4 geometries is committed
+// (dockState — 3 presets plus "custom"), which preset zone the cursor is
+// currently over while dragging (dragZone, drives the drop-zone
+// affordance — null during a freeform/Option drag, since there's no
+// zone to snap to), and the raw pointer delta since pointerdown
+// (dragOffset, drives 1:1 cursor-follow while dragging). Mirrors
+// useSplitRail's pointer-event shape: attach window listeners on
+// pointerdown, tear them down on pointerup.
 //
 // Also owns manual resize (dragging the window's top-right corner): the
 // user can freely resize whichever dock state is active, but redocking
-// (releasing a header drag) always clears the override and snaps back to
-// that zone's predefined size.
+// (releasing a non-Option header drag) always clears the override and
+// snaps back to that zone's predefined size. Holding Option while
+// resizing behaves like Option-dragging: it commits a custom placement
+// instead of an ephemeral one. Side-menu open/closed lives here too —
+// it's independent of dockState, toggled from the window's header.
 export function useWindowDock() {
   const windowRef = useRef<HTMLDivElement | null>(null);
   const [dockState, setDockState] = useState<DockState>("left");
@@ -170,25 +210,57 @@ export function useWindowDock() {
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const [manualSize, setManualSize] = useState<{ width: number; height: number } | null>(null);
   const [isResizing, setIsResizing] = useState(false);
+  const [customPlacement, setCustomPlacement] = useState<CustomPlacement | null>(null);
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+
+  // Hydrate from localStorage on mount — a previously saved custom spot
+  // becomes the window's starting placement from now on. localStorage
+  // isn't available during SSR, so this can't be a lazy useState
+  // initializer; it has to run client-side, once, after mount — a
+  // one-time hydration from a non-reactive external store, not the
+  // cascading-update pattern this rule otherwise guards against.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const saved = loadCustomPlacement();
+    if (saved) {
+      setCustomPlacement(saved);
+      setDockState("custom");
+    }
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function onHeaderPointerDown(event: ReactPointerEvent) {
     if (window.innerWidth < DRAG_DISABLED_BELOW_PX) return;
     event.preventDefault();
+    const isFreeform = event.altKey;
+    const startRect = windowRef.current?.getBoundingClientRect();
     const startX = event.clientX;
     const startY = event.clientY;
-    setDragZone(resolveDockState(startX));
+    if (!isFreeform) setDragZone(resolveDockState(startX));
     setDragOffset({ x: 0, y: 0 });
 
     function handleMove(moveEvent: PointerEvent) {
-      setDragZone(resolveDockState(moveEvent.clientX));
+      if (!isFreeform) setDragZone(resolveDockState(moveEvent.clientX));
       setDragOffset({ x: moveEvent.clientX - startX, y: moveEvent.clientY - startY });
     }
 
     function handleUp(upEvent: PointerEvent) {
-      setDockState(resolveDockState(upEvent.clientX));
+      if (isFreeform && startRect) {
+        const placement: CustomPlacement = {
+          left: startRect.left + (upEvent.clientX - startX),
+          top: startRect.top + (upEvent.clientY - startY),
+          width: startRect.width,
+          height: startRect.height,
+        };
+        setCustomPlacement(placement);
+        setDockState("custom");
+        saveCustomPlacement(placement);
+      } else {
+        setDockState(resolveDockState(upEvent.clientX));
+        setManualSize(null);
+      }
       setDragZone(null);
       setDragOffset(null);
-      setManualSize(null);
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
     }
@@ -203,8 +275,11 @@ export function useWindowDock() {
     const node = windowRef.current;
     if (!node) return;
     const rect = node.getBoundingClientRect();
+    const isFreeform = event.altKey;
     const startWidth = rect.width;
     const startHeight = rect.height;
+    const startLeft = rect.left;
+    const bottomEdge = rect.top + rect.height;
     const startX = event.clientX;
     const startY = event.clientY;
     setIsResizing(true);
@@ -212,17 +287,32 @@ export function useWindowDock() {
     function handleMove(moveEvent: PointerEvent) {
       const nextWidth = Math.max(MIN_MANUAL_WIDTH_PX, startWidth + (moveEvent.clientX - startX));
       const nextHeight = Math.max(MIN_MANUAL_HEIGHT_PX, startHeight - (moveEvent.clientY - startY));
-      setManualSize({ width: nextWidth, height: nextHeight });
+      if (isFreeform) {
+        setCustomPlacement({ left: startLeft, top: bottomEdge - nextHeight, width: nextWidth, height: nextHeight });
+        setDockState("custom");
+      } else {
+        setManualSize({ width: nextWidth, height: nextHeight });
+      }
     }
 
     function handleUp() {
       setIsResizing(false);
+      if (isFreeform) {
+        setCustomPlacement((current) => {
+          if (current) saveCustomPlacement(current);
+          return current;
+        });
+      }
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
     }
 
     window.addEventListener("pointermove", handleMove);
     window.addEventListener("pointerup", handleUp);
+  }
+
+  function toggleSideMenu() {
+    setIsSideMenuOpen((current) => !current);
   }
 
   return {
@@ -234,5 +324,8 @@ export function useWindowDock() {
     manualSize,
     isResizing,
     onResizeHandlePointerDown,
+    customPlacement,
+    isSideMenuOpen,
+    toggleSideMenu,
   };
 }
