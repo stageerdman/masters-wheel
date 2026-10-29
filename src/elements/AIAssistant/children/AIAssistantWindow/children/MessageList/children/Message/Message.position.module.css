@@ -1,0 +1,20 @@
+/* Where this sits within the MessageList column. */
+.root {
+  max-width: 85%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  line-height: 1.4;
+}
+
+.user {
+  align-self: flex-end;
+}
+
+.assistant {
+  align-self: flex-start;
+}
+
+.comfortable {
+  padding: 0.625rem 0.875rem;
+  max-width: 75%;
+}

@@ -1,0 +1,16 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  font-size: var(--text-size-body);
+}
+
+.user {
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.assistant {
+  background: none;
+  border: none;
+  color: var(--color-text);
+}

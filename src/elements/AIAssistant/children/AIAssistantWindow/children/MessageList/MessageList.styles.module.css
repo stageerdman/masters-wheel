@@ -1,0 +1,9 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  background: var(--color-surface);
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}

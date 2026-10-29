@@ -1,3 +1,6 @@
+import type { ChatMessage } from "@/elements/AIAssistant/AIAssistant.script";
+import { Composer } from "./children/Composer/Composer";
+import { MessageList } from "./children/MessageList/MessageList";
 import { useWindowEnterTransition } from "./AIAssistantWindow.script";
 import position from "./AIAssistantWindow.position.module.css";
 import styles from "./AIAssistantWindow.styles.module.css";
@@ -6,9 +9,23 @@ type AIAssistantWindowProps = {
   isClosing: boolean;
   onCollapse: () => void;
   onCollapsed: () => void;
+  messages: ChatMessage[];
+  composerValue: string;
+  onComposerChange: (value: string) => void;
+  onSend: () => void;
+  density: "compact" | "comfortable";
 };
 
-export function AIAssistantWindow({ isClosing, onCollapse, onCollapsed }: AIAssistantWindowProps) {
+export function AIAssistantWindow({
+  isClosing,
+  onCollapse,
+  onCollapsed,
+  messages,
+  composerValue,
+  onComposerChange,
+  onSend,
+  density,
+}: AIAssistantWindowProps) {
   const hasEntered = useWindowEnterTransition();
 
   function handleTransitionEnd(event: React.TransitionEvent<HTMLDivElement>) {
@@ -38,7 +55,8 @@ export function AIAssistantWindow({ isClosing, onCollapse, onCollapsed }: AIAssi
         <div className={`${styles.dragHandle} ${position.dragHandle}`} data-construction />
       </div>
       <div className={`${styles.content} ${position.content}`} data-construction>
-        {/* Chat content lands in Phase 2. */}
+        <MessageList messages={messages} density={density} />
+        <Composer value={composerValue} onChange={onComposerChange} onSend={onSend} density={density} />
       </div>
     </div>
   );
