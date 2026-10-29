@@ -1,4 +1,5 @@
-import type { ChatMessage } from "@/elements/AIAssistant/AIAssistant.script";
+import type { PointerEvent as ReactPointerEvent } from "react";
+import type { ChatMessage, DockState } from "@/elements/AIAssistant/AIAssistant.script";
 import { Composer } from "./children/Composer/Composer";
 import { MessageList } from "./children/MessageList/MessageList";
 import { useWindowEnterTransition } from "./AIAssistantWindow.script";
@@ -14,6 +15,15 @@ type AIAssistantWindowProps = {
   onComposerChange: (value: string) => void;
   onSend: () => void;
   density: "compact" | "comfortable";
+  dockState: DockState;
+  dragOffset: { x: number; y: number } | null;
+  onHeaderPointerDown: (event: ReactPointerEvent) => void;
+};
+
+const DOCK_CLASS: Record<DockState, string> = {
+  left: position.dockLeft,
+  center: position.dockCenter,
+  hybrid: position.dockHybrid,
 };
 
 export function AIAssistantWindow({
@@ -25,6 +35,9 @@ export function AIAssistantWindow({
   onComposerChange,
   onSend,
   density,
+  dockState,
+  dragOffset,
+  onHeaderPointerDown,
 }: AIAssistantWindowProps) {
   const hasEntered = useWindowEnterTransition();
 
@@ -33,11 +46,19 @@ export function AIAssistantWindow({
     if (isClosing) onCollapsed();
   }
 
-  const stateClass = isClosing ? styles.closing : hasEntered ? styles.entered : "";
+  const showCollapsedGeometry = !hasEntered || isClosing;
+  const geometryClass = showCollapsedGeometry ? position.enter : DOCK_CLASS[dockState];
+  const visibilityClass = showCollapsedGeometry ? styles.hidden : styles.visible;
+  const transitionSpeedClass = isClosing ? position.closing : "";
+  const draggingClass = dragOffset ? position.dragging : "";
+  const dragStyle = dragOffset
+    ? ({ "--drag-x": `${dragOffset.x}px`, "--drag-y": `${dragOffset.y}px` } as React.CSSProperties)
+    : undefined;
 
   return (
     <div
-      className={`${styles.root} ${position.root} ${stateClass}`}
+      className={`${styles.root} ${position.root} ${geometryClass} ${visibilityClass} ${transitionSpeedClass} ${draggingClass}`}
+      style={dragStyle}
       data-construction
       onTransitionEnd={handleTransitionEnd}
     >
@@ -51,8 +72,11 @@ export function AIAssistantWindow({
         >
           <span className={`${styles.collapseGlyph} ${position.collapseGlyph}`} data-construction />
         </button>
-        {/* Drag-to-dock lands in Phase 3 — inert for now. */}
-        <div className={`${styles.dragHandle} ${position.dragHandle}`} data-construction />
+        <div
+          className={`${styles.dragHandle} ${position.dragHandle}`}
+          data-construction
+          onPointerDown={onHeaderPointerDown}
+        />
       </div>
       <div className={`${styles.content} ${position.content}`} data-construction>
         <MessageList messages={messages} density={density} />

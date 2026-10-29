@@ -1,13 +1,84 @@
-/* Where this sits within AIAssistant's root, and its own sizing. The
-   left-docked geometry is the only one that exists until drag-to-dock
-   (Phase 3) adds "center" and "hybrid". */
+/* Positioning for the floating window — absolute within AIAssistant's
+   full-viewport fixed root. Every dock state (plus the collapsed "enter"
+   geometry) sets left/top/width/height/transform explicitly — never
+   `bottom`, never an implicit value — so every transition between them
+   has a concrete start and end to animate across. The `transform` on
+   each state composes a fixed centering offset with a live drag offset
+   read from --drag-x/--drag-y custom properties, so dragging never has
+   to fight the dock classes for the `transform` property. */
 .root {
+  position: absolute;
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
-  width: clamp(300px, 22vw, 400px);
-  height: clamp(420px, 38vh, 560px);
-  border-radius: 0.75rem;
   overflow: hidden;
+  transition:
+    width 250ms ease-out,
+    height 250ms ease-out,
+    left 250ms ease-out,
+    top 250ms ease-out,
+    transform 250ms ease-out,
+    opacity 250ms ease-out;
+}
+
+.closing {
+  transition:
+    width 210ms ease-in,
+    height 210ms ease-in,
+    left 210ms ease-in,
+    top 210ms ease-in,
+    transform 210ms ease-in,
+    opacity 210ms ease-in;
+}
+
+/* While actively dragging, the window tracks the pointer 1:1 — no eased
+   transition — and only resumes animating once the drag ends and a dock
+   state (or the collapsed geometry) is committed. */
+.dragging {
+  transition: none;
+}
+
+/* Collapsed geometry shared by "not yet entered" and "closing": a
+   zero-size point sitting exactly at the trigger's corner, so opening
+   always grows out of that corner and closing always shrinks back into
+   it, regardless of which dock state it was in. */
+.enter {
+  left: 1rem;
+  top: calc(100vh - 1rem);
+  transform: translate(0, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
+  width: 0px;
+  height: 0px;
+}
+
+.dockLeft {
+  --w: clamp(300px, 22vw, 400px);
+  --h: clamp(420px, 38vh, 560px);
+  left: 1rem;
+  top: calc(100vh - var(--h) - 1rem);
+  transform: translate(0, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
+  width: var(--w);
+  height: var(--h);
+}
+
+.dockCenter {
+  --w: clamp(420px, 34vw, 620px);
+  --h: clamp(480px, 58vh, 700px);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) translate(var(--drag-x, 0px), var(--drag-y, 0px));
+  width: var(--w);
+  height: var(--h);
+}
+
+.dockHybrid {
+  --w: clamp(640px, 52vw, 920px);
+  --h: clamp(560px, 70vh, 800px);
+  left: 50%;
+  top: 50%;
+  /* Slight left bias so the sidebar + chat both read comfortably. */
+  transform: translate(-55%, -50%) translate(var(--drag-x, 0px), var(--drag-y, 0px));
+  width: var(--w);
+  height: var(--h);
 }
 
 .header {
@@ -43,4 +114,22 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Below this width, dragging is disabled (see useWindowDock) and the
+   left dock becomes near-full-bleed instead of a small corner panel. */
+@media (max-width: 640px) {
+  .dockLeft {
+    --w: calc(100vw - 2rem);
+    --h: calc(100vh - 2rem);
+    left: 1rem;
+    top: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .closing {
+    transition: opacity 80ms linear;
+  }
 }

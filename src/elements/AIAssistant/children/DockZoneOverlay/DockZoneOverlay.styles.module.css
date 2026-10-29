@@ -1,0 +1,9 @@
+/* How this element looks. No layout/positioning here. */
+.band {
+  background: transparent;
+  transition: background-color 150ms ease-out;
+}
+
+.active {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}

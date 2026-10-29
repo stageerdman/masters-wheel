@@ -2,25 +2,16 @@
 .root {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  transform-origin: bottom left;
-  transform: scale(0.15);
+  border-radius: 0.75rem;
   opacity: 0;
-  transition:
-    transform 250ms ease-out,
-    opacity 250ms ease-out;
 }
 
-.entered {
-  transform: scale(1);
+.visible {
   opacity: 1;
 }
 
-.closing {
-  transform: scale(0.15);
+.hidden {
   opacity: 0;
-  transition:
-    transform 210ms ease-in,
-    opacity 210ms ease-in;
 }
 
 .header {
@@ -50,15 +41,14 @@
   border-radius: 1px;
 }
 
-.content {
-  background: var(--color-surface);
+.dragHandle {
+  cursor: grab;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .root,
-  .entered,
-  .closing {
-    transform: none;
-    transition: opacity 80ms linear;
-  }
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.content {
+  background: var(--color-surface);
 }

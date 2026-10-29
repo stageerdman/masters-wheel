@@ -1,0 +1,25 @@
+/* Where this sits within AIAssistant's root: a full-viewport overlay
+   split into the same 3 horizontal bands useWindowDock resolves against
+   (30% / 30% / 40%), never intercepting pointer events itself. */
+.root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.band {
+  height: 100%;
+}
+
+.band:nth-child(1) {
+  width: 30%;
+}
+
+.band:nth-child(2) {
+  width: 30%;
+}
+
+.band:nth-child(3) {
+  width: 40%;
+}

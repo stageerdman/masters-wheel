@@ -55,6 +55,34 @@ positioning — the dock controller already knows which of the 3 states is
 active, so it should just tell its children, rather than have each child
 independently re-derive the same fact from its own measured width.
 
+## Drag-to-dock implementation notes
+- The window is positioned absolutely within a full-viewport fixed
+  `AIAssistant` root (`position: fixed; inset: 0; pointer-events: none;`);
+  the trigger, window, and drop-zone bands each opt back into
+  `pointer-events: auto` individually so the rest of the page stays
+  clickable everywhere else.
+- Every dock geometry (`enter`/`dockLeft`/`dockCenter`/`dockHybrid`) sets
+  `left`/`top`/`width`/`height`/`transform` explicitly — never `bottom`,
+  never an implicit value — specifically so every transition between them
+  has a concrete start and end to animate across (mixing `bottom` with
+  `top`, or leaving a property unset in some states, made Chrome snap
+  instead of animate on dock changes).
+- `transform` on each dock class composes a fixed centering offset with a
+  live `translate(var(--drag-x, 0px), var(--drag-y, 0px))` — set only via
+  inline style while dragging — so cursor-follow never has to fight the
+  dock class for the whole `transform` property. No ref/`getBoundingClientRect`
+  needed for this: the drag offset is just `pointer - pointerdownStart`.
+- Because `transition` is a single shorthand per selector, exactly one
+  file may declare it for a given selector or the other's properties get
+  silently dropped. `AIAssistantWindow.position.module.css` owns the
+  entire `transition` declaration (including `opacity`, even though
+  opacity's *values* live in `.styles.module.css`) — this is the pattern
+  to repeat if a future element needs to transition properties split
+  across both files.
+- Drag is disabled below 640px viewport width (`DRAG_DISABLED_BELOW_PX` in
+  `AIAssistant.script.ts`); below that breakpoint the left dock becomes
+  near-full-bleed via a plain CSS media query in the same position module.
+
 ## Deliberately deferred (not blocking v1)
 - `dockState` persistence across reloads (currently always resets).
 - Keyboard-only path to cycle dock states (accessibility gap, needs an

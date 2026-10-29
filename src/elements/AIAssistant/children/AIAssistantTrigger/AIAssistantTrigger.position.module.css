@@ -1,6 +1,10 @@
-/* Where this sits within AIAssistant's root — a fixed hit target, not a
-   flex child of a wider layout. */
+/* Where this sits within AIAssistant's now-full-viewport root — anchored
+   to the same bottom-left corner the window grows out of. */
 .root {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   justify-content: center;
