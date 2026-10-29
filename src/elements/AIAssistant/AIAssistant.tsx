@@ -25,7 +25,16 @@ export function AIAssistant() {
     addAgentToActiveChat,
     removeAgentFromActiveChat,
   } = useAIAssistant();
-  const { dockState, dragZone, dragOffset, onHeaderPointerDown } = useWindowDock();
+  const {
+    windowRef,
+    dockState,
+    dragZone,
+    dragOffset,
+    onHeaderPointerDown,
+    manualSize,
+    isResizing,
+    onResizeHandlePointerDown,
+  } = useWindowDock();
 
   // Left dock stays compact; center and hybrid both get the roomier feel.
   const density = dockState === "left" ? "compact" : "comfortable";
@@ -48,6 +57,10 @@ export function AIAssistant() {
           dockState={dockState}
           dragOffset={dragOffset}
           onHeaderPointerDown={onHeaderPointerDown}
+          windowRef={windowRef}
+          manualSize={manualSize}
+          isResizing={isResizing}
+          onResizeHandlePointerDown={onResizeHandlePointerDown}
           sessions={sessions}
           onSelectSession={selectSession}
           agents={agents}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { DragEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { DragEvent, PointerEvent as ReactPointerEvent, RefObject } from "react";
 import type { Agent, ChatSession, DockState } from "@/elements/AIAssistant/AIAssistant.script";
 import { ActiveAgentChip } from "./children/ActiveAgentChip/ActiveAgentChip";
 import { AgentRoster } from "./children/AgentRoster/AgentRoster";
@@ -24,6 +24,10 @@ type AIAssistantWindowProps = {
   dockState: DockState;
   dragOffset: { x: number; y: number } | null;
   onHeaderPointerDown: (event: ReactPointerEvent) => void;
+  windowRef: RefObject<HTMLDivElement | null>;
+  manualSize: { width: number; height: number } | null;
+  isResizing: boolean;
+  onResizeHandlePointerDown: (event: ReactPointerEvent) => void;
   sessions: ChatSession[];
   onSelectSession: (id: string) => void;
   agents: Agent[];
@@ -50,6 +54,10 @@ export function AIAssistantWindow({
   dockState,
   dragOffset,
   onHeaderPointerDown,
+  windowRef,
+  manualSize,
+  isResizing,
+  onResizeHandlePointerDown,
   sessions,
   onSelectSession,
   agents,
@@ -82,16 +90,31 @@ export function AIAssistantWindow({
   const visibilityClass = showCollapsedGeometry ? styles.hidden : styles.visible;
   const transitionSpeedClass = isClosing ? position.closing : "";
   const draggingClass = dragOffset ? position.dragging : "";
-  const dragStyle = dragOffset
-    ? ({ "--drag-x": `${dragOffset.x}px`, "--drag-y": `${dragOffset.y}px` } as React.CSSProperties)
-    : undefined;
+  const resizingClass = isResizing ? position.resizing : "";
+
+  const inlineStyle: React.CSSProperties = {};
+  if (dragOffset) {
+    Object.assign(inlineStyle, { "--drag-x": `${dragOffset.x}px`, "--drag-y": `${dragOffset.y}px` });
+  }
+  // Manual resize overrides width/height (and top, so the bottom edge
+  // stays flush) directly — it only applies to a committed dock state,
+  // never mid-expand/collapse, and clears the moment the window redocks.
+  if (manualSize && !showCollapsedGeometry) {
+    Object.assign(inlineStyle, {
+      width: `${manualSize.width}px`,
+      height: `${manualSize.height}px`,
+      top: `calc(100vh - ${manualSize.height}px)`,
+    });
+  }
+  const hasInlineStyle = Object.keys(inlineStyle).length > 0;
 
   const activeAgents = agents.filter((agent) => activeSession.activeAgentIds.includes(agent.id));
 
   return (
     <div
-      className={`${styles.root} ${position.root} ${geometryClass} ${visibilityClass} ${transitionSpeedClass} ${draggingClass}`}
-      style={dragStyle}
+      ref={windowRef}
+      className={`${styles.root} ${position.root} ${geometryClass} ${visibilityClass} ${transitionSpeedClass} ${draggingClass} ${resizingClass}`}
+      style={hasInlineStyle ? inlineStyle : undefined}
       data-construction
       onTransitionEnd={handleTransitionEnd}
     >
@@ -111,6 +134,12 @@ export function AIAssistantWindow({
           onPointerDown={onHeaderPointerDown}
         />
       </div>
+      <div
+        className={position.resizeHandle}
+        data-construction
+        aria-hidden="true"
+        onPointerDown={onResizeHandlePointerDown}
+      />
       <div className={`${styles.content} ${position.content}`} data-construction>
         {dockState === "hybrid" && (
           <div className={`${styles.sidebar} ${position.sidebar}`} data-construction>

@@ -6,19 +6,26 @@ type DockZoneOverlayProps = {
   activeZone: DockState | null;
 };
 
+const GHOST_CLASS: Record<DockState, string> = {
+  left: position.ghostLeft,
+  hybrid: position.ghostHybrid,
+  center: position.ghostCenter,
+};
+
 const ZONES: DockState[] = ["left", "hybrid", "center"];
 
-// Faint full-height bands marking the 3 dock zones, shown only while
-// dragging the window's header; the zone under the cursor highlights.
+// Ghost previews of the 3 dock geometries — exactly where and how big the
+// window will land — shown only while dragging the window's header; the
+// zone under the cursor highlights more strongly than the other two.
 export function DockZoneOverlay({ activeZone }: DockZoneOverlayProps) {
   if (!activeZone) return null;
 
   return (
-    <div className={`${styles.root} ${position.root}`} data-construction>
+    <div className={position.root} data-construction>
       {ZONES.map((zone) => (
         <div
           key={zone}
-          className={`${styles.band} ${position.band} ${zone === activeZone ? styles.active : ""}`}
+          className={`${styles.ghost} ${position.ghost} ${GHOST_CLASS[zone]} ${zone === activeZone ? styles.active : ""}`}
           data-construction
         />
       ))}

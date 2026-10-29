@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { AGENTS, HISTORY_FIXTURES } from "./children/AIAssistantWindow/AIAssistantWindow.data";
 
@@ -149,16 +149,27 @@ function resolveDockState(clientX: number): DockState {
   return "center";
 }
 
+const MIN_MANUAL_WIDTH_PX = 260;
+const MIN_MANUAL_HEIGHT_PX = 320;
+
 // Drag-to-dock state machine: which of the 3 discrete geometries is
 // committed (dockState), which zone the cursor is currently over while
 // dragging (dragZone, drives the drop-zone affordance), and the raw
 // pointer delta since pointerdown (dragOffset, drives 1:1 cursor-follow
 // while dragging). Mirrors useSplitRail's pointer-event shape: attach
 // window listeners on pointerdown, tear them down on pointerup.
+//
+// Also owns manual resize (dragging the window's top-right corner): the
+// user can freely resize whichever dock state is active, but redocking
+// (releasing a header drag) always clears the override and snaps back to
+// that zone's predefined size.
 export function useWindowDock() {
+  const windowRef = useRef<HTMLDivElement | null>(null);
   const [dockState, setDockState] = useState<DockState>("left");
   const [dragZone, setDragZone] = useState<DockState | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const [manualSize, setManualSize] = useState<{ width: number; height: number } | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
 
   function onHeaderPointerDown(event: ReactPointerEvent) {
     if (window.innerWidth < DRAG_DISABLED_BELOW_PX) return;
@@ -177,6 +188,7 @@ export function useWindowDock() {
       setDockState(resolveDockState(upEvent.clientX));
       setDragZone(null);
       setDragOffset(null);
+      setManualSize(null);
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
     }
@@ -185,5 +197,42 @@ export function useWindowDock() {
     window.addEventListener("pointerup", handleUp);
   }
 
-  return { dockState, dragZone, dragOffset, onHeaderPointerDown };
+  function onResizeHandlePointerDown(event: ReactPointerEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const node = windowRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const startWidth = rect.width;
+    const startHeight = rect.height;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    setIsResizing(true);
+
+    function handleMove(moveEvent: PointerEvent) {
+      const nextWidth = Math.max(MIN_MANUAL_WIDTH_PX, startWidth + (moveEvent.clientX - startX));
+      const nextHeight = Math.max(MIN_MANUAL_HEIGHT_PX, startHeight - (moveEvent.clientY - startY));
+      setManualSize({ width: nextWidth, height: nextHeight });
+    }
+
+    function handleUp() {
+      setIsResizing(false);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    }
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+  }
+
+  return {
+    windowRef,
+    dockState,
+    dragZone,
+    dragOffset,
+    onHeaderPointerDown,
+    manualSize,
+    isResizing,
+    onResizeHandlePointerDown,
+  };
 }

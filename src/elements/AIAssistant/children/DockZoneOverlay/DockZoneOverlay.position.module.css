@@ -1,25 +1,37 @@
-/* Where this sits within AIAssistant's root: a full-viewport overlay
-   split into the same 3 horizontal bands useWindowDock resolves against
-   (30% / 30% / 40%), never intercepting pointer events itself. */
+/* Where this sits within AIAssistant's root: a full-viewport pass-through
+   layer, with each ghost box positioned using the exact same formulas as
+   AIAssistantWindow's real dock classes (sharing the --dock-* custom
+   properties from AIAssistant's root), so the preview always matches
+   where the window will actually land. */
 .root {
   position: absolute;
   inset: 0;
-  display: flex;
   pointer-events: none;
 }
 
-.band {
-  height: 100%;
+.ghost {
+  position: absolute;
+  border-radius: 0.75rem 0.75rem 0 0;
 }
 
-.band:nth-child(1) {
-  width: 30%;
+.ghostLeft {
+  left: var(--dock-gap);
+  top: calc(100vh - var(--dock-left-h));
+  width: var(--dock-left-w);
+  height: var(--dock-left-h);
 }
 
-.band:nth-child(2) {
-  width: 30%;
+.ghostHybrid {
+  left: var(--dock-gap);
+  top: calc(100vh - var(--dock-hybrid-h));
+  width: var(--dock-hybrid-w);
+  height: var(--dock-hybrid-h);
 }
 
-.band:nth-child(3) {
-  width: 40%;
+.ghostCenter {
+  left: 50%;
+  top: calc(100vh - var(--dock-center-h));
+  transform: translate(-50%, 0);
+  width: var(--dock-center-w);
+  height: var(--dock-center-h);
 }

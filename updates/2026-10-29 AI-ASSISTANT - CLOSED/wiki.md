@@ -112,6 +112,47 @@ natively with far less code than reimplementing it on pointer events, and
 isn't the external "drag-and-drop library" CLAUDE.md's conventions are
 steering away from — it's a bare browser API, same tier as pointer events.
 
+## v2: ghost-accurate drag preview, flush-bottom geometry, manual resize
+Follow-up fix after the first pass: the drop-zone overlay was 3 generic
+full-height bands that didn't match where the window would actually land
+— confusing. Fixed by centralizing every dock size as a `--dock-*` custom
+property on `AIAssistant.position.module.css`'s `.root` (inherited by any
+descendant), so both the real window's dock classes and
+`DockZoneOverlay`'s ghost-box previews read the exact same numbers. The
+overlay now renders 3 actual-shaped/positioned ghost rectangles instead
+of bands, with the targeted one highlighted more strongly.
+
+Geometry also changed: all 3 docks are now bottom-flush (no gap — only
+the collapsed "enter"/trigger-anchor point keeps a `--dock-gap` inset),
+and only the top corners are rounded (`border-radius: 0.75rem 0.75rem 0
+0`) since the bottom edge touches the viewport edge. Hybrid and center
+are no longer vertically centered — all 3 states anchor to the bottom,
+differing only in horizontal placement/size: left and hybrid share the
+same left edge (hybrid is just bigger), center is the same size as hybrid
+but horizontally centered. Center's width/height literally alias
+hybrid's via `var(--dock-hybrid-w/h)` so bumping hybrid's size later
+(mentioned as a future intent) moves both together without edits in two
+places.
+
+Added manual resize: a small top-right corner hit-area
+(`AIAssistantWindow`'s `.resizeHandle`) lets the user drag-resize whatever
+dock is currently active. This writes a `manualSize` override that takes
+precedence over the dock class's width/height/top via inline style (top
+is re-derived from the new height so the bottom edge stays flush even
+while manually resized). Redocking (releasing a header drag) always
+clears `manualSize` — "drag it somewhere and it snaps back to the
+predefined size" was explicit. A `.resizing` class (mirroring `.dragging`)
+disables the eased `transition` while the resize pointer is down, same
+reasoning as drag: per-frame inline updates must not be eased or they lag.
+
+Centering a box via `left: 50%; transform: translate(-50%, 0)` is
+convenient because the browser re-centers automatically on any width
+change (no JS needed) — but that same property means a resize-by-edge
+gesture in the centered (center) dock state moves *both* edges at once
+rather than just the one being dragged. Documented rather than solved:
+fixing it would mean abandoning the free auto-centering for that dock
+state, which isn't worth it for a corner-resize affordance in a prototype.
+
 ## Deliberately deferred (not blocking v1)
 - `dockState` persistence across reloads (currently always resets).
 - Keyboard-only path to cycle dock states (accessibility gap, needs an

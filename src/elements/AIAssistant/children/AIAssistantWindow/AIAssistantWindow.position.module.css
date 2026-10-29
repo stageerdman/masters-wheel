@@ -2,10 +2,14 @@
    full-viewport fixed root. Every dock state (plus the collapsed "enter"
    geometry) sets left/top/width/height/transform explicitly — never
    `bottom`, never an implicit value — so every transition between them
-   has a concrete start and end to animate across. The `transform` on
-   each state composes a fixed centering offset with a live drag offset
-   read from --drag-x/--drag-y custom properties, so dragging never has
-   to fight the dock classes for the `transform` property. */
+   has a concrete start and end to animate across. Sizes come from the
+   shared --dock-* custom properties on AIAssistant's root (so the
+   DockZoneOverlay ghost previews always match exactly); all 3 dock
+   states are bottom-flush (top computed as 100vh minus height), only
+   their horizontal placement and size differ. The `transform` on each
+   state composes a fixed centering offset with a live drag offset read
+   from --drag-x/--drag-y custom properties, so dragging never has to
+   fight the dock classes for the `transform` property. */
 .root {
   position: absolute;
   pointer-events: auto;
@@ -31,10 +35,11 @@
     opacity 210ms ease-in;
 }
 
-/* While actively dragging, the window tracks the pointer 1:1 — no eased
-   transition — and only resumes animating once the drag ends and a dock
-   state (or the collapsed geometry) is committed. */
-.dragging {
+/* While actively dragging or resizing, the window tracks the pointer 1:1
+   — no eased transition — and only resumes animating once the gesture
+   ends (dragging commits a dock state; resizing just stops). */
+.dragging,
+.resizing {
   transition: none;
 }
 
@@ -43,42 +48,39 @@
    always grows out of that corner and closing always shrinks back into
    it, regardless of which dock state it was in. */
 .enter {
-  left: 1rem;
-  top: calc(100vh - 1rem);
+  left: var(--dock-gap);
+  top: calc(100vh - var(--dock-gap));
   transform: translate(0, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
   width: 0px;
   height: 0px;
 }
 
+/* Default: small, bottom-left. */
 .dockLeft {
-  --w: clamp(300px, 22vw, 400px);
-  --h: clamp(420px, 38vh, 560px);
-  left: 1rem;
-  top: calc(100vh - var(--h) - 1rem);
+  left: var(--dock-gap);
+  top: calc(100vh - var(--dock-left-h));
   transform: translate(0, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
-  width: var(--w);
-  height: var(--h);
+  width: var(--dock-left-w);
+  height: var(--dock-left-h);
 }
 
-.dockCenter {
-  --w: clamp(420px, 34vw, 620px);
-  --h: clamp(480px, 58vh, 700px);
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) translate(var(--drag-x, 0px), var(--drag-y, 0px));
-  width: var(--w);
-  height: var(--h);
-}
-
+/* Same left edge as dockLeft, just larger — reaches past the viewport's
+   midpoint and a bit taller. Carries the sidebar. */
 .dockHybrid {
-  --w: clamp(640px, 52vw, 920px);
-  --h: clamp(560px, 70vh, 800px);
+  left: var(--dock-gap);
+  top: calc(100vh - var(--dock-hybrid-h));
+  transform: translate(0, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
+  width: var(--dock-hybrid-w);
+  height: var(--dock-hybrid-h);
+}
+
+/* Same size as dockHybrid, horizontally centered instead of left-anchored. */
+.dockCenter {
   left: 50%;
-  top: 50%;
-  /* Slight left bias so the sidebar + chat both read comfortably. */
-  transform: translate(-55%, -50%) translate(var(--drag-x, 0px), var(--drag-y, 0px));
-  width: var(--w);
-  height: var(--h);
+  top: calc(100vh - var(--dock-center-h));
+  transform: translate(-50%, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
+  width: var(--dock-center-w);
+  height: var(--dock-center-h);
 }
 
 .header {
@@ -109,6 +111,17 @@
   height: 100%;
 }
 
+/* Small hit-area in the top-right corner for manually resizing — sits on
+   top of the header/drag-handle in just that corner. */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nesw-resize;
+}
+
 .content {
   flex: 1;
   min-height: 0;
@@ -136,17 +149,6 @@
   flex-wrap: wrap;
   gap: 0.375rem;
   padding: 0.5rem 0.75rem 0;
-}
-
-/* Below this width, dragging is disabled (see useWindowDock) and the
-   left dock becomes near-full-bleed instead of a small corner panel. */
-@media (max-width: 640px) {
-  .dockLeft {
-    --w: calc(100vw - 2rem);
-    --h: calc(100vh - 2rem);
-    left: 1rem;
-    top: 1rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

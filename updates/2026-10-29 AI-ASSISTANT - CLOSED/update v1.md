@@ -10,8 +10,10 @@ agents) — reached by dragging, and collapses back to the icon via a
 small button in its header. UI-shell only: fake data, no real AI calls.
 
 ## Status
-CLOSED — all 4 phases built, verified (build/tsc/lint clean each phase,
-SSR-checked against the running dev server), and pushed.
+CLOSED — all 4 phases built, plus a v2 fix round (accurate drag-preview
+geometry, flush-bottom/top-rounded-only corners, manual resize). All
+verified (build/tsc/lint clean, SSR-checked against the running dev
+server) and pushed.
 
 ## Element plan
 ```

@@ -2,8 +2,8 @@
    to the same bottom-left corner the window grows out of. */
 .root {
   position: absolute;
-  left: 1rem;
-  bottom: 1rem;
+  left: var(--dock-gap);
+  bottom: var(--dock-gap);
   pointer-events: auto;
   display: flex;
   align-items: center;
