@@ -27,7 +27,13 @@ const WRITE_DEBOUNCE_MS = 400;
 type DocPair = { notes: string; aiAnalysis: string };
 
 function isCallState(value: string | null): value is CallState {
-  return value === "closed" || value === "training" || value === "postponed" || value === "failed";
+  return (
+    value === "closed" ||
+    value === "training" ||
+    value === "postponed" ||
+    value === "failed" ||
+    value === "notQualified"
+  );
 }
 
 export function usePerformanceReviewData() {
@@ -39,6 +45,7 @@ export function usePerformanceReviewData() {
 
   const docTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const metaTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const pendingMeta = useRef<Record<string, Partial<RecordMetaFields>>>({});
 
   // Initial load. Outside the Tauri shell (e.g. the plain browser tab used
   // for HMR preview) there's no fs bridge at all — just stay empty rather
@@ -98,6 +105,7 @@ export function usePerformanceReviewData() {
     id: summary.id,
     state: isCallState(summary.state) ? summary.state : null,
     date: summary.date,
+    closedDate: summary.closedDate,
     title: summary.title,
     transcript: [],
     notes: docs[summary.id]?.notes ?? "",
@@ -114,14 +122,21 @@ export function usePerformanceReviewData() {
     const key = `${id}:${kind}`;
     clearTimeout(docTimers.current[key]);
     docTimers.current[key] = setTimeout(() => {
-      writeDoc(id, kind, text).catch(() => {});
+      writeDoc(id, kind, text).catch((error) => console.error("Failed to write record doc:", id, kind, error));
     }, WRITE_DEBOUNCE_MS);
   }
 
+  // Merges into any already-pending partial for this record rather than
+  // replacing it — two fields changed back-to-back (e.g. state +
+  // closedDate when marking a call closed) must both survive, not have
+  // the second clearTimeout silently drop the first field's write.
   function scheduleMetaWrite(id: string, partial: Partial<RecordMetaFields>) {
+    pendingMeta.current[id] = { ...pendingMeta.current[id], ...partial };
     clearTimeout(metaTimers.current[id]);
     metaTimers.current[id] = setTimeout(() => {
-      writeMeta(id, partial).catch(() => {});
+      const toWrite = pendingMeta.current[id];
+      delete pendingMeta.current[id];
+      writeMeta(id, toWrite).catch((error) => console.error("Failed to write record meta:", id, error));
     }, WRITE_DEBOUNCE_MS);
   }
 

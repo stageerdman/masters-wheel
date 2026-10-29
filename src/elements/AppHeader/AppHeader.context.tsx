@@ -13,6 +13,7 @@ export type HeaderIslandOption = {
   glyph: string;
   color: string;
   label: string;
+  description: string;
 };
 
 export type HeaderIsland = {

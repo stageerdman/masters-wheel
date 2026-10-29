@@ -15,7 +15,12 @@ const STATE_OPTIONS: HeaderIslandOption[] = CALL_STATE_ORDER.map((id) => ({
   glyph: CALL_STATE_META[id].glyph,
   color: CALL_STATE_META[id].color,
   label: CALL_STATE_META[id].label,
+  description: CALL_STATE_META[id].description,
 }));
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export function PerformanceReview() {
   const { setIsland, setBrand } = useHeaderActions();
@@ -38,11 +43,18 @@ export function PerformanceReview() {
     setIsland({
       stateOptions: STATE_OPTIONS,
       activeStateId: selected?.state ?? null,
-      onStateChange: (id) => updateMetaField("state", id as CallState),
+      onStateChange: (id) => {
+        updateMetaField("state", id as CallState);
+        // Auto-fill the closed date the moment a call first becomes
+        // closed; never overwrite a date the user already set manually.
+        if (id === "closed" && !selected?.closedDate) {
+          updateMetaField("closedDate", todayIso());
+        }
+      },
     });
     return () => setIsland(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id, selected?.state]);
+  }, [selected?.id, selected?.state, selected?.closedDate]);
 
   useEffect(() => {
     setBrand({ label: "Performance Review", showLogo: true });
@@ -71,6 +83,9 @@ export function PerformanceReview() {
             onOfferedAmountChange={(value) => updateMetaField("offeredAmount", value)}
             onOfferedCurrencyChange={(value) => updateMetaField("offeredCurrency", value)}
             onDescriptionChange={(value) => updateMetaField("description", value)}
+            onDateChange={(value) => updateMetaField("date", value)}
+            onClosedDateChange={(value) => updateMetaField("closedDate", value)}
+            onTitleChange={(value) => updateMetaField("title", value)}
           />
           <Detail
             video={selected}

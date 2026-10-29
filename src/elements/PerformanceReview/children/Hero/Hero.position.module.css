@@ -24,6 +24,15 @@
   padding-right: calc(28px + 1rem);
 }
 
+.title {
+  width: fit-content;
+}
+
+.titleInput {
+  width: 100%;
+  padding: 0;
+}
+
 .mediaSlot {
   grid-area: media;
   padding-right: calc(28px + 1rem);

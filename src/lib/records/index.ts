@@ -31,6 +31,7 @@ const DOC_FILE_NAMES: Record<DocKind, string> = {
 export type RecordMetaFields = {
   title: string;
   date: string;
+  closedDate: string | null;
   state: string | null;
   offeredAmount: number | null;
   offeredCurrency: string | null;
@@ -55,7 +56,15 @@ function metaPath(id: string) {
 }
 
 function emptyMeta(title: string): RecordMetaFields {
-  return { title, date: "", state: null, offeredAmount: null, offeredCurrency: null, description: "" };
+  return {
+    title,
+    date: "",
+    closedDate: null,
+    state: null,
+    offeredAmount: null,
+    offeredCurrency: null,
+    description: "",
+  };
 }
 
 function parseMeta(text: string): RecordMetaFields | null {
@@ -71,6 +80,7 @@ function parseMeta(text: string): RecordMetaFields | null {
   return {
     title: candidate.title,
     date: candidate.date,
+    closedDate: typeof candidate.closedDate === "string" ? candidate.closedDate : null,
     state: typeof candidate.state === "string" ? candidate.state : null,
     offeredAmount: typeof candidate.offeredAmount === "number" ? candidate.offeredAmount : null,
     offeredCurrency: typeof candidate.offeredCurrency === "string" ? candidate.offeredCurrency : null,
@@ -208,6 +218,7 @@ export async function createRecordFromFile(sourcePath: string): Promise<RecordSu
   const meta: RecordMetaFields = {
     title,
     date,
+    closedDate: null,
     state: null,
     offeredAmount: null,
     offeredCurrency: null,

@@ -106,40 +106,49 @@ between the two lists. Each page gets its own section as pages get added.
 - [x] 3-column layout: Navigation / Hero / Detail
 - [x] Navigation: search bar (client-side filter over the real record list)
 - [x] Navigation: scrollable list, call-state icon (closed/training/
-      postponed/failed, or a neutral "unclassified" glyph for a freshly
-      added record), date + title rows, description shown as a hover
-      tooltip
-- [x] Hero: title, bookmark rail (AI analysis / Transcript / Notes / Core
-      Lessons)
+      postponed/failed/not qualified, or no icon at all for a freshly
+      added, unclassified record), date + title rows, description shown
+      as a hover tooltip
+- [x] Hero: title (click to rename inline), bookmark rail (AI analysis /
+      Transcript / Notes / Core Lessons)
 - [x] Hero: Transcript (no real lines yet — always empty; click is a
       no-op, no real video to seek)
 - [x] Hero: Core Lessons (locally editable, not persisted — deliberately
       deferred this round, see this update's wiki.md)
-- [x] Hero: collapsible meta panel (3-dot toggle under the title) — offered
-      amount + currency (typeahead combobox), 200-char description
+- [x] Hero: collapsible meta panel (3-dot toggle under the title) —
+      meeting date + closed date, offered amount + currency (typeahead
+      combobox), 200-char description
 - [x] Detail: draggable bookmark rail, reorderable, splits into two
       independent text panes when a bookmark crosses the line
 - [x] Header: 3-area layout (logo / dynamic island / reserved), dynamic
-      island shows the active record's state (clickable, changes it; a
-      neutral glyph when unclassified), plus an inert AI-reanalyze button
-      and an inert "send to training ground" button
+      island shows the active record's state (clickable, changes it; each
+      option's hover tooltip explains what that status means; an empty,
+      still-clickable slot when unclassified — no placeholder glyph),
+      plus an inert AI-reanalyze button and an inert "send to training
+      ground" button
 
 ### Built (real functionality)
 - [x] Real local storage: every record is a real folder under
       `~/Documents/Master's Circle/`, created on demand; `meta.json` holds
-      structured fields (title, date, state, offered amount/currency,
-      description); `user_notes.md`/`ai_analysis.md` are created lazily —
-      only once the user actually types something non-empty
+      structured fields (title, meeting date, closed date, state, offered
+      amount/currency, description); `user_notes.md`/`ai_analysis.md` are
+      created lazily — only once the user actually types something
+      non-empty
 - [x] Adding a record: click the always-last "Add record" row (native file
       dialog) or drag a file anywhere onto the page (Tauri's native
-      window-level drag-drop, not a sandboxed HTML5 drop) — both copy the
-      file in as `hero.<ext>` and seed a fresh, unclassified
-      (`state: null`) record
+      window-level drag-drop, not a sandboxed HTML5 drop, with a visible
+      drop-zone highlight while hovering) — both copy the file in as
+      `hero.<ext>` and seed a fresh, unclassified (`state: null`) record
 - [x] Real media playback: `MediaPlayer` plays a record's actual hero file
       via Tauri's `convertFileSrc`; the old static placeholder only shows
       if a record has no hero file
 - [x] AI analysis and Notes are both real, editable `.md` files on disk
       (debounced writes), not in-memory fakes
+- [x] Title, meeting date, closed date, state, offered amount/currency,
+      and description all persist to `meta.json` (debounced writes).
+      Closed date auto-fills with today the moment state first becomes
+      "closed" (never overwrites a manually-set date); both dates stay
+      manually editable afterward
 - [x] Offered amount / currency / description / state persist to
       `meta.json` (debounced writes)
 

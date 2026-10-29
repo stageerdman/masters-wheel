@@ -22,6 +22,9 @@ type HeroProps = {
   onOfferedAmountChange: (value: number | null) => void;
   onOfferedCurrencyChange: (value: string | null) => void;
   onDescriptionChange: (value: string) => void;
+  onDateChange: (value: string) => void;
+  onClosedDateChange: (value: string | null) => void;
+  onTitleChange: (value: string) => void;
 };
 
 export function Hero({
@@ -36,22 +39,61 @@ export function Hero({
   onOfferedAmountChange,
   onOfferedCurrencyChange,
   onDescriptionChange,
+  onDateChange,
+  onClosedDateChange,
+  onTitleChange,
 }: HeroProps) {
   const [active, setActive] = useState<ContentKind>("ai");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+
+  // Switching to a different record while mid-edit shouldn't leave the
+  // title input open against the newly selected record. Adjusted during
+  // render (React's recommended pattern for this) rather than an effect.
+  const [renderedForId, setRenderedForId] = useState(video.id);
+  if (video.id !== renderedForId) {
+    setRenderedForId(video.id);
+    setIsEditingTitle(false);
+  }
 
   return (
     <section className={`${styles.root} ${position.root}`} data-construction>
       <div className={position.titleBlock} data-construction>
-        <h1 className={styles.title} data-construction>
-          {video.title}
-        </h1>
+        {isEditingTitle ? (
+          <input
+            className={`${styles.titleInput} ${position.titleInput}`}
+            data-construction
+            value={video.title}
+            autoFocus
+            onChange={(event) => onTitleChange(event.target.value)}
+            onBlur={() => setIsEditingTitle(false)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === "Escape") {
+                event.currentTarget.blur();
+              }
+            }}
+            aria-label="Record title"
+          />
+        ) : (
+          <h1
+            className={`${styles.title} ${position.title}`}
+            data-construction
+            onClick={() => setIsEditingTitle(true)}
+            title="Click to rename"
+          >
+            {video.title}
+          </h1>
+        )}
         <MetaPanel
           offeredAmount={video.offeredAmount}
           offeredCurrency={video.offeredCurrency}
           description={video.description}
+          date={video.date}
+          closedDate={video.closedDate}
           onOfferedAmountChange={onOfferedAmountChange}
           onOfferedCurrencyChange={onOfferedCurrencyChange}
           onDescriptionChange={onDescriptionChange}
+          onDateChange={onDateChange}
+          onClosedDateChange={onClosedDateChange}
         />
       </div>
       <div className={position.mediaSlot} data-construction>

@@ -11,10 +11,17 @@ type StateMenuProps = {
   onChange: (id: string) => void;
 };
 
-// Neutral core-palette glyph shown when nothing has been classified yet
-// (a freshly created record starts with state: null) — never falls back
-// to the first real option, which would dishonestly imply a state.
-const UNSET: HeaderIslandOption = { id: "", glyph: "○", color: "var(--color-text-muted)", label: "Unclassified" };
+// Shown when nothing has been classified yet (a freshly created record
+// starts with state: null) — never falls back to the first real option,
+// which would dishonestly imply a state. No glyph: an empty, still-
+// clickable slot rather than a placeholder dot that reads as a real icon.
+const UNSET: HeaderIslandOption = {
+  id: "",
+  glyph: "",
+  color: "var(--color-text-muted)",
+  label: "Unclassified",
+  description: "No status set yet — pick one.",
+};
 
 export function StateMenu({ options, activeId, onChange }: StateMenuProps) {
   const [open, setOpen] = useState(false);
@@ -60,7 +67,7 @@ export function StateMenu({ options, activeId, onChange }: StateMenuProps) {
                 style={{ "--icon-color": option.color } as React.CSSProperties}
                 role="menuitemradio"
                 aria-checked={option.id === activeId}
-                title={option.label}
+                title={option.description}
                 onClick={() => {
                   onChange(option.id);
                   setOpen(false);
