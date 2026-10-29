@@ -78,4 +78,8 @@ export type VideoRecord = {
   offeredAmount: number | null;
   offeredCurrency: string | null;
   description: string;
+  // Whether the user has personally reviewed/analyzed this call.
+  reviewed: boolean;
+  // How many times this record has been opened — tracked for later use.
+  openCount: number;
 };

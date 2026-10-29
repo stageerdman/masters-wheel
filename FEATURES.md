@@ -124,8 +124,8 @@ between the two lists. Each page gets its own section as pages get added.
       island shows the active record's state (clickable, changes it; each
       option's hover tooltip explains what that status means; an empty,
       still-clickable slot when unclassified — no placeholder glyph),
-      plus an inert AI-reanalyze button and an inert "send to training
-      ground" button
+      plus an inert AI-reanalyze button, an inert "send to training
+      ground" button, and a real "mark as reviewed" check toggle
 
 ### Built (real functionality)
 - [x] Real local storage: every record is a real folder under
@@ -149,8 +149,12 @@ between the two lists. Each page gets its own section as pages get added.
       Closed date auto-fills with today the moment state first becomes
       "closed" (never overwrites a manually-set date); both dates stay
       manually editable afterward
-- [x] Offered amount / currency / description / state persist to
-      `meta.json` (debounced writes)
+- [x] "Reviewed" flag: header check button toggles whether the user has
+      personally reviewed a call; persists to `meta.json`. A reviewed
+      record gets a subtle green accent in the Navigation list.
+- [x] Open count: how many times each record has been selected/opened is
+      tracked and persisted to `meta.json` (no UI surface yet — logged
+      for future use)
 
 ### To build (real functionality — not started)
 - [ ] Real transcription generation

@@ -36,6 +36,10 @@ export type RecordMetaFields = {
   offeredAmount: number | null;
   offeredCurrency: string | null;
   description: string;
+  // Whether the user has personally reviewed/analyzed this call.
+  reviewed: boolean;
+  // How many times this record has been opened in Performance Review.
+  openCount: number;
 };
 
 export type RecordSummary = RecordMetaFields & {
@@ -64,6 +68,8 @@ function emptyMeta(title: string): RecordMetaFields {
     offeredAmount: null,
     offeredCurrency: null,
     description: "",
+    reviewed: false,
+    openCount: 0,
   };
 }
 
@@ -85,6 +91,8 @@ function parseMeta(text: string): RecordMetaFields | null {
     offeredAmount: typeof candidate.offeredAmount === "number" ? candidate.offeredAmount : null,
     offeredCurrency: typeof candidate.offeredCurrency === "string" ? candidate.offeredCurrency : null,
     description: typeof candidate.description === "string" ? candidate.description : "",
+    reviewed: typeof candidate.reviewed === "boolean" ? candidate.reviewed : false,
+    openCount: typeof candidate.openCount === "number" ? candidate.openCount : 0,
   };
 }
 
@@ -223,6 +231,8 @@ export async function createRecordFromFile(sourcePath: string): Promise<RecordSu
     offeredAmount: null,
     offeredCurrency: null,
     description: "",
+    reviewed: false,
+    openCount: 0,
   };
   await writeTextFile(metaPath(id), JSON.stringify(meta, null, 2), { baseDir: BASE_DIR });
 

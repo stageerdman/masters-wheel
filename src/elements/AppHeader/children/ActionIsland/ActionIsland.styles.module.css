@@ -22,3 +22,11 @@
 .swordButton {
   color: var(--color-action-training-ground);
 }
+
+.checkButton {
+  color: var(--color-text-muted);
+}
+
+.checkButtonActive {
+  color: var(--color-reviewed);
+}

@@ -7,9 +7,17 @@ type ActionIslandProps = {
   stateOptions: HeaderIslandOption[];
   activeStateId: string | null;
   onStateChange: (id: string) => void;
+  reviewed: boolean;
+  onToggleReviewed: () => void;
 };
 
-export function ActionIsland({ stateOptions, activeStateId, onStateChange }: ActionIslandProps) {
+export function ActionIsland({
+  stateOptions,
+  activeStateId,
+  onStateChange,
+  reviewed,
+  onToggleReviewed,
+}: ActionIslandProps) {
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
       <button
@@ -30,6 +38,17 @@ export function ActionIsland({ stateOptions, activeStateId, onStateChange }: Act
         aria-label="Take it to the training ground"
       >
         ⚔
+      </button>
+      <button
+        type="button"
+        className={`${styles.checkButton} ${position.button} ${reviewed ? styles.checkButtonActive : ""}`}
+        data-construction
+        onClick={onToggleReviewed}
+        aria-pressed={reviewed}
+        title={reviewed ? "Marked as personally reviewed" : "Mark as personally reviewed"}
+        aria-label={reviewed ? "Marked as personally reviewed" : "Mark as personally reviewed"}
+      >
+        ✓
       </button>
     </div>
   );

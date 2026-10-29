@@ -46,6 +46,8 @@ export function AppHeader() {
             stateOptions={island.stateOptions}
             activeStateId={island.activeStateId}
             onStateChange={island.onStateChange}
+            reviewed={island.reviewed}
+            onToggleReviewed={island.onToggleReviewed}
           />
         )}
       </div>

@@ -17,7 +17,9 @@ export function VideoListItem({ video, active, onClick }: VideoListItemProps) {
   return (
     <button
       type="button"
-      className={`${styles.root} ${position.root} ${active ? styles.active : ""}`}
+      className={`${styles.root} ${position.root} ${active ? styles.active : ""} ${
+        video.reviewed ? styles.reviewed : ""
+      }`}
       data-construction
       onClick={onClick}
       aria-pressed={active}

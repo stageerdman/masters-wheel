@@ -34,6 +34,7 @@ export function PerformanceReview() {
     onAiAnalysisChange,
     onLessonsChange,
     updateMetaField,
+    toggleReviewed,
     addRecordsFromPaths,
   } = usePerformanceReviewData();
 
@@ -51,10 +52,12 @@ export function PerformanceReview() {
           updateMetaField("closedDate", todayIso());
         }
       },
+      reviewed: selected?.reviewed ?? false,
+      onToggleReviewed: toggleReviewed,
     });
     return () => setIsland(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id, selected?.state, selected?.closedDate]);
+  }, [selected?.id, selected?.state, selected?.closedDate, selected?.reviewed]);
 
   useEffect(() => {
     setBrand({ label: "Performance Review", showLogo: true });

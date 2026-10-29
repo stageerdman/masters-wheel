@@ -81,6 +81,27 @@ export function usePerformanceReviewData() {
     };
   }, [selectedId, docs]);
 
+  // Tracks how many times each record has been opened — fires once per
+  // actual selection change (including the initial auto-selection on
+  // load), not on every render. `summaries` is read fresh from the
+  // closure rather than listed as a dependency, since updating it here
+  // would otherwise retrigger this same effect.
+  useEffect(() => {
+    if (!selectedId || !isTauri()) return;
+    // Deferred a tick (same pattern as the initial-load effect above) so
+    // the state update isn't synchronous within the effect body.
+    Promise.resolve().then(() => {
+      const current = summaries.find((item) => item.id === selectedId);
+      if (!current) return;
+      const nextCount = current.openCount + 1;
+      setSummaries((prev) =>
+        prev.map((item) => (item.id === selectedId ? { ...item, openCount: nextCount } : item))
+      );
+      scheduleMetaWrite(selectedId, { openCount: nextCount });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
   // Resolve the selected record's hero file to a playable convertFileSrc
   // URL. Derived (not reset synchronously) so there's never a stale-id
   // flash: `heroSrc` below falls back to null itself whenever the resolved
@@ -114,6 +135,8 @@ export function usePerformanceReviewData() {
     offeredAmount: summary.offeredAmount,
     offeredCurrency: summary.offeredCurrency,
     description: summary.description,
+    reviewed: summary.reviewed,
+    openCount: summary.openCount,
   }));
 
   const selected = videos.find((video) => video.id === selectedId) ?? null;
@@ -172,6 +195,12 @@ export function usePerformanceReviewData() {
     scheduleMetaWrite(selectedId, { [key]: value } as Partial<RecordMetaFields>);
   }
 
+  function toggleReviewed() {
+    if (!selectedId) return;
+    const current = summaries.find((item) => item.id === selectedId);
+    updateMetaField("reviewed", !(current?.reviewed ?? false));
+  }
+
   // Creates one record per given path (dialog selection or drag-drop),
   // skipping any that fail rather than aborting the whole batch, then
   // selects the first newly created one.
@@ -199,6 +228,7 @@ export function usePerformanceReviewData() {
     onAiAnalysisChange,
     onLessonsChange,
     updateMetaField,
+    toggleReviewed,
     addRecordsFromPaths,
   };
 }

@@ -14,6 +14,13 @@
   background: var(--color-border);
 }
 
+/* A subtle marker that the user has personally reviewed this call — an
+   inset accent rather than a background tint, so it stays visible under
+   the hover/active background instead of being overwritten by it. */
+.reviewed {
+  box-shadow: inset 3px 0 0 0 var(--color-reviewed);
+}
+
 .icon {
   color: var(--icon-color);
   font-size: var(--text-size-heading);

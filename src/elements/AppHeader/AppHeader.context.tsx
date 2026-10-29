@@ -20,6 +20,8 @@ export type HeaderIsland = {
   stateOptions: HeaderIslandOption[];
   activeStateId: string | null;
   onStateChange: (id: string) => void;
+  reviewed: boolean;
+  onToggleReviewed: () => void;
 } | null;
 
 export type HeaderBrand = {
