@@ -4,6 +4,32 @@ Running tracker: what's built (as UI shell — fake data, no backend) vs. what
 still needs to be dictated and built. Update this whenever a feature moves
 between the two lists. Each page gets its own section as pages get added.
 
+## AI Assistant (global — every page)
+
+### Built (UI shell only — no real functionality behind it)
+- [x] `AIAssistant` replaces the Next.js dev-mode badge: fixed bottom-left
+      trigger icon (3 rotating unfinished concentric rings), lives above
+      every route via the root layout
+- [x] Pressing the trigger expands it into a floating window anchored at
+      that corner; a header h-line button collapses it back (both
+      directions animate, with a reduced-motion opacity-only fallback)
+- [x] Chat content: message list (user bubbles vs. flush assistant text),
+      auto-growing composer, empty "Ask anything." state; sending only
+      appends the user's own message — no fake AI reply yet
+- [x] Drag the header to snap the window between 3 docked forms — left
+      (small, default), center (larger), hybrid (widest, chat + sidebar)
+      — with a drop-zone highlight while dragging; disabled below 640px
+      viewport width
+- [x] Hybrid sidebar: `HistoryList` (switch between fake past sessions)
+      and `AgentRoster` (click an agent to open a dedicated session with
+      it, or drag one onto the chat to add it alongside — shows an
+      `ActiveAgentChip` + a muted system line, no fake agent reply)
+
+### To build (real functionality — not started)
+- [ ] Real AI backend/model wiring (currently 100% static/local state)
+- [ ] Persisting sessions/dock state across reloads (currently resets)
+- [ ] Keyboard-only path to cycle dock states (drag is pointer-only)
+
 ## Main Menu page
 
 ### Built (UI shell only — no real functionality behind it)

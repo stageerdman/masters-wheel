@@ -83,6 +83,35 @@ independently re-derive the same fact from its own measured width.
   `AIAssistant.script.ts`); below that breakpoint the left dock becomes
   near-full-bleed via a plain CSS media query in the same position module.
 
+## Sessions double as the agent model
+Rather than inventing a separate "agent chat" concept, clicking an agent
+in the roster creates (or reuses) an ordinary `ChatSession` tagged with
+`agentId`, titled "Chat with {name}" — it shows up in `HistoryList` like
+any other session. This gave the two described agent interactions (click
+to open a dedicated chat vs. drag onto the current chat to add it
+alongside) a single underlying data model instead of two: `ChatSession`
+for the former, `activeAgentIds` on whichever session is current for the
+latter.
+
+## Canned history vs. a faked live reply
+`HISTORY_FIXTURES` in `AIAssistantWindow.data.ts` includes a couple of
+pre-written `assistant`-role lines inside each fake past session. This is
+different from the "no fake AI reply" decision above: it's static
+placeholder *history* (same honest fakery as `PerformanceReview`'s fake
+transcript lines), not a live simulated response to something the user
+just typed. It's also what first exercises the assistant-message visual
+style, which otherwise nothing in v1 would ever render.
+
+## Agent-roster drag uses native HTML5 drag-and-drop, not pointer events
+Unlike the window-dock drag (which needs 1:1 cursor-follow and 3-zone
+resolution — custom pointer-event tracking earns its keep there), dragging
+a roster card onto the chat column is a plain "pick up a list item, drop
+it on a target" gesture with no custom visuals needed beyond a drop-target
+highlight. `draggable` + `onDragStart`/`onDragOver`/`onDrop` covers that
+natively with far less code than reimplementing it on pointer events, and
+isn't the external "drag-and-drop library" CLAUDE.md's conventions are
+steering away from — it's a bare browser API, same tier as pointer events.
+
 ## Deliberately deferred (not blocking v1)
 - `dockState` persistence across reloads (currently always resets).
 - Keyboard-only path to cycle dock states (accessibility gap, needs an

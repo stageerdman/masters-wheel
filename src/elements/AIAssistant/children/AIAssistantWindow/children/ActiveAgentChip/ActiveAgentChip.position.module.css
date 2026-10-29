@@ -1,0 +1,17 @@
+/* Where this sits within the chat column's chip row. */
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 999px;
+}
+
+.remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+}

@@ -1,6 +1,12 @@
-import type { PointerEvent as ReactPointerEvent } from "react";
-import type { ChatMessage, DockState } from "@/elements/AIAssistant/AIAssistant.script";
+"use client";
+
+import { useState } from "react";
+import type { DragEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { Agent, ChatSession, DockState } from "@/elements/AIAssistant/AIAssistant.script";
+import { ActiveAgentChip } from "./children/ActiveAgentChip/ActiveAgentChip";
+import { AgentRoster } from "./children/AgentRoster/AgentRoster";
 import { Composer } from "./children/Composer/Composer";
+import { HistoryList } from "./children/HistoryList/HistoryList";
 import { MessageList } from "./children/MessageList/MessageList";
 import { useWindowEnterTransition } from "./AIAssistantWindow.script";
 import position from "./AIAssistantWindow.position.module.css";
@@ -10,7 +16,7 @@ type AIAssistantWindowProps = {
   isClosing: boolean;
   onCollapse: () => void;
   onCollapsed: () => void;
-  messages: ChatMessage[];
+  activeSession: ChatSession;
   composerValue: string;
   onComposerChange: (value: string) => void;
   onSend: () => void;
@@ -18,6 +24,12 @@ type AIAssistantWindowProps = {
   dockState: DockState;
   dragOffset: { x: number; y: number } | null;
   onHeaderPointerDown: (event: ReactPointerEvent) => void;
+  sessions: ChatSession[];
+  onSelectSession: (id: string) => void;
+  agents: Agent[];
+  onSelectAgent: (id: string) => void;
+  onDropAgentIntoChat: (id: string) => void;
+  onRemoveAgentFromChat: (id: string) => void;
 };
 
 const DOCK_CLASS: Record<DockState, string> = {
@@ -30,7 +42,7 @@ export function AIAssistantWindow({
   isClosing,
   onCollapse,
   onCollapsed,
-  messages,
+  activeSession,
   composerValue,
   onComposerChange,
   onSend,
@@ -38,12 +50,31 @@ export function AIAssistantWindow({
   dockState,
   dragOffset,
   onHeaderPointerDown,
+  sessions,
+  onSelectSession,
+  agents,
+  onSelectAgent,
+  onDropAgentIntoChat,
+  onRemoveAgentFromChat,
 }: AIAssistantWindowProps) {
   const hasEntered = useWindowEnterTransition();
+  const [isDragOver, setIsDragOver] = useState(false);
 
   function handleTransitionEnd(event: React.TransitionEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
     if (isClosing) onCollapsed();
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragOver(true);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragOver(false);
+    const agentId = event.dataTransfer.getData("text/plain");
+    if (agentId) onDropAgentIntoChat(agentId);
   }
 
   const showCollapsedGeometry = !hasEntered || isClosing;
@@ -54,6 +85,8 @@ export function AIAssistantWindow({
   const dragStyle = dragOffset
     ? ({ "--drag-x": `${dragOffset.x}px`, "--drag-y": `${dragOffset.y}px` } as React.CSSProperties)
     : undefined;
+
+  const activeAgents = agents.filter((agent) => activeSession.activeAgentIds.includes(agent.id));
 
   return (
     <div
@@ -79,8 +112,29 @@ export function AIAssistantWindow({
         />
       </div>
       <div className={`${styles.content} ${position.content}`} data-construction>
-        <MessageList messages={messages} density={density} />
-        <Composer value={composerValue} onChange={onComposerChange} onSend={onSend} density={density} />
+        {dockState === "hybrid" && (
+          <div className={`${styles.sidebar} ${position.sidebar}`} data-construction>
+            <HistoryList sessions={sessions} activeId={activeSession.id} onSelect={onSelectSession} />
+            <AgentRoster agents={agents} onSelect={onSelectAgent} />
+          </div>
+        )}
+        <div
+          className={`${styles.chatColumn} ${position.chatColumn} ${isDragOver ? styles.dragOver : ""}`}
+          data-construction
+          onDragOver={handleDragOver}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleDrop}
+        >
+          {activeAgents.length > 0 && (
+            <div className={`${styles.chipRow} ${position.chipRow}`} data-construction>
+              {activeAgents.map((agent) => (
+                <ActiveAgentChip key={agent.id} agent={agent} onRemove={() => onRemoveAgentFromChat(agent.id)} />
+              ))}
+            </div>
+          )}
+          <MessageList messages={activeSession.messages} density={density} />
+          <Composer value={composerValue} onChange={onComposerChange} onSend={onSend} density={density} />
+        </div>
       </div>
     </div>
   );

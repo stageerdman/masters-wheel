@@ -1,0 +1,9 @@
+/* Where this sits within HistoryList's column. */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+}

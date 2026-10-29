@@ -10,7 +10,8 @@ agents) — reached by dragging, and collapses back to the icon via a
 small button in its header. UI-shell only: fake data, no real AI calls.
 
 ## Status
-OPEN — Phase 0 not started.
+CLOSED — all 4 phases built, verified (build/tsc/lint clean each phase,
+SSR-checked against the running dev server), and pushed.
 
 ## Element plan
 ```
@@ -98,4 +99,5 @@ See `wiki.md` for the full reasoning behind each call below.
 - History/Agents render as two stacked sidebar sections, not tabs.
 
 ## Next
-Awaiting go-ahead to start Phase 0.
+Nothing queued. Real AI/backend wiring, session/dock persistence, and a
+keyboard-only dock-cycling path are deliberately deferred — see wiki.md.

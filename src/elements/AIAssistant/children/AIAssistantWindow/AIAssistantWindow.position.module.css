@@ -113,7 +113,29 @@
   flex: 1;
   min-height: 0;
   display: flex;
+  flex-direction: row;
+}
+
+.sidebar {
+  width: 180px;
+  flex-shrink: 0;
+  display: flex;
   flex-direction: column;
+  overflow-y: auto;
+}
+
+.chatColumn {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem 0;
 }
 
 /* Below this width, dragging is disabled (see useWindowDock) and the

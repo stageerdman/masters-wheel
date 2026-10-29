@@ -14,6 +14,11 @@
   align-self: flex-start;
 }
 
+.system {
+  align-self: center;
+  max-width: 100%;
+}
+
 .comfortable {
   padding: 0.625rem 0.875rem;
   max-width: 75%;

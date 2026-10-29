@@ -14,10 +14,16 @@ export function AIAssistant() {
     open,
     collapse,
     finishCollapse,
-    messages,
+    sessions,
+    activeSession,
+    selectSession,
     composerValue,
     setComposerValue,
     sendMessage,
+    agents,
+    selectAgent,
+    addAgentToActiveChat,
+    removeAgentFromActiveChat,
   } = useAIAssistant();
   const { dockState, dragZone, dragOffset, onHeaderPointerDown } = useWindowDock();
 
@@ -34,7 +40,7 @@ export function AIAssistant() {
           isClosing={phase === "closing"}
           onCollapse={collapse}
           onCollapsed={finishCollapse}
-          messages={messages}
+          activeSession={activeSession}
           composerValue={composerValue}
           onComposerChange={setComposerValue}
           onSend={sendMessage}
@@ -42,6 +48,12 @@ export function AIAssistant() {
           dockState={dockState}
           dragOffset={dragOffset}
           onHeaderPointerDown={onHeaderPointerDown}
+          sessions={sessions}
+          onSelectSession={selectSession}
+          agents={agents}
+          onSelectAgent={selectAgent}
+          onDropAgentIntoChat={addAgentToActiveChat}
+          onRemoveAgentFromChat={removeAgentFromActiveChat}
         />
       )}
     </div>
