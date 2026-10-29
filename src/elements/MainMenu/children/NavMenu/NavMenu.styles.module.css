@@ -2,6 +2,7 @@
   list-style: none;
   background: transparent;
   border: none;
+  user-select: none;
 }
 
 .root:focus-visible {

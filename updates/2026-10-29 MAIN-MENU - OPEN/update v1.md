@@ -97,3 +97,29 @@ they do.
       saving into `public/`, so the image's own box now matches its visual
       content and `align-items: center` actually centers it against the
       text.
+
+## Follow-up — Analytics toggle + interaction polish (2026-10-29)
+- [x] Analytics is now a real toggle: activating it a second time (Enter or
+      click) closes the panel instead of just reopening the same content.
+- [x] `SidePanel` pops the analytics panel in/out with a CSS `@keyframes`
+      scale+fade animation (`pop-in`/`pop-out`) instead of appearing/
+      disappearing instantly. Lifecycle state (`mounted`/`closing`) is
+      derived during render per the React-recommended "adjust state while
+      rendering" pattern (not inside `useEffect` — the project's
+      `react-hooks/set-state-in-effect` lint rule flags synchronous
+      `setState` in an effect body), and the delayed unmount happens in an
+      `onAnimationEnd` handler rather than a `setTimeout`, so there's no
+      timer to race or clean up. Respects `prefers-reduced-motion` (keeps
+      the animation, near-zero duration, so the lifecycle handler still
+      fires).
+- [x] `NavMenu` items no longer have their label text selectable on click —
+      `user-select: none` on the list root (menu items are controls, not
+      reading content).
+
+## Follow-up — no browser automation (2026-10-29)
+Repeated attempts to connect the claude-in-chrome browser tool were
+restarting the user's actual Chrome, which they explicitly do not want.
+Added a "Verification constraints" note under Project-specific notes:
+never use claude-in-chrome in this project; verify with
+build/lint/tsc/curl + SSR inspection instead, and say plainly when live
+click-through wasn't done.

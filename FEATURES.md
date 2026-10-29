@@ -14,13 +14,17 @@ between the two lists. Each page gets its own section as pages get added.
       highlights, click activates (same effect as keyboard); highlighted
       item shows an arrow marker
 - [x] Performance Review activation navigates to `/performance-review`
-- [x] Analytics activation shows a fake `AnalyticsPanel` (static numbers) in
-      the right panel — doesn't navigate
+- [x] Analytics activation toggles a fake `AnalyticsPanel` (static numbers)
+      in/out of the right panel with a pop-in/pop-out animation — doesn't
+      navigate; activating it again while open closes it
 - [x] Training / Chat with AI: listed, selectable, inert (no behavior
       dictated yet)
+- [x] `NavMenu` items aren't text-selectable (they're controls, not
+      reading content)
 - [x] `AppHeader` wordmark is now a link home (`/`) and is brand-aware via
       `HeaderActionsContext` — shows "Master's Circle" by default, swaps to
-      "Performance Review" + logo while that page is mounted
+      "Performance Review" + logo while that page is mounted; header is
+      hidden entirely on Main Menu (`/`)
 
 ### To build (real functionality — not started)
 - [ ] Training and Chat with AI behavior (not dictated yet)

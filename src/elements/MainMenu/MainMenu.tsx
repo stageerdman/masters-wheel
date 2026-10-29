@@ -22,7 +22,7 @@ export function MainMenu() {
     if (id === "performance-review") {
       router.push("/performance-review");
     } else if (id === "analytics") {
-      setPanelContent("analytics");
+      setPanelContent((current) => (current === "analytics" ? null : "analytics"));
     } else {
       setPanelContent(null);
     }
