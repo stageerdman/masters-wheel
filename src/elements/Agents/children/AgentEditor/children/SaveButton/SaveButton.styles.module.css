@@ -1,0 +1,31 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-accent);
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+
+.root:disabled {
+  cursor: default;
+}
+
+.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.root:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    transition: opacity 1ms linear;
+  }
+}

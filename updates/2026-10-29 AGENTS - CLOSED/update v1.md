@@ -70,81 +70,81 @@ backend, no real persistence across reloads (matches the rest of the app).
 ## Roadmap
 
 ### Phase 1 — Generalize the @mention picker
-- [ ] Move `findActiveMention`/`useMentionPicker` out of
+- [x] Move `findActiveMention`/`useMentionPicker` out of
       `AIAssistant/.../Composer/Composer.script.ts` into
       `src/lib/useMentionPicker.ts`, generic over `{ name: string }`, with
       an optional custom match predicate (default: `startsWith`).
-- [ ] Update `Composer.tsx` to import the shared hook directly; delete
+- [x] Update `Composer.tsx` to import the shared hook directly; delete
       `Composer.script.ts` once nothing of it remains.
-- [ ] `npm run build` / `lint` / `tsc --noEmit` clean; AI Assistant's
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; AI Assistant's
       existing @mention behavior unchanged (verified by reasoning through
       the diff — no connected browser this session).
 
 ### Phase 2 — Route + Main Menu wiring
-- [ ] New route `src/app/agents/page.tsx` hosting a new `Agents` root
+- [x] New route `src/app/agents/page.tsx` hosting a new `Agents` root
       element (wrapped in `Canvas`, matching `performance-review/page.tsx`).
-- [ ] Add "Agents" to `MainMenu`'s `MENU_ITEMS`; activating it
+- [x] Add "Agents" to `MainMenu`'s `MENU_ITEMS`; activating it
       `router.push("/agents")`.
 
 ### Phase 3 — Data model + root element
-- [ ] `src/elements/Agents/Agents.data.ts`: `CoachAgent`, `KnowledgeFile`,
+- [x] `src/elements/Agents/Agents.data.ts`: `CoachAgent`, `KnowledgeFile`,
       `AgentVersion` types + a few fake seed agents (one with knowledge
       files + an instructions string that @-references one of them, so the
       mention-rendering path has something real to show immediately).
-- [ ] `src/elements/Agents/Agents.tsx`: owns the saved roster, selected id,
+- [x] `src/elements/Agents/Agents.tsx`: owns the saved roster, selected id,
       and `versionsByAgent` (lifted above the editor so version history
       survives switching agents, per the UX spec). Composes `AgentNav` +
       `AgentEditor`.
 
 ### Phase 4 — Roster column
-- [ ] `children/AgentNav/AgentNav.tsx` + `children/AgentNavItem/`: the
+- [x] `children/AgentNav/AgentNav.tsx` + `children/AgentNavItem/`: the
       scrollable list, "Add new agent" row always first (same component,
       `agent` prop optional — renders the `+`/dashed-avatar look when
       absent), active-row highlight matching `VideoListItem`'s convention.
-- [ ] Empty-roster and draft-agent (untitled, no photo) states.
+- [x] Empty-roster and draft-agent (untitled, no photo) states.
 
 ### Phase 5 — Editor shell + identity header
-- [ ] `children/AgentEditor/AgentEditor.tsx` + `.script.ts`: draft field
+- [x] `children/AgentEditor/AgentEditor.tsx` + `.script.ts`: draft field
       state (seeded from the selected agent, remounted via `key={agent.id}`
       so switching agents always starts clean), dirty detection against the
       saved snapshot.
-- [ ] `children/IdentityHeader/`: photo (hidden file input +
+- [x] `children/IdentityHeader/`: photo (hidden file input +
       `URL.createObjectURL` preview, no persistence), Name, `@Nickname`
       (auto-derive/lock rule above), Description — all inline-editable,
       no separate "edit mode."
-- [ ] No-agent-selected empty state in the editor panel.
+- [x] No-agent-selected empty state in the editor panel.
 
 ### Phase 6 — Instructions + knowledge-file mentions
-- [ ] `children/InstructionsField/`: textarea using the shared mention
+- [x] `children/InstructionsField/`: textarea using the shared mention
       hook against the draft's knowledge files (substring match); blurred
       state renders `@Name` mentions as styled tags (reusing the accent-tag
       look, not literally importing another element's CSS module).
-- [ ] Zero-knowledge-files hint when `@` is typed with nothing to suggest.
+- [x] Zero-knowledge-files hint when `@` is typed with nothing to suggest.
 
 ### Phase 7 — Knowledge files + context meter
-- [ ] `children/KnowledgeManager/`: drop-zone-doubles-as-empty-state, file
+- [x] `children/KnowledgeManager/`: drop-zone-doubles-as-empty-state, file
       list (icon by type, name, size, remove button) once ≥1 file exists,
       plus a persistent "+ Add file" row.
-- [ ] Context meter (bar + %, fixed fake cap, clamped display at 100%).
-- [ ] Removing a file leaves any `@mention` of it in Instructions dangling
+- [x] Context meter (bar + %, fixed fake cap, clamped display at 100%).
+- [x] Removing a file leaves any `@mention` of it in Instructions dangling
       (reverts to plain text on next blurred render) — no warning dialog,
       per the UX spec's reasoning.
 
 ### Phase 8 — Save / Version History / Undo-redo
-- [ ] `children/SaveButton/`: reserved layout slot, fades in only while
+- [x] `children/SaveButton/`: reserved layout slot, fades in only while
       dirty, brief "Saved" confirmation, aborts back to dirty if a new edit
       lands mid-confirmation.
-- [ ] `children/VersionHistoryPanel/` + `children/VersionRow/`: push-split
+- [x] `children/VersionHistoryPanel/` + `children/VersionRow/`: push-split
       panel (reusing `Sidebar`'s mechanic/breakpoint), newest-first list,
       diff-computed change labels, "Current" badge, confirm-before-restore
       only when there are unsaved edits to discard.
-- [ ] Undo/redo stack + blur-commit logic + the scoped global
+- [x] Undo/redo stack + blur-commit logic + the scoped global
       Cmd+Z/Cmd+Shift+Z handler, all in `AgentEditor.script.ts`.
 
 ### Phase 9 — Verify + document
-- [ ] `npm run build` / `lint` / `tsc --noEmit` clean; SSR HTML check via
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; SSR HTML check via
       `curl` on `/agents`.
-- [ ] Update `FEATURES.md` with an Agents section.
+- [x] Update `FEATURES.md` with an Agents section.
 - [ ] **Not verified**: live click-through (no connected browser this
       session, per the project's verification constraints) — ask the user
       to check keyboard/mouse interaction, drag-drop file add, and the

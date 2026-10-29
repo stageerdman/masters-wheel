@@ -1,0 +1,23 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  background: var(--color-surface);
+}
+
+.historyButton {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+  cursor: pointer;
+}
+
+.historyButton:hover {
+  color: var(--color-text);
+}
+
+.historyButtonActive {
+  color: var(--color-text);
+  /* Bottom indicator via inset box-shadow — `outline` is reserved for
+     construction mode. */
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}

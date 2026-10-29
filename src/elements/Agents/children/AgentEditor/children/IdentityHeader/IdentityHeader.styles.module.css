@@ -1,0 +1,59 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  color: var(--color-text);
+}
+
+.photo {
+  background: var(--color-surface);
+  border: 2px dashed var(--color-border);
+  cursor: pointer;
+}
+
+.photoPlaceholder {
+  color: var(--color-text-muted);
+}
+
+.nameInput,
+.nicknameInput,
+.descriptionInput {
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+.nameInput {
+  color: var(--color-text);
+  font-size: var(--text-size-heading);
+}
+
+.nameInput::placeholder,
+.nicknameInput::placeholder,
+.descriptionInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.nameInput:focus-visible,
+.nicknameInput:focus-visible,
+.descriptionInput:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+  border-radius: 4px;
+}
+
+.nicknamePrefix {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.nicknameInput {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.descriptionInput {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.descriptionInput:focus {
+  color: var(--color-text);
+}

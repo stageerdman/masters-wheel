@@ -1,0 +1,31 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.textRows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.versionNumber {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.currentBadge {
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+}
+
+.restoreButton {
+  flex-shrink: 0;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+}

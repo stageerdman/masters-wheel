@@ -1,0 +1,73 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  color: var(--color-text);
+}
+
+.label {
+  font-size: var(--text-size-label);
+  color: var(--color-text);
+}
+
+.textarea,
+.rendered {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: var(--text-size-body);
+  font-family: inherit;
+}
+
+.rendered {
+  cursor: text;
+}
+
+.textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.placeholder {
+  color: var(--color-text-muted);
+}
+
+.textarea:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.mentionMenu {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.mentionItem {
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: var(--text-size-label);
+}
+
+.mentionItem:hover {
+  background: color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+.mentionItemActive {
+  background: var(--color-border);
+}
+
+.hint {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}
+
+.mention {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 0 0.15rem;
+}

@@ -1,0 +1,59 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.root:hover {
+  background: var(--color-border);
+}
+
+.active {
+  background: var(--color-border);
+}
+
+.avatar {
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font-size: var(--text-size-label);
+  font-weight: 600;
+}
+
+/* The "Add new agent" row's own + — a solid, inviting accent, distinct
+   from .avatarPlaceholder's muted dashed look below (a draft agent with
+   no photo yet), so the two "+" glyphs never read as the same affordance. */
+.avatarAdd {
+  background: none;
+  border: 1px dashed var(--color-border);
+  color: var(--color-accent);
+}
+
+.avatarPlaceholder {
+  background: none;
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.name {
+  font-size: var(--text-size-label);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameMuted {
+  color: var(--color-text-muted);
+}
+
+.descriptor {
+  font-size: var(--text-size-micro);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 1em;
+  display: block;
+}

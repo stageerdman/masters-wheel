@@ -63,13 +63,14 @@ between the two lists. Each page gets its own section as pages get added.
 ## Main Menu page
 
 ### Built (UI shell only — no real functionality behind it)
-- [x] `MainMenu` at `/`: wallpaper background, left `NavMenu` (4 items:
-      Performance Review, Analytics, Training, Chat with AI), right
+- [x] `MainMenu` at `/`: wallpaper background, left `NavMenu` (5 items:
+      Performance Review, Analytics, Training, Chat with AI, Agents), right
       `SidePanel` (empty until Analytics is activated)
 - [x] `NavMenu`: arrow-key highlight + Enter activates; mouse hover
       highlights, click activates (same effect as keyboard); highlighted
       item shows an arrow marker
-- [x] Performance Review activation navigates to `/performance-review`
+- [x] Performance Review activation navigates to `/performance-review`;
+      Agents activation navigates to `/agents`
 - [x] Analytics activation toggles a fake `AnalyticsPanel` (static numbers)
       in/out of the right panel with a pop-in/pop-out animation — doesn't
       navigate; activating it again while open closes it
@@ -124,4 +125,50 @@ between the two lists. Each page gets its own section as pages get added.
 - [ ] Notes/Core Lessons/state/offered-amount/description persistence
       (currently local component state, lost on refresh)
 - [ ] Backend data model + storage for videos/notes/lessons/transcripts
+- [ ] Auth (not started — no users yet)
+
+## Agents page
+
+### Built (UI shell only — no real functionality behind it)
+- [x] `Agents` at `/agents`: left `AgentNav` roster / right `AgentEditor`,
+      same 2-column shape as Performance Review's navigation+detail split
+- [x] `AgentNav`: "Add new agent" row always first (same shape as a normal
+      row, `+` instead of a photo); scrollable list of created agents,
+      active-row highlight, empty-roster and untitled-draft states
+- [x] `AgentEditor` identity header: photo (local file picker preview, no
+      upload), Name, `@Nickname` (auto-derives from Name until the user
+      types a different value directly into it, then locks; clearing it
+      back to empty unlocks and re-derives), Description — all inline-
+      editable
+- [x] Instructions: large textarea; typing `@` opens a picker over this
+      agent's own knowledge files (substring match); a saved reference
+      renders as a styled tag once the field is blurred, same visual
+      language as the AI Assistant's chat-mention tags; a reference to a
+      since-removed file just reverts to plain text
+- [x] Knowledge: add files via a drop zone/file picker or a persistent
+      "+ Add file" row, remove via a per-row button; fake size/type
+      metadata per file; a context-usage meter (bar + %) against a fixed
+      fake byte cap, clamped at 100% for display
+- [x] Save button only appears while there are unsaved edits, with a
+      brief "Saved" confirmation; Version History opens a right-side
+      panel (reusing the AI Assistant Sidebar's push-split mechanic) of
+      past saves with auto-computed change labels, restorable (confirms
+      first only if there are unsaved edits to discard)
+- [x] Cmd+Z / Cmd+Shift+Z undo/redo every field, even before the first
+      Save — text fields commit to the undo stack on blur (native
+      per-field undo keeps working while focused); Save clears the stack
+- [x] `src/lib/useMentionPicker.ts`: the AI Assistant chat Composer's
+      @mention picker, generalized over `{ name: string }` and now shared
+      by both features
+
+### To build (real functionality — not started)
+- [ ] Real photo/file upload + storage (currently local object-URL
+      previews and in-memory fake metadata only)
+- [ ] Persistence across reloads — agents, edits, and version history are
+      all in-memory state, reset on refresh
+- [ ] Real AI behavior for a created agent (currently just a name/
+      nickname/description/instructions/knowledge record with no model
+      behind it)
+- [ ] Wiring these agents into the AI Assistant's existing chat roster/
+      @mention system (explicitly deferred — see this update's wiki.md)
 - [ ] Auth (not started — no users yet)
