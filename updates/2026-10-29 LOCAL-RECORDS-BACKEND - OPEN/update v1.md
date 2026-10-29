@@ -72,56 +72,63 @@ first real backend logic in the app (everything before this was UI shell).
 ## Roadmap
 
 ### Phase 1 — Native fs plumbing
-- [ ] Add `@tauri-apps/plugin-fs` and `@tauri-apps/plugin-dialog`
+- [x] Add `@tauri-apps/plugin-fs` and `@tauri-apps/plugin-dialog`
       (JS + the matching Rust crates), register both in
       `src-tauri/src/main.rs`.
-- [ ] Add a capabilities file scoping fs read/write/mkdir/copy and dialog
+- [x] Add a capabilities file scoping fs read/write/mkdir/copy and dialog
       `open` to `$DOCUMENT/Master's Circle/**` only.
-- [ ] Confirm the asset protocol can serve files from that same scope so
+- [x] Confirm the asset protocol can serve files from that same scope so
       `convertFileSrc` works for hero video playback.
 
 ### Phase 2 — Data layer (`src/lib/records/`)
-- [ ] `listRecords()` — scan the storage root, one record per subfolder,
+- [x] `listRecords()` — scan the storage root, one record per subfolder,
       parse `meta.json`, don't fail the whole list if one record's
       `meta.json` is missing/corrupt (skip it, don't crash the app).
-- [ ] `readDoc(id, "notes" | "analysis")` / `writeDoc(id, kind, text)` —
+- [x] `readDoc(id, "notes" | "analysis")` / `writeDoc(id, kind, text)` —
       lazy create-on-first-write semantics described above.
-- [ ] `writeMeta(id, partialMeta)` — merge + persist `meta.json`.
-- [ ] `createRecordFromFile(path)` — slugify, create the folder, copy the
+- [x] `writeMeta(id, partialMeta)` — merge + persist `meta.json`.
+- [x] `createRecordFromFile(path)` — slugify, create the folder, copy the
       source file in as `hero.<ext>`, seed `meta.json` with
       `state: null`, today's date, title derived from the filename
       (strip extension, replace `_`/`-` with spaces).
-- [ ] Ensure the storage root exists on first run (`mkdir -p` equivalent).
+- [x] Ensure the storage root exists on first run (`mkdir -p` equivalent).
 
 ### Phase 3 — Wire it into the UI
-- [ ] `PerformanceReview.data.ts`: drop `FAKE_VIDEOS` and `mainText`
+- [x] `PerformanceReview.data.ts`: drop `FAKE_VIDEOS` and `mainText`
       entirely (per its own "delete once real data arrives" comment);
       `VideoRecord.state` becomes `CallState | null`.
-- [ ] `PerformanceReview.tsx`: replace the `FAKE_VIDEOS` + `edits`-diff
+- [x] `PerformanceReview.tsx`: replace the `FAKE_VIDEOS` + `edits`-diff
       model with real loads/saves through the Phase 2 data layer
       (debounce writes on notes/analysis/meta changes).
-- [ ] Rename `"main"` → `"ai"` across `BookmarkBadge`, `TextView`,
+- [x] Rename `"main"` → `"ai"` across `BookmarkBadge`, `TextView`,
       `SplitRail`, `Hero`; `TextView`'s `ai` branch becomes an editable
       textarea (mirrors the `notes` branch) instead of read-only `<p>`.
-- [ ] `globals.css`: rename `--color-bookmark-main` → `--color-bookmark-ai`.
-- [ ] Neutral/null state rendering in `VideoListItem` and the header state
+- [x] `globals.css`: rename `--color-bookmark-main` → `--color-bookmark-ai`.
+- [x] Neutral/null state rendering in `VideoListItem` and the header state
       dropdown's "nothing selected yet" display.
-- [ ] New `AddRecordListItem` (child of `Navigation`, since it's only
+- [x] New `AddRecordListItem` (child of `Navigation`, since it's only
       meaningful pinned at the end of that one list): same visual
       language as `VideoListItem`, `+` glyph instead of a date/color icon,
       always last, opens the native file dialog on click.
-- [ ] Drag-and-drop anywhere on the Performance Review page (while
+- [x] Drag-and-drop anywhere on the Performance Review page (while
       mounted) creates a record per dropped file and selects the first
       new one.
-- [ ] `MediaPlayer` plays the real hero file via `convertFileSrc`
+- [x] `MediaPlayer` plays the real hero file via `convertFileSrc`
       (fallback placeholder only if a record somehow has no hero file).
 
 ### Phase 4 — Verify
-- [ ] `npm run build` (static export) and `npm run app:build` both clean.
+- [x] `npm run build` (static export) and `npm run app:build` both clean.
 - [ ] Manually exercise end-to-end: drag a real video in, confirm the
       folder/files land correctly in `~/Documents/Master's Circle/`,
       confirm notes/AI-analysis edits round-trip through app restarts.
-- [ ] Update `FEATURES.md` (Performance Review section) to move the
+      **Not verified headlessly** — the built `.app` was launched and
+      confirmed to run, but driving its UI (navigating to Performance
+      Review, clicking "Add record", dropping a file) needs real mouse/
+      keyboard input. `osascript`/System Events keystroke injection was
+      attempted and rejected ("osascript is not allowed to send
+      keystrokes"), and claude-in-chrome is browser-only and off-limits
+      per CLAUDE.md regardless. Please exercise this by hand.
+- [x] Update `FEATURES.md` (Performance Review section) to move the
       relevant bullets from "UI shell" to "real".
 
 ## Next (deliberately deferred, don't build yet)
