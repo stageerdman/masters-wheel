@@ -268,6 +268,18 @@ there's no clear/reset affordance yet (noted below). Redefining it again
 (Option-drag or Option-resize into place) overwrites it with a correct
 one now that the underlying math is fixed.
 
+## v7: the drag ghost preview had the same drift bug as v6
+After fixing the real window's drift (v6), the drop-zone ghost preview
+in `DockZoneOverlay` still showed the stale, drifted position for a
+redefined center preset. Same root cause, same fix: `.ghostCenter` also
+centers via `transform: translate(-50%, 0)`, and the override branch
+that sets an absolute pixel `left` never cleared it. Added the same
+`transform: translate(0, 0)` override there. Two copies of the same CSS
+formula (window + ghost preview, by design — see the v1/v2 notes on why)
+means a fix to one has to be checked against the other; grepped for every
+`override.*left` and `translate(-50%` site this time to confirm there
+isn't a third copy hiding anywhere.
+
 ## Deliberately deferred (not blocking v1)
 - Which preset is active (`dockState`) doesn't persist across reloads —
   always reopens at "left." Per-preset *geometry* overrides (Option-

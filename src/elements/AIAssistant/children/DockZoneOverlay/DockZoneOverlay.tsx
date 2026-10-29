@@ -26,12 +26,17 @@ export function DockZoneOverlay({ activeZone, presetOverrides }: DockZoneOverlay
     <div className={position.root} data-construction>
       {ZONES.map((zone) => {
         const override = presetOverrides[zone];
+        // Same fix as AIAssistantWindow: ghostCenter also centers itself
+        // via transform: translate(-50%, 0), which must not stack on top
+        // of an already-absolute override left — otherwise the preview
+        // drifts left of where the window will actually land.
         const style: React.CSSProperties | undefined = override
           ? {
               left: `${override.left}px`,
               top: `${override.top}px`,
               width: `${override.width}px`,
               height: `${override.height}px`,
+              transform: "translate(0, 0)",
             }
           : undefined;
         return (

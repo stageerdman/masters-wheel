@@ -19,10 +19,11 @@ flush-bottom/top-rounded-only corners, manual resize), v3 (side menu
 decoupled from dock state into a header-toggled overlay), v4 (Option/Alt
 redefines whichever preset is active, persisted to localStorage —
 corrects v3's initial freeform-4th-state misread), v5 (dropped the
-hybrid dock, down to 2 presets), and v6 (bug fix: center drifted left
-once redefined, due to a leftover centering transform stacking under an
-absolute override). All verified (build/tsc/lint clean, SSR-checked
-against the running dev server) and pushed.
+hybrid dock, down to 2 presets), v6 (bug fix: center drifted left once
+redefined, due to a leftover centering transform stacking under an
+absolute override), and v7 (same fix applied to the drag ghost preview,
+which had an identical copy of the bug). All verified (build/tsc/lint
+clean, SSR-checked against the running dev server) and pushed.
 
 ## Element plan
 ```
