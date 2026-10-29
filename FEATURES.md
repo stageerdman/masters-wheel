@@ -4,6 +4,18 @@ Running tracker: what's built (as UI shell — fake data, no backend) vs. what
 still needs to be dictated and built. Update this whenever a feature moves
 between the two lists. Each page gets its own section as pages get added.
 
+## Packaging (native app)
+
+### Built
+- [x] Packaged as a native macOS app via Tauri: Next.js builds to a static
+      export (`output: "export"`), and Tauri wraps it in a real `.app`
+      bundle (`npm run app:build`) instead of a browser tab. UI shell is
+      unchanged — this only changes how it's launched/distributed.
+
+### To build (real functionality — not started)
+- [ ] Windows/Linux packaging (macOS-only for now)
+- [ ] Code signing / notarization for distribution outside this machine
+
 ## AI Assistant (global — every page)
 
 ### Built (UI shell only — no real functionality behind it)

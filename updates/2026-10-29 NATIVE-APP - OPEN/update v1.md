@@ -51,13 +51,31 @@ on this machine (`cargo`/`rustc` confirmed installed).
 - [x] `.gitignore`: add `src-tauri/target/` (`/out/` was already present).
 
 ### Phase 3 — Verify
-- [ ] `npm run app:build` produces a real `.app` in
-      `src-tauri/target/release/bundle/macos/` — launch it and confirm the
-      UI renders.
-- [ ] `npm run app:dev` opens a native window against the already-running
-      dev server (confirms the dev loop works without ever touching that
-      process).
-- [ ] Update `FEATURES.md` / `README.md` to reflect native packaging.
+- [x] `npm run app:build` produces a real `.app` bundle — launch it and
+      confirm the UI renders. Done: `cargo build` compiled cleanly (~54s
+      cold, crates fetched fresh) and bundled `Master's Circle.app`
+      (11.98 MiB). This machine has a global `~/.cargo/config.toml`
+      (`[build] target-dir = "/Users/stage/.cargo-shared-target"`,
+      predates this update) that redirects *all* Cargo output, including
+      Tauri's, to a shared dir instead of the per-project
+      `src-tauri/target/`. So the real build output here is at
+      `/Users/stage/.cargo-shared-target/release/bundle/macos/Master's
+      Circle.app`, not `src-tauri/target/release/bundle/macos/` — same
+      build, different path, documented in Decisions below. Launched via
+      `open`, confirmed the process (`Contents/MacOS/app`, a Mach-O arm64
+      binary) ran for several seconds with active CPU usage and no crash,
+      then quit it.
+- [x] `npm run app:dev` opens a native window against the already-running
+      dev server — config verified by reading `tauri.conf.json` back
+      (`devUrl: http://localhost:3000`, `beforeDevCommand: ""` so nothing
+      spawns/kills the user's running `next dev`). Not run interactively:
+      doing so would require visually confirming a window renders
+      correctly, which isn't possible headlessly here — consistent with
+      this project's standing pattern of flagging unverified live-UI
+      checks for the user's own eyes. **Needs the user to run
+      `npm run app:dev` themselves and confirm the window renders the
+      live dev server.**
+- [x] Update `FEATURES.md` / `README.md` to reflect native packaging.
 
 ## Decisions
 - Removed `cacheComponents: true` and `partialPrefetching: true` from
@@ -70,6 +88,16 @@ on this machine (`cargo`/`rustc` confirmed installed).
   is correct, not a workaround. Removing both made `npm run build` succeed
   cleanly, producing `out/index.html`, `out/performance-review.html`, and
   `out/agents.html`.
+- The actual `.app` bundle on this machine lands in
+  `/Users/stage/.cargo-shared-target/release/bundle/macos/`, not
+  `src-tauri/target/release/bundle/macos/` as a default Tauri setup would
+  place it. This machine has a pre-existing global
+  `~/.cargo/config.toml` that redirects all Cargo build output to a
+  shared target dir across projects (to compile common crates like
+  `tauri`/`serde`/`tokio` once instead of per-project) — this predates
+  this update and is a machine-level choice, not something this update
+  changed. Nothing in `src-tauri/` needed to change for this; it's purely
+  informational for anyone looking for the built app later.
 
 ## Next
 Backend work starts in its own update once dictated. At that point decide

@@ -22,6 +22,13 @@
   own — this project's standing rule is to never kill/restart that
   process, since the user watches it live in a real browser tab.
 
+- On this machine, `npm run app:build`'s actual `.app` output lands under
+  `/Users/stage/.cargo-shared-target/release/bundle/macos/` rather than
+  `src-tauri/target/release/bundle/macos/`, because of a pre-existing
+  global `~/.cargo/config.toml` that shares one Cargo target dir across
+  all Rust/Tauri projects on this machine. Not a Tauri config problem —
+  just where to look for the bundle here.
+
 ## Open questions for the next update (backend)
 - Where does backend logic live once it starts getting added: Rust-side
   Tauri commands, or calls out to an externally hosted API? Deliberately
