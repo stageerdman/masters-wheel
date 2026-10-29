@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
 
-const ALL_KINDS: ContentKind[] = ["main", "transcript", "notes", "lessons"];
+const ALL_KINDS: ContentKind[] = ["ai", "transcript", "notes", "lessons"];
 
 type DragInfo = {
   startY: number;
@@ -20,7 +20,7 @@ export function useSplitRail() {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [linePx, setLinePx] = useState<number | null>(null); // null = resting at the very bottom (unsplit)
   const [bottomKind, setBottomKind] = useState<ContentKind | null>(null);
-  const [activeTop, setActiveTop] = useState<ContentKind>("main");
+  const [activeTop, setActiveTop] = useState<ContentKind>("ai");
   const [dragOffset, setDragOffset] = useState<{ kind: ContentKind; offsetY: number } | null>(null);
   const dragRef = useRef<DragInfo | null>(null);
 

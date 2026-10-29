@@ -12,10 +12,13 @@ import styles from "./Hero.styles.module.css";
 
 type HeroProps = {
   video: VideoRecord;
+  heroSrc: string | null;
   notes: string;
   lessons: string;
+  aiAnalysis: string;
   onNotesChange: (value: string) => void;
   onLessonsChange: (value: string) => void;
+  onAiAnalysisChange: (value: string) => void;
   onOfferedAmountChange: (value: number | null) => void;
   onOfferedCurrencyChange: (value: string | null) => void;
   onDescriptionChange: (value: string) => void;
@@ -23,15 +26,18 @@ type HeroProps = {
 
 export function Hero({
   video,
+  heroSrc,
   notes,
   lessons,
+  aiAnalysis,
   onNotesChange,
   onLessonsChange,
+  onAiAnalysisChange,
   onOfferedAmountChange,
   onOfferedCurrencyChange,
   onDescriptionChange,
 }: HeroProps) {
-  const [active, setActive] = useState<ContentKind>("main");
+  const [active, setActive] = useState<ContentKind>("ai");
 
   return (
     <section className={`${styles.root} ${position.root}`} data-construction>
@@ -49,7 +55,7 @@ export function Hero({
         />
       </div>
       <div className={position.mediaSlot} data-construction>
-        <MediaPlayer title={video.title} />
+        <MediaPlayer title={video.title} src={heroSrc} />
       </div>
       <div className={position.railSlot} data-construction>
         <BookmarkRail active={active} onSelect={setActive} />
@@ -60,8 +66,10 @@ export function Hero({
           video={video}
           notes={notes}
           lessons={lessons}
+          aiAnalysis={aiAnalysis}
           onNotesChange={onNotesChange}
           onLessonsChange={onLessonsChange}
+          onAiAnalysisChange={onAiAnalysisChange}
         />
       </div>
     </section>

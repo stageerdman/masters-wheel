@@ -8,8 +8,12 @@ type VideoListItemProps = {
   onClick: () => void;
 };
 
+// Neutral core-palette glyph for a freshly created record that hasn't
+// been classified yet (state: null) — never guesses a real state.
+const UNSET_META = { glyph: "○", color: "var(--color-text-muted)" };
+
 export function VideoListItem({ video, active, onClick }: VideoListItemProps) {
-  const meta = CALL_STATE_META[video.state];
+  const meta = video.state ? CALL_STATE_META[video.state] : UNSET_META;
   return (
     <button
       type="button"

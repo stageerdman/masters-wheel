@@ -11,11 +11,21 @@ type DetailProps = {
   video: VideoRecord;
   notes: string;
   lessons: string;
+  aiAnalysis: string;
   onNotesChange: (value: string) => void;
   onLessonsChange: (value: string) => void;
+  onAiAnalysisChange: (value: string) => void;
 };
 
-export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }: DetailProps) {
+export function Detail({
+  video,
+  notes,
+  lessons,
+  aiAnalysis,
+  onNotesChange,
+  onLessonsChange,
+  onAiAnalysisChange,
+}: DetailProps) {
   const {
     railRef,
     linePx,
@@ -42,8 +52,10 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
             video={video}
             notes={notes}
             lessons={lessons}
+            aiAnalysis={aiAnalysis}
             onNotesChange={onNotesChange}
             onLessonsChange={onLessonsChange}
+            onAiAnalysisChange={onAiAnalysisChange}
           />
         </div>
         {isSplit && bottomKind && (
@@ -59,8 +71,10 @@ export function Detail({ video, notes, lessons, onNotesChange, onLessonsChange }
                 video={video}
                 notes={notes}
                 lessons={lessons}
+                aiAnalysis={aiAnalysis}
                 onNotesChange={onNotesChange}
                 onLessonsChange={onLessonsChange}
+                onAiAnalysisChange={onAiAnalysisChange}
               />
             </div>
           </>

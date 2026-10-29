@@ -19,3 +19,7 @@
 .label {
   font-size: var(--text-size-label);
 }
+
+.video {
+  object-fit: contain;
+}

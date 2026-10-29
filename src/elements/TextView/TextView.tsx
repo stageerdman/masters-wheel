@@ -8,18 +8,33 @@ type TextViewProps = {
   video: VideoRecord;
   notes: string;
   lessons: string;
+  aiAnalysis: string;
   onNotesChange: (value: string) => void;
   onLessonsChange: (value: string) => void;
+  onAiAnalysisChange: (value: string) => void;
 };
 
 // Renders whichever text type is active. Transcript lines are clickable but
 // seeking is a no-op for now — no real media to scrub. See FEATURES.md.
-export function TextView({ kind, video, notes, lessons, onNotesChange, onLessonsChange }: TextViewProps) {
-  if (kind === "main") {
+export function TextView({
+  kind,
+  video,
+  notes,
+  lessons,
+  aiAnalysis,
+  onNotesChange,
+  onLessonsChange,
+  onAiAnalysisChange,
+}: TextViewProps) {
+  if (kind === "ai") {
     return (
-      <p className={`${styles.readOnlyText} ${position.readOnlyText}`} data-construction>
-        {video.mainText}
-      </p>
+      <textarea
+        className={`${styles.editableText} ${position.editableText}`}
+        data-construction
+        value={aiAnalysis}
+        onChange={(event) => onAiAnalysisChange(event.target.value)}
+        placeholder="AI analysis"
+      />
     );
   }
 

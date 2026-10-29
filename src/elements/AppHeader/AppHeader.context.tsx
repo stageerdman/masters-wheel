@@ -17,7 +17,7 @@ export type HeaderIslandOption = {
 
 export type HeaderIsland = {
   stateOptions: HeaderIslandOption[];
-  activeStateId: string;
+  activeStateId: string | null;
   onStateChange: (id: string) => void;
 } | null;
 

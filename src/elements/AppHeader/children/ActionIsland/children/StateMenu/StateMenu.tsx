@@ -7,14 +7,19 @@ import styles from "./StateMenu.styles.module.css";
 
 type StateMenuProps = {
   options: HeaderIslandOption[];
-  activeId: string;
+  activeId: string | null;
   onChange: (id: string) => void;
 };
+
+// Neutral core-palette glyph shown when nothing has been classified yet
+// (a freshly created record starts with state: null) — never falls back
+// to the first real option, which would dishonestly imply a state.
+const UNSET: HeaderIslandOption = { id: "", glyph: "○", color: "var(--color-text-muted)", label: "Unclassified" };
 
 export function StateMenu({ options, activeId, onChange }: StateMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const active = options.find((option) => option.id === activeId) ?? options[0];
+  const active = (activeId !== null ? options.find((option) => option.id === activeId) : null) ?? UNSET;
 
   useEffect(() => {
     if (!open) return;

@@ -5,7 +5,7 @@ import styles from "./ActionIsland.styles.module.css";
 
 type ActionIslandProps = {
   stateOptions: HeaderIslandOption[];
-  activeStateId: string;
+  activeStateId: string | null;
   onStateChange: (id: string) => void;
 };
 

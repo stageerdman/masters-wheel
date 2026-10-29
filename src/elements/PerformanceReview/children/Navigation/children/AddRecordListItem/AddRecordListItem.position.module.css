@@ -1,0 +1,24 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  height: 56px;
+  padding: 0 0.75rem;
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.textRows {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}

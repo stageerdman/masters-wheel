@@ -1,9 +1,3 @@
-.readOnlyText {
-  color: var(--color-text);
-  font-size: var(--text-size-body);
-  line-height: 1.5;
-}
-
 .transcriptLine {
   background: transparent;
   border: none;
