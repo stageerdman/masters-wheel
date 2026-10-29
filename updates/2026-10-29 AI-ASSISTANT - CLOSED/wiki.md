@@ -241,10 +241,41 @@ centered instead of left-anchored"). Since the side menu was already
 independent of dock state (v3), dropping hybrid didn't touch it at all —
 the side-menu overlay still works identically in both remaining docks.
 
+## v6: bug fix — center dock drifted left once redefined
+Real bug, not another misunderstanding. `dockCenter` self-centers via
+`left: 50%` + `transform: translate(-50%, 0)` — a percentage transform
+relative to the box's *own* width, the standard CSS centering trick. The
+`activeOverride` inline-style branch set absolute pixel `left`/`top`
+but never touched `transform`, so the class's `translate(-50%, 0)` kept
+applying on top of an already-absolute, already-correct `left` — shifting
+the box an extra half-width to the left on every render. Because the
+resize-redefine path re-reads the *current rendered* position via
+`getBoundingClientRect()` each time, every subsequent redefinition baked
+in that same drift again, compounding it — matching the report ("pulls
+to the left," "can't move it," glitching). `left` never showed this
+because its base transform is `translate(0, 0)`, a no-op.
+
+Fix: the `activeOverride` branch now also sets `transform` inline —
+`translate(0, 0)` normally, or `translate(dragX, dragY)` while actively
+mid-drag — fully replacing the class's percentage-based transform
+instead of stacking under it. Applied unconditionally (not just for
+center) for uniformity, though left was never actually affected.
+
+**If a bad override got saved while this bug was live**, it'll keep
+rendering at that bad spot even after the fix, because a plain drag
+always prefers a preset's saved override over its default geometry, and
+there's no clear/reset affordance yet (noted below). Redefining it again
+(Option-drag or Option-resize into place) overwrites it with a correct
+one now that the underlying math is fixed.
+
 ## Deliberately deferred (not blocking v1)
-- `dockState` persistence across reloads for the 3 presets (Option-placed
-  "custom" placements persist via localStorage now; left/center/hybrid
-  still always reset to left on reload).
+- Which preset is active (`dockState`) doesn't persist across reloads —
+  always reopens at "left." Per-preset *geometry* overrides (Option-
+  redefined position/size) do persist, independently, via
+  `presetOverrides` in localStorage.
+- No way to clear/reset a preset's saved override back to its built-in
+  default short of editing localStorage directly — relevant if a bad
+  override ever gets saved (see v6).
 - Keyboard-only path to cycle dock states or toggle the side menu
   (accessibility gap, needs an owner once the pointer-drag version is
   stable). The side menu's hidden-but-still-mounted overlay also isn't

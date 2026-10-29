@@ -18,9 +18,11 @@ CLOSED — all 4 phases built, plus v2 (accurate drag-preview geometry,
 flush-bottom/top-rounded-only corners, manual resize), v3 (side menu
 decoupled from dock state into a header-toggled overlay), v4 (Option/Alt
 redefines whichever preset is active, persisted to localStorage —
-corrects v3's initial freeform-4th-state misread), and v5 (dropped the
-hybrid dock, down to 2 presets). All verified (build/tsc/lint clean,
-SSR-checked against the running dev server) and pushed.
+corrects v3's initial freeform-4th-state misread), v5 (dropped the
+hybrid dock, down to 2 presets), and v6 (bug fix: center drifted left
+once redefined, due to a leftover centering transform stacking under an
+absolute override). All verified (build/tsc/lint clean, SSR-checked
+against the running dev server) and pushed.
 
 ## Element plan
 ```

@@ -112,12 +112,18 @@ export function AIAssistantWindow({
     });
   } else if (activeOverride && !showCollapsedGeometry) {
     // The current preset has been Option-redefined — exact pixels,
-    // persisted, takes over from its built-in default geometry.
+    // persisted, takes over from its built-in default geometry. Also
+    // overrides `transform`: the dock classes bake in a percentage-based
+    // centering transform (e.g. dockCenter's translate(-50%, 0), relative
+    // to the box's own width) which must NOT stack on top of an already-
+    // absolute override left — left untouched, that extra -50% silently
+    // shifts the box left by half its width every render.
     Object.assign(inlineStyle, {
       left: `${activeOverride.left}px`,
       top: `${activeOverride.top}px`,
       width: `${activeOverride.width}px`,
       height: `${activeOverride.height}px`,
+      transform: dragOffset ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : "translate(0, 0)",
     });
   }
   const hasInlineStyle = Object.keys(inlineStyle).length > 0;
