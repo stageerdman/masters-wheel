@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import type { ChangeEvent, KeyboardEvent } from "react";
-import type { Agent } from "@/elements/AIAssistant/AIAssistant.script";
 
 type ActiveMention = { start: number; query: string };
 
@@ -15,11 +14,23 @@ function findActiveMention(value: string, cursor: number): ActiveMention | null 
   return { start: at, query };
 }
 
-// Typing "@" opens a picker suggesting agents (filtered by what's typed
-// since the "@"); selecting one inserts "@AgentName " in place of the
-// partial query. Mirrors the useSplitRail/useWindowDock shape loosely —
-// plain state + a few pure handlers, no external DnD/combobox library.
-export function useMentionPicker(value: string, onChange: (value: string) => void, agents: Agent[]) {
+function defaultMatch(name: string, query: string) {
+  return name.toLowerCase().startsWith(query.toLowerCase());
+}
+
+// Generic "@mention" state machine, shared by anything that lets you
+// reference a named item inline in free text (the AI Assistant's chat
+// Composer referencing agents, the Agents editor's Instructions field
+// referencing knowledge files). Typing "@" opens a picker filtered by
+// what's typed since the "@"; selecting an item inserts "@Name " in place
+// of the partial query. Only ever touches items through `.name`, so it's
+// generic over whatever shape of item has one.
+export function useMentionPicker<T extends { name: string }>(
+  value: string,
+  onChange: (value: string) => void,
+  items: T[],
+  match: (item: T, query: string) => boolean = (item, query) => defaultMatch(item.name, query),
+) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [cursor, setCursor] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -29,20 +40,20 @@ export function useMentionPicker(value: string, onChange: (value: string) => voi
 
   const matches = useMemo(() => {
     if (!mention) return [];
-    const query = mention.query.toLowerCase();
-    return agents.filter((agent) => agent.name.toLowerCase().startsWith(query));
-  }, [mention, agents]);
+    return items.filter((item) => match(item, mention.query));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mention, items]);
 
   const isOpen = mention !== null && matches.length > 0 && !isDismissed;
   const safeActiveIndex = Math.min(activeIndex, Math.max(matches.length - 1, 0));
 
-  function selectAgent(agent: Agent) {
+  function selectItem(item: T) {
     if (!mention) return;
     const before = value.slice(0, mention.start);
     const after = value.slice(mention.start + 1 + mention.query.length);
-    const next = `${before}@${agent.name} ${after}`;
+    const next = `${before}@${item.name} ${after}`;
     onChange(next);
-    const nextCursor = before.length + agent.name.length + 2;
+    const nextCursor = before.length + item.name.length + 2;
     setCursor(nextCursor);
     setIsDismissed(false);
     setActiveIndex(0);
@@ -60,7 +71,7 @@ export function useMentionPicker(value: string, onChange: (value: string) => voi
   }
 
   // Returns true when it handled the key (caller should skip its own
-  // Enter-to-send handling for that keystroke).
+  // handling, e.g. Enter-to-send, for that keystroke).
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): boolean {
     if (!isOpen) return false;
     if (event.key === "ArrowDown") {
@@ -75,7 +86,7 @@ export function useMentionPicker(value: string, onChange: (value: string) => voi
     }
     if (event.key === "Enter" || event.key === "Tab") {
       event.preventDefault();
-      selectAgent(matches[safeActiveIndex]);
+      selectItem(matches[safeActiveIndex]);
       return true;
     }
     if (event.key === "Escape") {
@@ -91,7 +102,8 @@ export function useMentionPicker(value: string, onChange: (value: string) => voi
     isOpen,
     matches,
     activeIndex: safeActiveIndex,
-    selectAgent,
+    mentionQuery: mention?.query ?? null,
+    selectItem,
     handleChange,
     handleKeyDown,
   };

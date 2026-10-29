@@ -2,7 +2,7 @@
 
 import type { KeyboardEvent } from "react";
 import type { Agent } from "@/elements/AIAssistant/AIAssistant.script";
-import { useMentionPicker } from "./Composer.script";
+import { useMentionPicker } from "@/lib/useMentionPicker";
 import position from "./Composer.position.module.css";
 import styles from "./Composer.styles.module.css";
 
@@ -15,7 +15,7 @@ type ComposerProps = {
 };
 
 export function Composer({ value, onChange, onSend, density, agents }: ComposerProps) {
-  const { textareaRef, isOpen, matches, activeIndex, selectAgent, handleChange, handleKeyDown } = useMentionPicker(
+  const { textareaRef, isOpen, matches, activeIndex, selectItem, handleChange, handleKeyDown } = useMentionPicker(
     value,
     onChange,
     agents,
@@ -43,7 +43,7 @@ export function Composer({ value, onChange, onSend, density, agents }: ComposerP
                 index === activeIndex ? styles.mentionItemActive : ""
               }`}
               data-construction
-              onClick={() => selectAgent(agent)}
+              onClick={() => selectItem(agent)}
             >
               <span className={`${styles.mentionAvatar} ${position.mentionAvatar}`} data-construction>
                 {agent.initial}
