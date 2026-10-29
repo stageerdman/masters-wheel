@@ -33,17 +33,22 @@ on this machine (`cargo`/`rustc` confirmed installed).
       (`/`, `/performance-review`, `/agents`) as static HTML.
 
 ### Phase 2 — Tauri shell
-- [ ] Add `@tauri-apps/cli` (dev dependency) and `@tauri-apps/api`.
-- [ ] Scaffold `src-tauri/` (Cargo.toml, tauri.conf.json, build.rs,
-      src/main.rs, icons) targeting macOS only for now.
-- [ ] `tauri.conf.json`: `frontendDist` → `../out`, `devUrl` →
+- [x] Add `@tauri-apps/cli` (dev dependency) and `@tauri-apps/api`.
+- [x] Scaffold `src-tauri/` (Cargo.toml, tauri.conf.json, build.rs,
+      src/main.rs, icons) targeting macOS only for now. Scaffolded via
+      `npx tauri init --ci` (non-interactive flag), then hand-edited
+      `tauri.conf.json`.
+- [x] `tauri.conf.json`: `frontendDist` → `../out`, `devUrl` →
       `http://localhost:3000` (the dev server the user already has running
       — config points at it, nothing in this setup starts/stops it),
-      `beforeBuildCommand` → `npm run build`, product name "Master's
-      Circle", a macOS bundle identifier.
-- [ ] `package.json` scripts: `app:dev` (`tauri dev`), `app:build`
+      `beforeBuildCommand` → `npm run build`, `beforeDevCommand` left empty
+      (so `tauri dev` never spawns its own Next.js server), product name
+      "Master's Circle", bundle identifier `com.erdman.masterswheel`,
+      `bundle.targets` narrowed to `["app"]` since only a macOS `.app` is
+      in scope right now.
+- [x] `package.json` scripts: `app:dev` (`tauri dev`), `app:build`
       (`tauri build`).
-- [ ] `.gitignore`: add `src-tauri/target/` and `out/`.
+- [x] `.gitignore`: add `src-tauri/target/` (`/out/` was already present).
 
 ### Phase 3 — Verify
 - [ ] `npm run app:build` produces a real `.app` in
