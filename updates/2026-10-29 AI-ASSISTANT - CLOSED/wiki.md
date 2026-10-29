@@ -280,6 +280,50 @@ means a fix to one has to be checked against the other; grepped for every
 `override.*left` and `translate(-50%` site this time to confirm there
 isn't a third copy hiding anywhere.
 
+## v8: modularization pass — logic out of .tsx, one concern per script file
+Explicit ask for purity/modularity. Audited the tree against two existing
+precedents in this codebase before touching anything:
+
+- **`ActionIsland`** (`src/elements/AppHeader/children/ActionIsland/`)
+  keeps its two simple buttons inline, styled via its own
+  `.styles`/`.position` classes, and only extracts `StateMenu` (a real
+  sub-widget with its own behavior) into `children/`. This is precedent
+  *against* extracting `AIAssistantWindow`'s header buttons, drag handle,
+  or resize handle into their own folders — they're the same kind of
+  "simple leaf button" ActionIsland already keeps inline. Did **not**
+  extract them; doing so would have been over-modularizing relative to
+  how this codebase already does this.
+- **`AIAssistantWindow.data.ts` coexisting with `AIAssistantWindow.script.ts`**
+  is this project's own precedent for an element having more than the
+  standard four files when a concern genuinely doesn't fit the others.
+  Used the same reasoning to justify `AIAssistant.windowDock.script.ts`
+  below.
+
+What actually moved:
+- **`AIAssistant.script.ts` split in two.** It had grown to ~330 lines
+  mixing chat/session CRUD with dock/drag/resize/placement physics — two
+  entirely unrelated concerns that happened to share a file only because
+  both need to outlive the window unmounting on collapse. Chat/session
+  state stays in `AIAssistant.script.ts` (the hook is even already named
+  `useAIAssistant`, matching the element). Dock/drag/resize/
+  override/side-menu state — plus the `DockState`/`PresetOverride`/
+  `PresetOverrides` types and the localStorage helpers — moved to a new
+  `AIAssistant.windowDock.script.ts`. Every file that imports these
+  types (`AIAssistantWindow.tsx`, `AIAssistantWindow.script.ts`,
+  `DockZoneOverlay.tsx`) now points at whichever file actually owns them
+  instead of the one grab-bag file.
+- **The geometry/style computation moved out of `AIAssistantWindow.tsx`
+  into `AIAssistantWindow.script.ts`** as `useWindowGeometry`. This is
+  the exact logic that caused both the v6 and v7 bugs — real,
+  non-trivial domain logic (composing drag offsets, ephemeral resize,
+  and persisted overrides into one inline style, with the subtle
+  transform-stacking trap) that had no business sitting in a component
+  body. The chat-column's drag-over/drop state and handlers moved too,
+  as `useChatDropTarget`. `AIAssistantWindow.tsx` is now markup only:
+  it calls two hooks, picks a CSS class, and renders — exactly what
+  CLAUDE.md's "Name.tsx... markup and any trivial inline behavior" is
+  describing by contrast.
+
 ## Deliberately deferred (not blocking v1)
 - Which preset is active (`dockState`) doesn't persist across reloads —
   always reopens at "left." Per-preset *geometry* overrides (Option-

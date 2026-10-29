@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import type { DragEvent, PointerEvent as ReactPointerEvent, RefObject } from "react";
-import type { Agent, ChatSession, DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.script";
+import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
+import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.script";
+import type { DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
 import { ActiveAgentChip } from "./children/ActiveAgentChip/ActiveAgentChip";
 import { AgentRoster } from "./children/AgentRoster/AgentRoster";
 import { Composer } from "./children/Composer/Composer";
 import { HistoryList } from "./children/HistoryList/HistoryList";
 import { MessageList } from "./children/MessageList/MessageList";
-import { useWindowEnterTransition } from "./AIAssistantWindow.script";
+import { useChatDropTarget, useWindowEnterTransition, useWindowGeometry } from "./AIAssistantWindow.script";
 import position from "./AIAssistantWindow.position.module.css";
 import styles from "./AIAssistantWindow.styles.module.css";
 
@@ -71,62 +71,25 @@ export function AIAssistantWindow({
   onRemoveAgentFromChat,
 }: AIAssistantWindowProps) {
   const hasEntered = useWindowEnterTransition();
-  const [isDragOver, setIsDragOver] = useState(false);
+  const { showCollapsedGeometry, style } = useWindowGeometry({
+    isClosing,
+    hasEntered,
+    dragOffset,
+    manualSize,
+    activeOverride,
+  });
+  const { isDragOver, onDragOver, onDragLeave, onDrop } = useChatDropTarget(onDropAgentIntoChat);
 
   function handleTransitionEnd(event: React.TransitionEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
     if (isClosing) onCollapsed();
   }
 
-  function handleDragOver(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setIsDragOver(true);
-  }
-
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setIsDragOver(false);
-    const agentId = event.dataTransfer.getData("text/plain");
-    if (agentId) onDropAgentIntoChat(agentId);
-  }
-
-  const showCollapsedGeometry = !hasEntered || isClosing;
   const geometryClass = showCollapsedGeometry ? position.enter : DOCK_CLASS[dockState];
   const visibilityClass = showCollapsedGeometry ? styles.hidden : styles.visible;
   const transitionSpeedClass = isClosing ? position.closing : "";
   const draggingClass = dragOffset ? position.dragging : "";
   const resizingClass = isResizing ? position.resizing : "";
-
-  const inlineStyle: React.CSSProperties = {};
-  if (dragOffset) {
-    Object.assign(inlineStyle, { "--drag-x": `${dragOffset.x}px`, "--drag-y": `${dragOffset.y}px` });
-  }
-  if (manualSize && !showCollapsedGeometry) {
-    // Ephemeral resize of the current preset — overrides width/height
-    // (and top, so the bottom edge stays flush); clears the moment the
-    // window redocks.
-    Object.assign(inlineStyle, {
-      width: `${manualSize.width}px`,
-      height: `${manualSize.height}px`,
-      top: `calc(100vh - ${manualSize.height}px)`,
-    });
-  } else if (activeOverride && !showCollapsedGeometry) {
-    // The current preset has been Option-redefined — exact pixels,
-    // persisted, takes over from its built-in default geometry. Also
-    // overrides `transform`: the dock classes bake in a percentage-based
-    // centering transform (e.g. dockCenter's translate(-50%, 0), relative
-    // to the box's own width) which must NOT stack on top of an already-
-    // absolute override left — left untouched, that extra -50% silently
-    // shifts the box left by half its width every render.
-    Object.assign(inlineStyle, {
-      left: `${activeOverride.left}px`,
-      top: `${activeOverride.top}px`,
-      width: `${activeOverride.width}px`,
-      height: `${activeOverride.height}px`,
-      transform: dragOffset ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : "translate(0, 0)",
-    });
-  }
-  const hasInlineStyle = Object.keys(inlineStyle).length > 0;
 
   const activeAgents = agents.filter((agent) => activeSession.activeAgentIds.includes(agent.id));
 
@@ -134,7 +97,7 @@ export function AIAssistantWindow({
     <div
       ref={windowRef}
       className={`${styles.root} ${position.root} ${geometryClass} ${visibilityClass} ${transitionSpeedClass} ${draggingClass} ${resizingClass}`}
-      style={hasInlineStyle ? inlineStyle : undefined}
+      style={style}
       data-construction
       onTransitionEnd={handleTransitionEnd}
     >
@@ -184,9 +147,9 @@ export function AIAssistantWindow({
         <div
           className={`${styles.chatColumn} ${position.chatColumn} ${isDragOver ? styles.dragOver : ""}`}
           data-construction
-          onDragOver={handleDragOver}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={handleDrop}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
         >
           {activeAgents.length > 0 && (
             <div className={`${styles.chipRow} ${position.chipRow}`} data-construction>

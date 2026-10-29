@@ -3,7 +3,8 @@
 import { AIAssistantTrigger } from "./children/AIAssistantTrigger/AIAssistantTrigger";
 import { AIAssistantWindow } from "./children/AIAssistantWindow/AIAssistantWindow";
 import { DockZoneOverlay } from "./children/DockZoneOverlay/DockZoneOverlay";
-import { useAIAssistant, useWindowDock } from "./AIAssistant.script";
+import { useAIAssistant } from "./AIAssistant.script";
+import { useWindowDock } from "./AIAssistant.windowDock.script";
 import position from "./AIAssistant.position.module.css";
 import styles from "./AIAssistant.styles.module.css";
 

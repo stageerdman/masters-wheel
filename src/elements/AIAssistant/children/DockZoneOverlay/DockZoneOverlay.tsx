@@ -1,4 +1,4 @@
-import type { DockState, PresetOverrides } from "@/elements/AIAssistant/AIAssistant.script";
+import type { DockState, PresetOverrides } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
 import position from "./DockZoneOverlay.position.module.css";
 import styles from "./DockZoneOverlay.styles.module.css";
 

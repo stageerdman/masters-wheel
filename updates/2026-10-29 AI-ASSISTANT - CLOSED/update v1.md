@@ -21,9 +21,12 @@ redefines whichever preset is active, persisted to localStorage —
 corrects v3's initial freeform-4th-state misread), v5 (dropped the
 hybrid dock, down to 2 presets), v6 (bug fix: center drifted left once
 redefined, due to a leftover centering transform stacking under an
-absolute override), and v7 (same fix applied to the drag ghost preview,
-which had an identical copy of the bug). All verified (build/tsc/lint
-clean, SSR-checked against the running dev server) and pushed.
+absolute override), v7 (same fix applied to the drag ghost preview,
+which had an identical copy of the bug), and v8 (modularization pass —
+split AIAssistant.script.ts by concern, moved AIAssistantWindow's
+geometry/drag-drop logic into its own .script.ts). All verified
+(build/tsc/lint clean, SSR-checked against the running dev server) and
+pushed.
 
 ## Element plan
 ```
@@ -31,10 +34,15 @@ src/elements/AIAssistant/                     (global, mounted in layout.tsx)
   AIAssistant.tsx
   AIAssistant.styles.module.css
   AIAssistant.position.module.css
-  AIAssistant.script.ts        — useAIAssistant: isOpen, dockState, drag
+  AIAssistant.script.ts           — useAIAssistant: open/closed, chat sessions
+  AIAssistant.windowDock.script.ts — useWindowDock: dockState, drag, resize,
+                                      preset overrides, side-menu toggle
   children/
     AIAssistantTrigger/        — idle concentric-circles icon/button
-    AIAssistantWindow/         — header (collapse + drag handle) + content slot
+    DockZoneOverlay/           — ghost previews shown while dragging
+    AIAssistantWindow/         — header (side-menu + drag handle + collapse)
+                                  + resize handle + sidebar + chat column
+      AIAssistantWindow.script.ts — useWindowGeometry, useChatDropTarget
       AIAssistantWindow.data.ts — fake ChatMessage/ChatSession/Agent fixtures
       children/
         MessageList/
@@ -46,6 +54,8 @@ src/elements/AIAssistant/                     (global, mounted in layout.tsx)
           children/AgentRosterItem/
         ActiveAgentChip/
 ```
+(v8 split `AIAssistant.script.ts` in two and moved `AIAssistantWindow`'s
+geometry/drag-drop logic into its `.script.ts` — see wiki.md.)
 
 ## Phased roadmap
 
