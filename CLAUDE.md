@@ -76,6 +76,25 @@ instead of a component library (see "Project-specific notes" below).
 <!-- Local project rules below are preserved across CLAUDE.md rebuilds. -->
 ## Project-specific notes
 
+### Verification constraints
+**Never use the claude-in-chrome browser tool in this project.** It
+restarts/reconnects the user's actual Chrome, which is disruptive — don't
+invoke it, and don't try to "fix" a disconnected state by prompting for it
+again. For UI verification, use `npm run build`/`lint`/`tsc --noEmit`, SSR
+HTML inspection via `curl`, and reasoning through the code — then say
+plainly that live click-through wasn't verified and ask the user to check
+it themselves in their own browser.
+
+**Never kill or restart the `npm run dev` server process** (no
+`lsof ... | xargs kill`, no stopping/relaunching it) while it's already
+running. The user keeps the app open in their own browser watching it live;
+killing the dev server drops its HMR WebSocket and forces that real browser
+tab to hard-reload, which reads as "restarting my browser" even though no
+browser tool was touched. Turbopack's HMR already picks up every file edit
+— there is normally no reason to restart. If a restart is ever genuinely
+required (e.g. an env var or config change that HMR can't pick up), ask
+the user first instead of just doing it.
+
 ### The element convention
 Every UI element is a folder under `src/elements/` (or nested under a parent
 element, see "children" below), named after the element (PascalCase). Inside:
