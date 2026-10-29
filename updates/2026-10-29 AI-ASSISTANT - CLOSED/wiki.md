@@ -324,6 +324,68 @@ What actually moved:
   CLAUDE.md's "Name.tsx... markup and any trivial inline behavior" is
   describing by contrast.
 
+## v9: split-screen sidebar, History/Agents tabs, narrow takeover, @mentions
+Four related asks in one round.
+
+**Sidebar: overlay → split layout.** v3 deliberately made the sidebar an
+absolute overlay ("pop...over," explicitly requested at the time). This
+reverses that: the sidebar is a real flex child again (width 0↔180px,
+`overflow: hidden` while collapsed), so opening it narrows the chat
+column via ordinary flex — "like Claude." The inner content is pinned to
+a fixed 180px (`Sidebar.position.module.css`'s `.inner`) independent of
+the outer clipping width, so nothing reflows mid-transition — only the
+clip window grows/shrinks around stable content.
+
+**Sidebar: extracted as its own element, with tabs instead of stacking.**
+`HistoryList` and `AgentRoster` used to render stacked inside an inline
+div in `AIAssistantWindow.tsx`. Pulled out into a new
+`AIAssistantWindow/children/Sidebar/` element owning a small
+`TABS: {id, label}[]` array and `activeTab` state — only one section
+renders at a time, avoiding the "two long lists, one scroll area" problem
+in a narrow dock. `HistoryList`/`AgentRoster` lost their internal
+"History"/"Agents" `<span>` labels since the tab itself is now the
+section title — would've been a duplicate caption otherwise. `TABS` being
+an array (not a hardcoded boolean toggle) is deliberate: the ask said
+"like Agents *for now*," implying more sections later — adding one is
+just another array entry plus a conditional branch.
+
+**Narrow takeover via CSS container queries, not JS width tracking.**
+"When we cannot split... side menu becomes the main UI, like a phone" —
+needed to know the *rendered* content width regardless of how it got
+that size (preset, Option-redefined override, or manual resize all
+produce different pixel widths through entirely different code paths).
+Rather than a `ResizeObserver` tracking state in JS, `AIAssistantWindow`'s
+`.content` declares `container: window-content / inline-size`, and
+`Sidebar` queries it directly: `@container window-content (max-width:
+480px)` switches `.open` from "grow to 180px, push chat" into "position:
+absolute, slide in over the full content area." `AIAssistantWindow`
+hides its own `chatColumn` under the same breakpoint, driven by the
+`isSideMenuOpen` prop it already has — no reaching into Sidebar's
+internal (hashed, unexported) class names from outside, each element
+only reacts to its own props/container. 480px was picked as the gate
+value: left dock tops out at 400px (always takeover), center dock starts
+at 640px (always splits) — the one case that can land on either side is
+a manually-resized-down center, which is exactly the point of querying
+real width instead of dockState.
+
+**@mention agent picker.** `Composer.script.ts`'s `useMentionPicker`
+finds an "in-progress" mention by scanning backward from the cursor to
+the nearest unescaped `@` with no whitespace since — the same "active
+token at cursor" pattern most editor autocompletes use. Matches filter
+by prefix (case-insensitive `startsWith`), not fuzzy search — 3 agents
+doesn't need more. Selecting one splices `@AgentName ` into the text and
+restores focus/cursor via `requestAnimationFrame` (textarea DOM updates
+need a frame to settle before `setSelectionRange` is reliable).
+`AIAssistant.script.ts` gained `findMentionedAgents(text, agents)`,
+called from `sendMessage()` to `addAgentToActiveChat` for every mention
+— reusing the exact system-line+chip flow the drag-to-add gesture
+already uses, so mentioning and dragging produce identical conversation
+state. `Message.script.ts` gained a *separate* `splitMentions` — same
+"@ + exact agent name at a word boundary" regex idea, but shaped around
+rendering (ordered text/mention segments) rather than membership (a flat
+list), so it wasn't forced into one shared abstraction serving two
+different output shapes.
+
 ## Deliberately deferred (not blocking v1)
 - Which preset is active (`dockState`) doesn't persist across reloads —
   always reopens at "left." Per-preset *geometry* overrides (Option-

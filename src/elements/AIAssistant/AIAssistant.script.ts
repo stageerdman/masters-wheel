@@ -20,6 +20,19 @@ function makeNewSession(): ChatSession {
   return { id: NEW_SESSION_ID, title: "New chat", relativeDate: "Now", messages: [], activeAgentIds: [] };
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Which agents a message text @mentions — matches "@" + an agent's exact
+// name at a word boundary (so "@Coachella" doesn't match "Coach"). Used
+// both to auto-add mentioned agents when a message is sent, and (with
+// its own copy in Message.script.ts, which needs segment positions
+// rather than a plain list) to render the mention as a styled tag.
+export function findMentionedAgents(text: string, agents: Agent[]): Agent[] {
+  return agents.filter((agent) => new RegExp(`@${escapeRegExp(agent.name)}\\b`).test(text));
+}
+
 // Owns the assistant's open/closed state and every chat session's
 // content. Lives here (not inside AIAssistantWindow) so it survives
 // collapsing the window back to the icon — collapsing minimizes, it
@@ -64,6 +77,11 @@ export function useAIAssistant() {
     if (!text) return;
     appendMessageToActive({ id: crypto.randomUUID(), role: "user", text });
     setComposerValue("");
+    // Mentioning an agent in the message text brings them into the
+    // conversation the same way dragging their roster card does.
+    for (const agent of findMentionedAgents(text, AGENTS)) {
+      addAgentToActiveChat(agent.id);
+    }
   }
 
   // Selecting an agent (vs. dragging one into the current chat) switches

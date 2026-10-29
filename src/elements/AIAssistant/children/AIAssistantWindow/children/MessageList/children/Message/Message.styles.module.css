@@ -21,3 +21,9 @@
   color: var(--color-text-muted);
   font-size: var(--text-size-micro);
 }
+
+.mention {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+  font-weight: 600;
+}

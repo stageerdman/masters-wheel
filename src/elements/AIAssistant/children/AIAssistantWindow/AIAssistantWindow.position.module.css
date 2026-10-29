@@ -112,30 +112,19 @@
   cursor: nesw-resize;
 }
 
+/* `container: window-content / inline-size` lets Sidebar query this
+   box's own rendered width (not the viewport's) to decide whether it
+   can split side-by-side or has to take over the whole content area —
+   see Sidebar.position.module.css. `position: relative` scopes
+   Sidebar's narrow-mode `position: absolute` takeover to just this area
+   (below the header), not the whole window. */
 .content {
+  container: window-content / inline-size;
   position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
-  flex-direction: column;
-}
-
-/* Pops over the chat column rather than sharing row space with it, so it
-   works at any dock size/state, not just the wider ones — toggled by the
-   header's side-menu button, independent of dockState. */
-.sidebar {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 180px;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  transform: translateX(-100%);
-  transition: transform 200ms ease-out;
-}
-
-.sidebarOpen {
-  transform: translateX(0);
+  flex-direction: row;
 }
 
 .chatColumn {
@@ -143,6 +132,16 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Hidden while Sidebar has taken over the whole content area (narrow
+   dock) — Sidebar decides *whether* that's happening via the same
+   container query; this just reacts to the same isSideMenuOpen prop
+   AIAssistantWindow already has, no cross-element class coupling needed. */
+@container window-content (max-width: 480px) {
+  .chatColumnSidebarOpen {
+    display: none;
+  }
 }
 
 .chipRow {

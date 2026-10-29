@@ -1,0 +1,70 @@
+/* Where this sits within AIAssistantWindow's content row. Default: a
+   collapsed, zero-width flex child — pushes nothing. `.open` grows it to
+   180px, narrowing the chat column via flex (a real split layout, not an
+   overlay): the chat column is a sibling flex:1 child, so it shrinks to
+   make room automatically.
+
+   `.inner` is a fixed 180px regardless of the outer `.root`'s animating
+   width, so the tab row and list content never reflow mid-transition —
+   only the clipping window grows/shrinks around them. */
+.root {
+  width: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width 200ms ease-out;
+}
+
+.open {
+  width: 180px;
+}
+
+.inner {
+  width: 180px;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tabs {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.5rem 0;
+}
+
+/* Below this inline-size (set by AIAssistantWindow's .content container),
+   there isn't room to split the window into sidebar + chat side by side
+   — the sidebar takes over the whole content area instead, like a
+   phone's nav drawer; AIAssistantWindow hides the chat column itself
+   (via its own chatColumnSidebarOpen class) while this is open. */
+@container window-content (max-width: 480px) {
+  .root {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    overflow: visible;
+    transform: translateX(-100%);
+    transition: transform 200ms ease-out;
+  }
+
+  .open {
+    width: 100%;
+    transform: translateX(0);
+  }
+
+  .inner {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    transition:
+      width 80ms linear,
+      transform 80ms linear;
+  }
+}

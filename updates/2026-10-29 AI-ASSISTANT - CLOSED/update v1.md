@@ -6,9 +6,11 @@ global AI assistant that lives above every environment: an idle animated
 icon that expands into a pop-up chat window. The window docks to one of
 2 presets — left (default, small) and center (larger, horizontally
 centered) — reached by dragging, and collapses back to the icon via a
-small button in its header. A header toggle pops a history/agent
-sidebar over the chat, independent of dock state. UI-shell only: fake
-data, no real AI calls.
+small button in its header. A header toggle splits the chat column to
+make room for a sidebar (History/Agents tabs), independent of dock
+state, collapsing to a full takeover below a width threshold. Typing
+@ in the composer mentions an agent, bringing them into the chat.
+UI-shell only: fake data, no real AI calls.
 
 (Originally shipped with a 3rd "hybrid" dock; dropped in v5 below —
 2 presets turned out to be enough and hybrid was glitchy in practice.)
@@ -22,9 +24,11 @@ corrects v3's initial freeform-4th-state misread), v5 (dropped the
 hybrid dock, down to 2 presets), v6 (bug fix: center drifted left once
 redefined, due to a leftover centering transform stacking under an
 absolute override), v7 (same fix applied to the drag ghost preview,
-which had an identical copy of the bug), and v8 (modularization pass —
+which had an identical copy of the bug), v8 (modularization pass —
 split AIAssistant.script.ts by concern, moved AIAssistantWindow's
-geometry/drag-drop logic into its own .script.ts). All verified
+geometry/drag-drop logic into its own .script.ts), and v9 (split-screen
+sidebar instead of overlay, History/Agents tabs instead of stacked,
+container-query narrow takeover, @mention agent picker). All verified
 (build/tsc/lint clean, SSR-checked against the running dev server) and
 pushed.
 
@@ -46,8 +50,10 @@ src/elements/AIAssistant/                     (global, mounted in layout.tsx)
       AIAssistantWindow.data.ts — fake ChatMessage/ChatSession/Agent fixtures
       children/
         MessageList/
-          children/Message/
-        Composer/
+          children/Message/      — Message.script.ts: splitMentions (render)
+        Composer/                — Composer.script.ts: useMentionPicker
+        Sidebar/                 — History/Agents tab switcher, split layout
+          children (via import): HistoryList, AgentRoster
         HistoryList/
           children/HistoryListItem/
         AgentRoster/
@@ -55,7 +61,8 @@ src/elements/AIAssistant/                     (global, mounted in layout.tsx)
         ActiveAgentChip/
 ```
 (v8 split `AIAssistant.script.ts` in two and moved `AIAssistantWindow`'s
-geometry/drag-drop logic into its `.script.ts` — see wiki.md.)
+geometry/drag-drop logic into its `.script.ts`; v9 added `Sidebar` and
+the @mention scripts — see wiki.md.)
 
 ## Phased roadmap
 

@@ -35,3 +35,36 @@
 .sendGlyph {
   display: block;
 }
+
+.mentionMenu {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.mentionItem {
+  background: none;
+  border: none;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mentionItem:hover {
+  background: color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+.mentionItemActive {
+  background: var(--color-border);
+}
+
+.mentionAvatar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}
+
+.mentionName {
+  font-size: var(--text-size-label);
+}

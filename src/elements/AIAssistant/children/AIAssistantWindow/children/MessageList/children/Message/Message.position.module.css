@@ -23,3 +23,8 @@
   padding: 0.625rem 0.875rem;
   max-width: 75%;
 }
+
+.mention {
+  padding: 0 0.125rem;
+  border-radius: 4px;
+}

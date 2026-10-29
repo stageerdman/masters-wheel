@@ -4,10 +4,9 @@ import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.script";
 import type { DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
 import { ActiveAgentChip } from "./children/ActiveAgentChip/ActiveAgentChip";
-import { AgentRoster } from "./children/AgentRoster/AgentRoster";
 import { Composer } from "./children/Composer/Composer";
-import { HistoryList } from "./children/HistoryList/HistoryList";
 import { MessageList } from "./children/MessageList/MessageList";
+import { Sidebar } from "./children/Sidebar/Sidebar";
 import { useChatDropTarget, useWindowEnterTransition, useWindowGeometry } from "./AIAssistantWindow.script";
 import position from "./AIAssistantWindow.position.module.css";
 import styles from "./AIAssistantWindow.styles.module.css";
@@ -137,15 +136,16 @@ export function AIAssistantWindow({
         onPointerDown={onResizeHandlePointerDown}
       />
       <div className={`${styles.content} ${position.content}`} data-construction>
+        <Sidebar
+          isOpen={isSideMenuOpen}
+          sessions={sessions}
+          activeSessionId={activeSession.id}
+          onSelectSession={onSelectSession}
+          agents={agents}
+          onSelectAgent={onSelectAgent}
+        />
         <div
-          className={`${styles.sidebar} ${position.sidebar} ${isSideMenuOpen ? position.sidebarOpen : ""}`}
-          data-construction
-        >
-          <HistoryList sessions={sessions} activeId={activeSession.id} onSelect={onSelectSession} />
-          <AgentRoster agents={agents} onSelect={onSelectAgent} />
-        </div>
-        <div
-          className={`${styles.chatColumn} ${position.chatColumn} ${isDragOver ? styles.dragOver : ""}`}
+          className={`${styles.chatColumn} ${position.chatColumn} ${isDragOver ? styles.dragOver : ""} ${isSideMenuOpen ? position.chatColumnSidebarOpen : ""}`}
           data-construction
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
@@ -158,8 +158,14 @@ export function AIAssistantWindow({
               ))}
             </div>
           )}
-          <MessageList messages={activeSession.messages} density={density} />
-          <Composer value={composerValue} onChange={onComposerChange} onSend={onSend} density={density} />
+          <MessageList messages={activeSession.messages} density={density} agents={agents} />
+          <Composer
+            value={composerValue}
+            onChange={onComposerChange}
+            onSend={onSend}
+            density={density}
+            agents={agents}
+          />
         </div>
       </div>
     </div>

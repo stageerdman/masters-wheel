@@ -31,14 +31,27 @@ between the two lists. Each page gets its own section as pages get added.
       new position/size, persisted to `localStorage`; a plain drag still
       always snaps between the 2 presets, now rendering each one's saved
       override if it has been redefined
-- [x] Header's side-menu button (left) toggles `HistoryList` +
-      `AgentRoster` as an overlay over the chat column, independent of
-      dock state (works at any size, not just the wider docks); collapse
-      button moved to the header's right side
+- [x] Header's side-menu button (left) toggles a `Sidebar` as a real
+      split layout — it pushes/narrows the chat column (flex width,
+      like Claude's sidebar), not an overlay; collapse button sits on
+      the header's right side
+- [x] `Sidebar` holds `HistoryList` and `AgentRoster` behind a 2-tab
+      switcher (History | Agents, one visible at a time, more tabs can
+      join later) instead of stacking both — keeps scrolling sane in a
+      narrow dock. Below ~480px of content width, the sidebar takes over
+      the whole content area instead of splitting (phone-drawer
+      behavior) — closing it is the only way back to the chat at that size
 - [x] `HistoryList` switches between fake past sessions; `AgentRoster`
       lets you click an agent to open a dedicated session with it, or
       drag one onto the chat to add it alongside — shows an
       `ActiveAgentChip` + a muted system line, no fake agent reply
+- [x] Typing `@` in the composer opens a picker filtered by what you type
+      (click or Arrow keys + Enter/Tab to pick, Escape to dismiss);
+      selecting an agent inserts `@AgentName` in the message. Sending a
+      message with a mention renders it as a styled accent tag in the
+      chat (like tagging a user in a normal chat app) and brings that
+      agent into the conversation the same way dragging their roster
+      card does
 
 ### To build (real functionality — not started)
 - [ ] Real AI backend/model wiring (currently 100% static/local state)

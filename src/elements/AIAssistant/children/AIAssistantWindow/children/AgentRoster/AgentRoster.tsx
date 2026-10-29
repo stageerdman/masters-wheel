@@ -8,12 +8,11 @@ type AgentRosterProps = {
   onSelect: (id: string) => void;
 };
 
+// The Sidebar's "Agents" tab renders this as its sole content, so the
+// section title lives on the tab itself — no label repeated in here.
 export function AgentRoster({ agents, onSelect }: AgentRosterProps) {
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      <span className={`${styles.label} ${position.label}`} data-construction>
-        Agents
-      </span>
       {agents.map((agent) => (
         <AgentRosterItem key={agent.id} agent={agent} onSelect={() => onSelect(agent.id)} />
       ))}

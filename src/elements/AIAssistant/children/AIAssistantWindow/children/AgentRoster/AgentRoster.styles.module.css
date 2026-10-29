@@ -2,8 +2,3 @@
 .root {
   background: var(--color-surface);
 }
-
-.label {
-  font-size: var(--text-size-micro);
-  color: var(--color-text-muted);
-}

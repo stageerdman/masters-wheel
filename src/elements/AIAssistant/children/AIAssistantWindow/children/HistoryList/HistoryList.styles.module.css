@@ -1,10 +1,4 @@
 /* How this element looks. No layout/positioning here. */
 .root {
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.label {
-  font-size: var(--text-size-micro);
-  color: var(--color-text-muted);
 }

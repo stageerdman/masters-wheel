@@ -9,12 +9,11 @@ type HistoryListProps = {
   onSelect: (id: string) => void;
 };
 
+// The Sidebar's "History" tab renders this as its sole content, so the
+// section title lives on the tab itself — no label repeated in here.
 export function HistoryList({ sessions, activeId, onSelect }: HistoryListProps) {
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      <span className={`${styles.label} ${position.label}`} data-construction>
-        History
-      </span>
       {sessions.map((session) => (
         <HistoryListItem
           key={session.id}
