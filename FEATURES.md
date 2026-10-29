@@ -26,11 +26,12 @@ between the two lists. Each page gets its own section as pages get added.
 - [x] Drag the window's top-right corner to manually resize whichever
       dock is active; redocking (dragging the header again) always
       snaps back to that zone's predefined size
-- [x] Hold Option/Alt while dragging the header or resizing to place/size
-      the window exactly where you want instead of snapping to a preset
-      — persists to `localStorage` and becomes the window's default
-      placement on future visits, until you Option-place it again or
-      drag normally to return to the presets
+- [x] Hold Option/Alt while dragging the header or resizing to redefine
+      whichever preset (left/center/hybrid) is currently active — not a
+      separate freeform mode, the preset itself permanently takes on the
+      new position/size, persisted to `localStorage`; a plain drag still
+      always snaps between the 3 presets, now rendering each one's saved
+      override if it has been redefined
 - [x] Header's side-menu button (left) toggles `HistoryList` +
       `AgentRoster` as an overlay over the chat column, independent of
       dock state (works at any size, not just the wider docks); collapse

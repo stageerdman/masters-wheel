@@ -11,11 +11,12 @@ small button in its header. UI-shell only: fake data, no real AI calls.
 
 ## Status
 CLOSED — all 4 phases built, plus v2 (accurate drag-preview geometry,
-flush-bottom/top-rounded-only corners, manual resize) and v3
-(Option/Alt freeform placement persisted to localStorage, side menu
-decoupled from dock state into a header-toggled overlay). All verified
-(build/tsc/lint clean, SSR-checked against the running dev server) and
-pushed.
+flush-bottom/top-rounded-only corners, manual resize), v3 (side menu
+decoupled from dock state into a header-toggled overlay), and v4
+(Option/Alt redefines whichever preset is active, persisted to
+localStorage — corrects v3's initial freeform-4th-state misread). All
+verified (build/tsc/lint clean, SSR-checked against the running dev
+server) and pushed.
 
 ## Element plan
 ```

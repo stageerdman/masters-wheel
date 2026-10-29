@@ -83,19 +83,6 @@
   height: var(--dock-center-h);
 }
 
-/* Option/Alt-dragged or -resized placement — exact left/top/width/height
-   always arrive via inline style (see AIAssistantWindow.tsx), this class
-   only needs to keep composing the live drag-follow transform. The
-   left-dock-shaped fallback below only matters if dockState somehow ends
-   up "custom" without a customPlacement yet (shouldn't happen in practice). */
-.dockCustom {
-  left: var(--dock-gap);
-  top: calc(100vh - var(--dock-left-h));
-  transform: translate(0, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
-  width: var(--dock-left-w);
-  height: var(--dock-left-h);
-}
-
 .header {
   display: flex;
   align-items: center;

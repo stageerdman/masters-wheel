@@ -1,37 +1,49 @@
-import type { DockState } from "@/elements/AIAssistant/AIAssistant.script";
+import type { DockState, PresetOverrides } from "@/elements/AIAssistant/AIAssistant.script";
 import position from "./DockZoneOverlay.position.module.css";
 import styles from "./DockZoneOverlay.styles.module.css";
 
 type DockZoneOverlayProps = {
   activeZone: DockState | null;
+  presetOverrides: PresetOverrides;
 };
 
-// "custom" (Option-placed) has no ghost preview — it isn't a snap target.
-type PresetDockState = Exclude<DockState, "custom">;
-
-const GHOST_CLASS: Record<PresetDockState, string> = {
+const GHOST_CLASS: Record<DockState, string> = {
   left: position.ghostLeft,
   hybrid: position.ghostHybrid,
   center: position.ghostCenter,
 };
 
-const ZONES: PresetDockState[] = ["left", "hybrid", "center"];
+const ZONES: DockState[] = ["left", "hybrid", "center"];
 
 // Ghost previews of the 3 dock geometries — exactly where and how big the
 // window will land — shown only while dragging the window's header; the
-// zone under the cursor highlights more strongly than the other two.
-export function DockZoneOverlay({ activeZone }: DockZoneOverlayProps) {
+// zone under the cursor highlights more strongly than the other two. Any
+// zone that's been Option-redefined previews its saved override instead
+// of the built-in default, since that's where it will actually land.
+export function DockZoneOverlay({ activeZone, presetOverrides }: DockZoneOverlayProps) {
   if (!activeZone) return null;
 
   return (
     <div className={position.root} data-construction>
-      {ZONES.map((zone) => (
-        <div
-          key={zone}
-          className={`${styles.ghost} ${position.ghost} ${GHOST_CLASS[zone]} ${zone === activeZone ? styles.active : ""}`}
-          data-construction
-        />
-      ))}
+      {ZONES.map((zone) => {
+        const override = presetOverrides[zone];
+        const style: React.CSSProperties | undefined = override
+          ? {
+              left: `${override.left}px`,
+              top: `${override.top}px`,
+              width: `${override.width}px`,
+              height: `${override.height}px`,
+            }
+          : undefined;
+        return (
+          <div
+            key={zone}
+            className={`${styles.ghost} ${position.ghost} ${GHOST_CLASS[zone]} ${zone === activeZone ? styles.active : ""}`}
+            style={style}
+            data-construction
+          />
+        );
+      })}
     </div>
   );
 }

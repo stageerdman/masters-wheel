@@ -154,9 +154,11 @@ fixing it would mean abandoning the free auto-centering for that dock
 state, which isn't worth it for a corner-resize affordance in a prototype.
 
 ## v3: Option/Alt freeform placement (persisted) + decoupled side menu
-Two more follow-up asks.
+Two more follow-up asks. **The freeform-placement part below was
+superseded by v4 immediately after** — kept here for the side-menu
+decoupling, which still stands, and as a record of the misread.
 
-**Option-modifier freeform placement.** Holding Option/Alt while starting
+**Option-modifier freeform placement (superseded, see v4).** Holding Option/Alt while starting
 a header drag or a corner resize switches that specific gesture from
 "snap to a preset" to "place/size it exactly where released," committing
 a 4th `dockState`, `"custom"`, with an explicit `{ left, top, width,
@@ -197,6 +199,31 @@ Header layout changed to accommodate this: the side-menu toggle moved to
 the left, the collapse (h-line) button moved to the right, and both now
 share one `.headerButton` class (previously `.collapseButton`, used by
 only one button) since they're visually identical chrome.
+
+## v4: correction — Option redefines the preset, it doesn't escape to a 4th state
+v3 (above) misread the ask: it introduced a separate `"custom"` dockState
+— Option-drag/resize escaped the 3 presets into a freeform 4th mode.
+What was actually wanted: holding Option while dragging/resizing
+**doesn't change which preset you're in** — it redefines that preset's
+own geometry, permanently. If you're docked at "left" and Option-drag it
+somewhere, "left" now means that new spot, for good (until redefined
+again) — there's no 4th state to escape to or fall back from.
+
+Replaced `customPlacement: CustomPlacement | null` with
+`presetOverrides: Partial<Record<DockState, PresetOverride>>` — one
+optional override per preset, same `{ left, top, width, height }` shape,
+same localStorage persistence (`ai-assistant-preset-overrides`, now
+keyed by preset instead of a single blob). `dockState` stays exactly the
+3 original values. The redefinition handlers capture
+`const startDockState = dockState` at pointerdown and write into
+`presetOverrides[startDockState]` on release — never call `setDockState`
+— so the preset identity never changes, only its definition. A plain
+(non-Option) drag is unaffected: it still resolves to whichever of the 3
+zones via `resolveDockState`, and that zone now renders using its
+override if one exists, falling back to the built-in CSS-var geometry
+otherwise. `DockZoneOverlay`'s ghost preview does the same lookup, so a
+redefined preset's drop-zone preview matches where it'll actually land,
+not the original default.
 
 ## Deliberately deferred (not blocking v1)
 - `dockState` persistence across reloads for the 3 presets (Option-placed

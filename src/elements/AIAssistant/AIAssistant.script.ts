@@ -5,7 +5,7 @@ import { AGENTS, HISTORY_FIXTURES } from "./children/AIAssistantWindow/AIAssista
 export type AssistantPhase = "closed" | "open" | "closing";
 export type ChatMessageRole = "user" | "assistant" | "system";
 export type ChatMessage = { id: string; role: ChatMessageRole; text: string };
-export type DockState = "left" | "center" | "hybrid" | "custom";
+export type DockState = "left" | "center" | "hybrid";
 export type Agent = { id: string; name: string; tagline: string; initial: string };
 export type ChatSession = {
   id: string;
@@ -152,57 +152,54 @@ function resolveDockState(clientX: number): DockState {
 const MIN_MANUAL_WIDTH_PX = 260;
 const MIN_MANUAL_HEIGHT_PX = 320;
 
-export type CustomPlacement = { left: number; top: number; width: number; height: number };
+export type PresetOverride = { left: number; top: number; width: number; height: number };
+export type PresetOverrides = Partial<Record<DockState, PresetOverride>>;
 
-// Holding Option/Alt during a header drag or a corner resize switches
-// that gesture from "snap to one of the 3 presets" to "place/size it
-// exactly where I want," persisted across reloads — a lightweight way to
-// retune the assistant's default position without touching CSS.
-const CUSTOM_PLACEMENT_STORAGE_KEY = "ai-assistant-custom-placement";
+// Holding Option/Alt during a header drag or a corner resize doesn't pick
+// a different dock, or escape to some separate freeform mode — it
+// redefines whichever preset you're currently docked in, permanently
+// (persisted across reloads): wherever you drop it becomes that preset's
+// new left/center/hybrid, in place of its built-in default geometry. A
+// plain (non-Option) drag still always snaps to the nearest of the 3
+// presets, now rendering with its override if one has been set.
+const PRESET_OVERRIDES_STORAGE_KEY = "ai-assistant-preset-overrides";
 
-function loadCustomPlacement(): CustomPlacement | null {
+function loadPresetOverrides(): PresetOverrides {
   try {
-    const raw = localStorage.getItem(CUSTOM_PLACEMENT_STORAGE_KEY);
-    if (!raw) return null;
+    const raw = localStorage.getItem(PRESET_OVERRIDES_STORAGE_KEY);
+    if (!raw) return {};
     const parsed = JSON.parse(raw);
-    if (
-      typeof parsed?.left === "number" &&
-      typeof parsed?.top === "number" &&
-      typeof parsed?.width === "number" &&
-      typeof parsed?.height === "number"
-    ) {
-      return parsed;
-    }
+    if (parsed && typeof parsed === "object") return parsed as PresetOverrides;
   } catch {
-    // Storage unavailable or malformed — fall back to the presets.
+    // Storage unavailable or malformed — fall back to the built-in defaults.
   }
-  return null;
+  return {};
 }
 
-function saveCustomPlacement(placement: CustomPlacement) {
+function savePresetOverrides(overrides: PresetOverrides) {
   try {
-    localStorage.setItem(CUSTOM_PLACEMENT_STORAGE_KEY, JSON.stringify(placement));
+    localStorage.setItem(PRESET_OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
   } catch {
-    // Storage disabled (e.g. private browsing) — placement just won't persist.
+    // Storage disabled (e.g. private browsing) — overrides just won't persist.
   }
 }
 
-// Drag-to-dock state machine: which of the 4 geometries is committed
-// (dockState — 3 presets plus "custom"), which preset zone the cursor is
-// currently over while dragging (dragZone, drives the drop-zone
-// affordance — null during a freeform/Option drag, since there's no
-// zone to snap to), and the raw pointer delta since pointerdown
-// (dragOffset, drives 1:1 cursor-follow while dragging). Mirrors
-// useSplitRail's pointer-event shape: attach window listeners on
+// Drag-to-dock state machine: which of the 3 presets is committed
+// (dockState), which preset zone the cursor is currently over while
+// dragging (dragZone, drives the drop-zone affordance — null during an
+// Option/redefine drag, since there's no zone to snap to, you're staying
+// in the preset you started in), and the raw pointer delta since
+// pointerdown (dragOffset, drives 1:1 cursor-follow while dragging).
+// Mirrors useSplitRail's pointer-event shape: attach window listeners on
 // pointerdown, tear them down on pointerup.
 //
 // Also owns manual resize (dragging the window's top-right corner): the
 // user can freely resize whichever dock state is active, but redocking
-// (releasing a non-Option header drag) always clears the override and
-// snaps back to that zone's predefined size. Holding Option while
-// resizing behaves like Option-dragging: it commits a custom placement
-// instead of an ephemeral one. Side-menu open/closed lives here too —
-// it's independent of dockState, toggled from the window's header.
+// (releasing a non-Option header drag) always clears the ephemeral
+// override and renders that zone's current definition (its persisted
+// override if one exists, otherwise the built-in default). Side-menu
+// open/closed lives here too — it's independent of dockState, toggled
+// from the window's header.
 export function useWindowDock() {
   const windowRef = useRef<HTMLDivElement | null>(null);
   const [dockState, setDockState] = useState<DockState>("left");
@@ -210,51 +207,52 @@ export function useWindowDock() {
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const [manualSize, setManualSize] = useState<{ width: number; height: number } | null>(null);
   const [isResizing, setIsResizing] = useState(false);
-  const [customPlacement, setCustomPlacement] = useState<CustomPlacement | null>(null);
+  const [presetOverrides, setPresetOverrides] = useState<PresetOverrides>({});
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
 
-  // Hydrate from localStorage on mount — a previously saved custom spot
-  // becomes the window's starting placement from now on. localStorage
-  // isn't available during SSR, so this can't be a lazy useState
-  // initializer; it has to run client-side, once, after mount — a
-  // one-time hydration from a non-reactive external store, not the
+  // Hydrate from localStorage on mount — any previously redefined
+  // presets become the window's starting geometry from now on.
+  // localStorage isn't available during SSR, so this can't be a lazy
+  // useState initializer; it has to run client-side, once, after mount —
+  // a one-time hydration from a non-reactive external store, not the
   // cascading-update pattern this rule otherwise guards against.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    const saved = loadCustomPlacement();
-    if (saved) {
-      setCustomPlacement(saved);
-      setDockState("custom");
-    }
+    const saved = loadPresetOverrides();
+    if (Object.keys(saved).length > 0) setPresetOverrides(saved);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function onHeaderPointerDown(event: ReactPointerEvent) {
     if (window.innerWidth < DRAG_DISABLED_BELOW_PX) return;
     event.preventDefault();
-    const isFreeform = event.altKey;
+    const isRedefining = event.altKey;
     const startRect = windowRef.current?.getBoundingClientRect();
+    const startDockState = dockState;
     const startX = event.clientX;
     const startY = event.clientY;
-    if (!isFreeform) setDragZone(resolveDockState(startX));
+    if (!isRedefining) setDragZone(resolveDockState(startX));
     setDragOffset({ x: 0, y: 0 });
 
     function handleMove(moveEvent: PointerEvent) {
-      if (!isFreeform) setDragZone(resolveDockState(moveEvent.clientX));
+      if (!isRedefining) setDragZone(resolveDockState(moveEvent.clientX));
       setDragOffset({ x: moveEvent.clientX - startX, y: moveEvent.clientY - startY });
     }
 
     function handleUp(upEvent: PointerEvent) {
-      if (isFreeform && startRect) {
-        const placement: CustomPlacement = {
+      if (isRedefining && startRect) {
+        const override: PresetOverride = {
           left: startRect.left + (upEvent.clientX - startX),
           top: startRect.top + (upEvent.clientY - startY),
           width: startRect.width,
           height: startRect.height,
         };
-        setCustomPlacement(placement);
-        setDockState("custom");
-        saveCustomPlacement(placement);
+        setPresetOverrides((current) => {
+          const next = { ...current, [startDockState]: override };
+          savePresetOverrides(next);
+          return next;
+        });
+        // dockState doesn't change — redefining stays in the same preset.
       } else {
         setDockState(resolveDockState(upEvent.clientX));
         setManualSize(null);
@@ -275,7 +273,8 @@ export function useWindowDock() {
     const node = windowRef.current;
     if (!node) return;
     const rect = node.getBoundingClientRect();
-    const isFreeform = event.altKey;
+    const isRedefining = event.altKey;
+    const startDockState = dockState;
     const startWidth = rect.width;
     const startHeight = rect.height;
     const startLeft = rect.left;
@@ -287,9 +286,11 @@ export function useWindowDock() {
     function handleMove(moveEvent: PointerEvent) {
       const nextWidth = Math.max(MIN_MANUAL_WIDTH_PX, startWidth + (moveEvent.clientX - startX));
       const nextHeight = Math.max(MIN_MANUAL_HEIGHT_PX, startHeight - (moveEvent.clientY - startY));
-      if (isFreeform) {
-        setCustomPlacement({ left: startLeft, top: bottomEdge - nextHeight, width: nextWidth, height: nextHeight });
-        setDockState("custom");
+      if (isRedefining) {
+        setPresetOverrides((current) => ({
+          ...current,
+          [startDockState]: { left: startLeft, top: bottomEdge - nextHeight, width: nextWidth, height: nextHeight },
+        }));
       } else {
         setManualSize({ width: nextWidth, height: nextHeight });
       }
@@ -297,9 +298,9 @@ export function useWindowDock() {
 
     function handleUp() {
       setIsResizing(false);
-      if (isFreeform) {
-        setCustomPlacement((current) => {
-          if (current) saveCustomPlacement(current);
+      if (isRedefining) {
+        setPresetOverrides((current) => {
+          savePresetOverrides(current);
           return current;
         });
       }
@@ -324,7 +325,7 @@ export function useWindowDock() {
     manualSize,
     isResizing,
     onResizeHandlePointerDown,
-    customPlacement,
+    presetOverrides,
     isSideMenuOpen,
     toggleSideMenu,
   };

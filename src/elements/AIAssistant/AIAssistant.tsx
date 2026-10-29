@@ -34,7 +34,7 @@ export function AIAssistant() {
     manualSize,
     isResizing,
     onResizeHandlePointerDown,
-    customPlacement,
+    presetOverrides,
     isSideMenuOpen,
     toggleSideMenu,
   } = useWindowDock();
@@ -44,7 +44,7 @@ export function AIAssistant() {
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      <DockZoneOverlay activeZone={dragZone} />
+      <DockZoneOverlay activeZone={dragZone} presetOverrides={presetOverrides} />
       {phase === "closed" ? (
         <AIAssistantTrigger onOpen={open} />
       ) : (
@@ -64,7 +64,7 @@ export function AIAssistant() {
           manualSize={manualSize}
           isResizing={isResizing}
           onResizeHandlePointerDown={onResizeHandlePointerDown}
-          customPlacement={customPlacement}
+          activeOverride={presetOverrides[dockState]}
           isSideMenuOpen={isSideMenuOpen}
           onToggleSideMenu={toggleSideMenu}
           sessions={sessions}

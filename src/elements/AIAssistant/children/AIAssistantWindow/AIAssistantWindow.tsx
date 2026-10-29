@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { DragEvent, PointerEvent as ReactPointerEvent, RefObject } from "react";
-import type { Agent, ChatSession, CustomPlacement, DockState } from "@/elements/AIAssistant/AIAssistant.script";
+import type { Agent, ChatSession, DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.script";
 import { ActiveAgentChip } from "./children/ActiveAgentChip/ActiveAgentChip";
 import { AgentRoster } from "./children/AgentRoster/AgentRoster";
 import { Composer } from "./children/Composer/Composer";
@@ -28,7 +28,7 @@ type AIAssistantWindowProps = {
   manualSize: { width: number; height: number } | null;
   isResizing: boolean;
   onResizeHandlePointerDown: (event: ReactPointerEvent) => void;
-  customPlacement: CustomPlacement | null;
+  activeOverride: PresetOverride | undefined;
   isSideMenuOpen: boolean;
   onToggleSideMenu: () => void;
   sessions: ChatSession[];
@@ -43,7 +43,6 @@ const DOCK_CLASS: Record<DockState, string> = {
   left: position.dockLeft,
   center: position.dockCenter,
   hybrid: position.dockHybrid,
-  custom: position.dockCustom,
 };
 
 export function AIAssistantWindow({
@@ -62,7 +61,7 @@ export function AIAssistantWindow({
   manualSize,
   isResizing,
   onResizeHandlePointerDown,
-  customPlacement,
+  activeOverride,
   isSideMenuOpen,
   onToggleSideMenu,
   sessions,
@@ -103,21 +102,23 @@ export function AIAssistantWindow({
   if (dragOffset) {
     Object.assign(inlineStyle, { "--drag-x": `${dragOffset.x}px`, "--drag-y": `${dragOffset.y}px` });
   }
-  if (dockState === "custom" && customPlacement && !showCollapsedGeometry) {
-    // A saved/just-placed custom spot — exact pixels, takes over entirely.
-    Object.assign(inlineStyle, {
-      left: `${customPlacement.left}px`,
-      top: `${customPlacement.top}px`,
-      width: `${customPlacement.width}px`,
-      height: `${customPlacement.height}px`,
-    });
-  } else if (manualSize && !showCollapsedGeometry) {
-    // Ephemeral resize of a preset — overrides width/height (and top, so
-    // the bottom edge stays flush); clears the moment the window redocks.
+  if (manualSize && !showCollapsedGeometry) {
+    // Ephemeral resize of the current preset — overrides width/height
+    // (and top, so the bottom edge stays flush); clears the moment the
+    // window redocks.
     Object.assign(inlineStyle, {
       width: `${manualSize.width}px`,
       height: `${manualSize.height}px`,
       top: `calc(100vh - ${manualSize.height}px)`,
+    });
+  } else if (activeOverride && !showCollapsedGeometry) {
+    // The current preset has been Option-redefined — exact pixels,
+    // persisted, takes over from its built-in default geometry.
+    Object.assign(inlineStyle, {
+      left: `${activeOverride.left}px`,
+      top: `${activeOverride.top}px`,
+      width: `${activeOverride.width}px`,
+      height: `${activeOverride.height}px`,
     });
   }
   const hasInlineStyle = Object.keys(inlineStyle).length > 0;
