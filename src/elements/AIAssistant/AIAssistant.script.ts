@@ -5,7 +5,7 @@ import { AGENTS, HISTORY_FIXTURES } from "./children/AIAssistantWindow/AIAssista
 export type AssistantPhase = "closed" | "open" | "closing";
 export type ChatMessageRole = "user" | "assistant" | "system";
 export type ChatMessage = { id: string; role: ChatMessageRole; text: string };
-export type DockState = "left" | "center" | "hybrid";
+export type DockState = "left" | "center";
 export type Agent = { id: string; name: string; tagline: string; initial: string };
 export type ChatSession = {
   id: string;
@@ -144,9 +144,7 @@ const DRAG_DISABLED_BELOW_PX = 640;
 
 function resolveDockState(clientX: number): DockState {
   const fraction = clientX / window.innerWidth;
-  if (fraction < 0.3) return "left";
-  if (fraction < 0.6) return "hybrid";
-  return "center";
+  return fraction < 0.5 ? "left" : "center";
 }
 
 const MIN_MANUAL_WIDTH_PX = 260;
@@ -159,7 +157,7 @@ export type PresetOverrides = Partial<Record<DockState, PresetOverride>>;
 // a different dock, or escape to some separate freeform mode — it
 // redefines whichever preset you're currently docked in, permanently
 // (persisted across reloads): wherever you drop it becomes that preset's
-// new left/center/hybrid, in place of its built-in default geometry. A
+// new left/center, in place of its built-in default geometry. A
 // plain (non-Option) drag still always snaps to the nearest of the 3
 // presets, now rendering with its override if one has been set.
 const PRESET_OVERRIDES_STORAGE_KEY = "ai-assistant-preset-overrides";
@@ -184,7 +182,7 @@ function savePresetOverrides(overrides: PresetOverrides) {
   }
 }
 
-// Drag-to-dock state machine: which of the 3 presets is committed
+// Drag-to-dock state machine: which of the 2 presets is committed
 // (dockState), which preset zone the cursor is currently over while
 // dragging (dragZone, drives the drop-zone affordance — null during an
 // Option/redefine drag, since there's no zone to snap to, you're staying

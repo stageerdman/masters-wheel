@@ -39,7 +39,7 @@ export function AIAssistant() {
     toggleSideMenu,
   } = useWindowDock();
 
-  // Left dock stays compact; center and hybrid both get the roomier feel.
+  // Left dock stays compact; center gets the roomier feel.
   const density = dockState === "left" ? "compact" : "comfortable";
 
   return (

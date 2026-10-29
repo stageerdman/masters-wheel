@@ -225,6 +225,22 @@ otherwise. `DockZoneOverlay`'s ghost preview does the same lookup, so a
 redefined preset's drop-zone preview matches where it'll actually land,
 not the original default.
 
+## v5: dropped the hybrid dock — 2 presets, not 3
+The hybrid dock (left-anchored, larger, carried the sidebar before the
+sidebar was decoupled in v3) was reported as glitchy in practice. Rather
+than debug it, the user cut it: 2 presets are enough — left (small,
+default) and center (large, horizontally centered).
+
+Mechanically: `DockState` drops to `"left" | "center"`, `resolveDockState`
+is now a single 50/50 viewport-width split instead of 3 bands, and every
+`--dock-hybrid-*` custom property / `.dockHybrid` / `.ghostHybrid` class
+is removed outright rather than kept dormant. `--dock-center-w/h` — which
+used to alias the hybrid variables — now owns its own values directly
+(the same numbers hybrid used, since center was always "hybrid's size,
+centered instead of left-anchored"). Since the side menu was already
+independent of dock state (v3), dropping hybrid didn't touch it at all —
+the side-menu overlay still works identically in both remaining docks.
+
 ## Deliberately deferred (not blocking v1)
 - `dockState` persistence across reloads for the 3 presets (Option-placed
   "custom" placements persist via localStorage now; left/center/hybrid

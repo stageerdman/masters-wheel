@@ -16,21 +16,20 @@ between the two lists. Each page gets its own section as pages get added.
 - [x] Chat content: message list (user bubbles vs. flush assistant text),
       auto-growing composer, empty "Ask anything." state; sending only
       appends the user's own message — no fake AI reply yet
-- [x] Drag the header to snap the window between 3 docked forms — left
-      (small, default, bottom-left), hybrid (bigger, same left edge,
-      reaches past the viewport's midpoint), center (same size as
-      hybrid, horizontally centered) — all bottom-flush, top-rounded
-      corners only; a ghost-box preview of the exact landing geometry
-      shows while dragging, with the targeted zone highlighted; disabled
-      below 640px viewport width
+- [x] Drag the header to snap the window between 2 docked forms — left
+      (small, default, bottom-left) and center (bigger, horizontally
+      centered) — both bottom-flush, top-rounded corners only; a
+      ghost-box preview of the exact landing geometry shows while
+      dragging, with the targeted zone highlighted; disabled below
+      640px viewport width
 - [x] Drag the window's top-right corner to manually resize whichever
       dock is active; redocking (dragging the header again) always
       snaps back to that zone's predefined size
 - [x] Hold Option/Alt while dragging the header or resizing to redefine
-      whichever preset (left/center/hybrid) is currently active — not a
+      whichever preset (left/center) is currently active — not a
       separate freeform mode, the preset itself permanently takes on the
       new position/size, persisted to `localStorage`; a plain drag still
-      always snaps between the 3 presets, now rendering each one's saved
+      always snaps between the 2 presets, now rendering each one's saved
       override if it has been redefined
 - [x] Header's side-menu button (left) toggles `HistoryList` +
       `AgentRoster` as an overlay over the chat column, independent of

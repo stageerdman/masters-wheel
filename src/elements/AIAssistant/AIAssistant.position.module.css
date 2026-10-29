@@ -4,7 +4,7 @@
    default; the trigger/window/zone bands opt back in individually so the
    rest of the page stays clickable everywhere else.
 
-   The 3 dock geometries are defined once here, as custom properties, so
+   The 2 dock geometries are defined once here, as custom properties, so
    AIAssistantWindow's real dock classes and DockZoneOverlay's ghost
    previews both read the exact same numbers — changing a size here moves
    both the window and its drag preview together. */
@@ -17,12 +17,9 @@
   --dock-gap: 1rem;
   --dock-left-w: clamp(300px, 22vw, 400px);
   --dock-left-h: clamp(420px, 38vh, 560px);
-  /* Hybrid reaches past the viewport's midpoint; center reuses its exact
-     size, just horizontally centered instead of left-anchored. */
-  --dock-hybrid-w: clamp(640px, 62vw, 960px);
-  --dock-hybrid-h: clamp(480px, 50vh, 680px);
-  --dock-center-w: var(--dock-hybrid-w);
-  --dock-center-h: var(--dock-hybrid-h);
+  /* Larger, horizontally centered — reaches well past the midpoint. */
+  --dock-center-w: clamp(640px, 62vw, 960px);
+  --dock-center-h: clamp(480px, 50vh, 680px);
 }
 
 /* Below this width, dragging is disabled (see useWindowDock) and the

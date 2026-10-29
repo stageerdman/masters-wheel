@@ -21,13 +21,6 @@
   height: var(--dock-left-h);
 }
 
-.ghostHybrid {
-  left: var(--dock-gap);
-  top: calc(100vh - var(--dock-hybrid-h));
-  width: var(--dock-hybrid-w);
-  height: var(--dock-hybrid-h);
-}
-
 .ghostCenter {
   left: 50%;
   top: calc(100vh - var(--dock-center-h));

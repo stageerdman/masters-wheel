@@ -3,20 +3,24 @@
 ## Goal
 Replace the Next.js dev-mode indicator badge (bottom-left "N") with a
 global AI assistant that lives above every environment: an idle animated
-icon that expands into a pop-up chat window. The window has 3 docked
-forms — left (default, small), center (larger, comfortable), hybrid
-(center chat + left sidebar with history and selectable/draggable
-agents) — reached by dragging, and collapses back to the icon via a
-small button in its header. UI-shell only: fake data, no real AI calls.
+icon that expands into a pop-up chat window. The window docks to one of
+2 presets — left (default, small) and center (larger, horizontally
+centered) — reached by dragging, and collapses back to the icon via a
+small button in its header. A header toggle pops a history/agent
+sidebar over the chat, independent of dock state. UI-shell only: fake
+data, no real AI calls.
+
+(Originally shipped with a 3rd "hybrid" dock; dropped in v5 below —
+2 presets turned out to be enough and hybrid was glitchy in practice.)
 
 ## Status
 CLOSED — all 4 phases built, plus v2 (accurate drag-preview geometry,
 flush-bottom/top-rounded-only corners, manual resize), v3 (side menu
-decoupled from dock state into a header-toggled overlay), and v4
-(Option/Alt redefines whichever preset is active, persisted to
-localStorage — corrects v3's initial freeform-4th-state misread). All
-verified (build/tsc/lint clean, SSR-checked against the running dev
-server) and pushed.
+decoupled from dock state into a header-toggled overlay), v4 (Option/Alt
+redefines whichever preset is active, persisted to localStorage —
+corrects v3's initial freeform-4th-state misread), and v5 (dropped the
+hybrid dock, down to 2 presets). All verified (build/tsc/lint clean,
+SSR-checked against the running dev server) and pushed.
 
 ## Element plan
 ```
@@ -94,7 +98,8 @@ src/elements/AIAssistant/                     (global, mounted in layout.tsx)
 
 ## Decided
 See `wiki.md` for the full reasoning behind each call below.
-- Snap-to-3-states on drag release, not freeform placement.
+- Snap-to-preset on drag release, not freeform placement (3 presets
+  originally, cut to 2 in v5 — see wiki.md).
 - `--color-accent` for the trigger glyph and drop-zone affordance — no new
   core color.
 - Agent avatars start neutral (no new category-color tokens); revisit if

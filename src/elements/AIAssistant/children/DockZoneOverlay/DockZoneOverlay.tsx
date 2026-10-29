@@ -9,15 +9,14 @@ type DockZoneOverlayProps = {
 
 const GHOST_CLASS: Record<DockState, string> = {
   left: position.ghostLeft,
-  hybrid: position.ghostHybrid,
   center: position.ghostCenter,
 };
 
-const ZONES: DockState[] = ["left", "hybrid", "center"];
+const ZONES: DockState[] = ["left", "center"];
 
-// Ghost previews of the 3 dock geometries — exactly where and how big the
+// Ghost previews of the 2 dock geometries — exactly where and how big the
 // window will land — shown only while dragging the window's header; the
-// zone under the cursor highlights more strongly than the other two. Any
+// zone under the cursor highlights more strongly than the other one. Any
 // zone that's been Option-redefined previews its saved override instead
 // of the built-in default, since that's where it will actually land.
 export function DockZoneOverlay({ activeZone, presetOverrides }: DockZoneOverlayProps) {

@@ -4,7 +4,7 @@
    `bottom`, never an implicit value — so every transition between them
    has a concrete start and end to animate across. Sizes come from the
    shared --dock-* custom properties on AIAssistant's root (so the
-   DockZoneOverlay ghost previews always match exactly); all 3 dock
+   DockZoneOverlay ghost previews always match exactly); both dock
    states are bottom-flush (top computed as 100vh minus height), only
    their horizontal placement and size differ. The `transform` on each
    state composes a fixed centering offset with a live drag offset read
@@ -64,17 +64,7 @@
   height: var(--dock-left-h);
 }
 
-/* Same left edge as dockLeft, just larger — reaches past the viewport's
-   midpoint and a bit taller. Carries the sidebar. */
-.dockHybrid {
-  left: var(--dock-gap);
-  top: calc(100vh - var(--dock-hybrid-h));
-  transform: translate(0, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
-  width: var(--dock-hybrid-w);
-  height: var(--dock-hybrid-h);
-}
-
-/* Same size as dockHybrid, horizontally centered instead of left-anchored. */
+/* Larger, horizontally centered. */
 .dockCenter {
   left: 50%;
   top: calc(100vh - var(--dock-center-h));

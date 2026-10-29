@@ -42,7 +42,6 @@ type AIAssistantWindowProps = {
 const DOCK_CLASS: Record<DockState, string> = {
   left: position.dockLeft,
   center: position.dockCenter,
-  hybrid: position.dockHybrid,
 };
 
 export function AIAssistantWindow({
