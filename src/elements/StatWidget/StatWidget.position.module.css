@@ -1,4 +1,4 @@
-/* Fills whatever box its parent grid gives it — the tile itself has no
+/* Fills whatever box its parent grid gives it — the widget itself has no
    opinion on size, only on how its own content lays out inside that box. */
 .root {
   display: flex;

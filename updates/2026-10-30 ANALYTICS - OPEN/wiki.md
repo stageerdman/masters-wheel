@@ -1,5 +1,24 @@
 # Analytics — decisions
 
+## Vocabulary
+- **Space** (`StatSpace`) — one page of statistics. Holds one Grid today;
+  the layer a future multi-page "swipe to the next screen" feature would
+  extend, without `StatGrid` itself needing to know about paging.
+- **Grid** (`StatGrid`) — the Control Center–style layout surface. Made of
+  Slots; resolves each Slot's statistic value async and renders a Widget
+  into it.
+- **Slot** (`StatSlot`) — a placeable position within a Grid: which
+  statistic, how many columns/rows it spans. Not a component — a plain
+  data shape.
+- **Widget** (`StatWidget`) — the standalone visual element that actually
+  renders a statistic (today: a number). Fills whatever box its Slot gives
+  it, carries its own glass-box look and its own pop-in animation. Future
+  widget types (a graph, etc.) are new components with this same name
+  pattern (e.g. a chart widget), not variants bolted onto `StatWidget`.
+- `src/lib/statistics` stays a separate layer outside this hierarchy — it's
+  the data (id → label + `compute()`) a Widget's value comes from, not a
+  UI part.
+
 ## Size travels as CSS custom properties, not a size-name enum
 A widget's grid span (`cols`/`rows`) is set by `StatGrid` (the parent) as
 inline `--stat-cols`/`--stat-rows` on the slot wrapper it renders, consumed

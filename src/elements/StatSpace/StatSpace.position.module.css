@@ -1,0 +1,5 @@
+/* Where this element sits within its parent. No visual styling here. */
+.root {
+  width: 100%;
+  height: 100%;
+}

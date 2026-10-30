@@ -1,6 +1,6 @@
 /* Completely transparent — this is just a mount/unmount shell. The glass
-   box lives on each individual StatTile now, not on the container, so
-   content pops in tile-by-tile instead of as one block. */
+   box lives on each individual StatWidget now, not on the container, so
+   content pops in widget-by-widget instead of as one block. */
 .root {
   opacity: 0;
 }

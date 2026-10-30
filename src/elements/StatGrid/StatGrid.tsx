@@ -1,8 +1,12 @@
 "use client";
 
+// Naming: a Space (StatSpace) holds a Grid (this element), a Grid is made
+// of Slots (StatSlot — a position + size), and each Slot holds one Widget
+// (StatWidget — the thing that actually renders a statistic's visuals).
+
 import { useEffect, useState, type CSSProperties } from "react";
 import { getStatistic } from "@/lib/statistics";
-import { StatTile } from "@/elements/StatTile/StatTile";
+import { StatWidget } from "@/elements/StatWidget/StatWidget";
 import position from "./StatGrid.position.module.css";
 import styles from "./StatGrid.styles.module.css";
 
@@ -19,8 +23,8 @@ type StatGridProps = {
   slots: StatSlot[];
 };
 
-// Each slot pops in individually rather than the whole grid arriving as
-// one block — a short per-index stagger, not a JS animation.
+// Each slot's widget pops in individually rather than the whole grid
+// arriving as one block — a short per-index stagger, not a JS animation.
 const STAGGER_MS = 40;
 
 export function StatGrid({ slots }: StatGridProps) {
@@ -58,7 +62,7 @@ export function StatGrid({ slots }: StatGridProps) {
               } as CSSProperties
             }
           >
-            <StatTile label={statistic.label} value={values[slot.id] ?? "…"} />
+            <StatWidget label={statistic.label} value={values[slot.id] ?? "…"} />
           </div>
         );
       })}

@@ -88,17 +88,19 @@ between the two lists. Each page gets its own section as pages get added.
       with a pop-in/pop-out animation — doesn't navigate; activating it
       again while open closes it
 - [x] Statistics are now a standardized, reusable system instead of one
-      hardcoded panel: `src/lib/statistics` is a registry of statistics
-      (id → label + `compute()`), `StatTile` is the standalone single-stat
-      widget (minimal 1x1 footprint, its own glass-box look, its own
-      staggered pop-in), and `StatGrid` places a list of tiles in a
-      Control Center–style grid where each slot can span more than 1x1 if
-      a future widget needs the room. `AnalyticsPanel`/`SidePanel` are
-      fully transparent shells around it — no panel-level box or heading.
-      `AnalyticsPanel` is `StatGrid` wired to one real statistic,
-      "Sessions this month" (counts real on-disk records for the current
-      calendar month) — adding a new stat anywhere in the app means
-      adding one registry entry + one slot, not a new panel
+      hardcoded panel, with a settled vocabulary: a **Space** (`StatSpace`)
+      is one page of statistics and holds a **Grid** (`StatGrid`); a Grid
+      is made of **Slots** (`StatSlot` — a position + optional size); each
+      Slot holds one **Widget** (`StatWidget` — the standalone thing that
+      actually renders a statistic, minimal 1x1 footprint, its own
+      glass-box look, its own staggered pop-in). `src/lib/statistics` is
+      the separate data registry (id → label + `compute()`) each Widget's
+      value comes from. `AnalyticsPanel`/`SidePanel` are fully transparent
+      shells around a `StatSpace` — no panel-level box or heading.
+      `AnalyticsPanel` wires one real statistic into one Slot, "Sessions
+      this month" (counts real on-disk records for the current calendar
+      month) — adding a new stat anywhere in the app means adding one
+      registry entry + one Slot, not a new panel
 - [x] Training / Chat with AI: listed, selectable, inert (no behavior
       dictated yet)
 - [x] `NavMenu` items aren't text-selectable (they're controls, not
@@ -110,9 +112,9 @@ between the two lists. Each page gets its own section as pages get added.
 
 ### To build (real functionality — not started)
 - [ ] Training and Chat with AI behavior (not dictated yet)
-- [ ] Multiple spaces in `StatGrid` (swipe/page between widget screens);
-      live edit mode (drag to add/remove/resize/reorder widgets) — see
-      `updates/2026-10-30 ANALYTICS - OPEN`
+- [ ] Multiple Spaces (swipe/page between `StatSpace` pages, each holding
+      its own Grid); live edit mode (drag to add/remove/resize/reorder
+      Widgets) — see `updates/2026-10-30 ANALYTICS - OPEN`
 
 ## Performance Review page
 

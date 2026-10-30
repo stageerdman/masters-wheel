@@ -1,7 +1,7 @@
 /* Control Center–style grid: fixed-size cells, each slot spans however
    many columns/rows it needs via --stat-cols/--stat-rows (set inline by
    StatGrid.tsx on .slot, same per-instance pattern as --badge-color). A
-   standalone StatTile defaults to 1x1 — the minimal possible footprint. */
+   standalone StatWidget defaults to 1x1 — the minimal possible footprint. */
 .root {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));

@@ -1,12 +1,12 @@
-import position from "./StatTile.position.module.css";
-import styles from "./StatTile.styles.module.css";
+import position from "./StatWidget.position.module.css";
+import styles from "./StatWidget.styles.module.css";
 
-type StatTileProps = {
+type StatWidgetProps = {
   label: string;
   value: string;
 };
 
-export function StatTile({ label, value }: StatTileProps) {
+export function StatWidget({ label, value }: StatWidgetProps) {
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
       <span className={styles.value} data-construction>

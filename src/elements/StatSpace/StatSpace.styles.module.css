@@ -1,0 +1,5 @@
+/* No visual identity of its own — a Space is purely a page boundary, every
+   StatWidget inside its Grid carries the actual glass-box look. */
+.root {
+  background: transparent;
+}

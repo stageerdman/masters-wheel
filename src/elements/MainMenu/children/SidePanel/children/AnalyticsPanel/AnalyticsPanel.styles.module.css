@@ -1,6 +1,6 @@
-/* Completely transparent — a plain layout shell around StatGrid. Every
+/* Completely transparent — a plain layout shell around StatSpace. Every
    visual identity (the glass box, color, typography) lives on each
-   individual StatTile instead. */
+   individual StatWidget instead. */
 .root {
   background: transparent;
 }

@@ -1,5 +1,5 @@
 /* Purely a layout container — no visual identity of its own, each slot's
-   StatTile carries all the color/typography. */
+   StatWidget carries all the color/typography. */
 .root {
   background: transparent;
 }
