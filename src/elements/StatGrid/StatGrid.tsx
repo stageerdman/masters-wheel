@@ -6,6 +6,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { getStatistic } from "@/lib/statistics";
+import type { StatFilters } from "@/lib/statistics/filters";
 import { StatWidget } from "@/elements/StatWidget/StatWidget";
 import position from "./StatGrid.position.module.css";
 import styles from "./StatGrid.styles.module.css";
@@ -21,6 +22,7 @@ export type StatSlot = {
 
 type StatGridProps = {
   slots: StatSlot[];
+  filters: StatFilters;
 };
 
 // Each slot's widget pops in individually rather than the whole grid
@@ -38,7 +40,7 @@ function occupiedCells(slots: StatSlot[]): number {
   return slots.reduce((total, slot) => total + (slot.cols ?? 1) * (slot.rows ?? 1), 0);
 }
 
-export function StatGrid({ slots }: StatGridProps) {
+export function StatGrid({ slots, filters }: StatGridProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(1);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -62,7 +64,7 @@ export function StatGrid({ slots }: StatGridProps) {
     let cancelled = false;
     for (const slot of slots) {
       getStatistic(slot.statisticId)
-        .compute()
+        .compute(filters)
         .then((value) => {
           if (cancelled) return;
           setValues((current) => ({ ...current, [slot.id]: value }));
@@ -71,7 +73,7 @@ export function StatGrid({ slots }: StatGridProps) {
     return () => {
       cancelled = true;
     };
-  }, [slots]);
+  }, [slots, filters]);
 
   const rowCount = Math.max(1, Math.ceil((occupiedCells(slots) + FREE_CELL_BUFFER) / columns));
 

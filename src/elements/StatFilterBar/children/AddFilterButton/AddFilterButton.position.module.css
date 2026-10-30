@@ -1,0 +1,5 @@
+/* Where this element sits within StatFilterBar. No visual styling here. */
+.root {
+  width: 2rem;
+  height: 2rem;
+}

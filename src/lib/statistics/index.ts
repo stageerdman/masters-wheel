@@ -1,36 +1,37 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { listRecords } from "@/lib/records";
+import { isWithinRange, passesSessionTypeFilter, type StatFilters } from "./filters";
 
 export type Statistic = {
   id: string;
   label: string;
-  compute: () => Promise<string>;
+  compute: (filters: StatFilters) => Promise<string>;
 };
 
-// record.date is "YYYY-MM-DD", stamped at upload time — i.e. the session's
-// date. Compared as plain numbers, not via `new Date(iso)`, to avoid UTC
-// parsing shifting the day in negative-offset timezones.
-function isSameMonth(iso: string, reference: Date): boolean {
-  const [year, month] = iso.split("-").map(Number);
-  return year === reference.getFullYear() && month === reference.getMonth() + 1;
-}
+// Practice/training calls are never real meetings — excluded unconditionally,
+// not something the session-type filter needs to be set up to hide.
+const PRACTICE_STATE = "training";
 
 // Outside the Tauri shell (e.g. the plain browser tab used for HMR
 // preview) there's no fs bridge at all — same guard PerformanceReview
 // uses, stay empty rather than throwing.
-async function sessionsThisMonth(): Promise<string> {
+async function countMeetings(filters: StatFilters): Promise<string> {
   if (!isTauri()) return "—";
   const records = await listRecords();
-  const now = new Date();
-  const count = records.filter((record) => isSameMonth(record.date, now)).length;
+  const count = records.filter(
+    (record) =>
+      record.state !== PRACTICE_STATE &&
+      isWithinRange(record.date, filters.dateRange) &&
+      passesSessionTypeFilter(record.state, filters.sessionTypeFilter),
+  ).length;
   return String(count);
 }
 
 export const STATISTICS: Record<string, Statistic> = {
-  "sessions-this-month": {
-    id: "sessions-this-month",
-    label: "Sessions this month",
-    compute: sessionsThisMonth,
+  meetings: {
+    id: "meetings",
+    label: "Meetings",
+    compute: countMeetings,
   },
 };
 

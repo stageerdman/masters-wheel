@@ -94,13 +94,15 @@ between the two lists. Each page gets its own section as pages get added.
       Slot holds one **Widget** (`StatWidget` — the standalone thing that
       actually renders a statistic, minimal 1x1 footprint, its own
       glass-box look, its own staggered pop-in). `src/lib/statistics` is
-      the separate data registry (id → label + `compute()`) each Widget's
-      value comes from. `AnalyticsPanel`/`SidePanel` are fully transparent
-      shells around a `StatSpace` — no panel-level box or heading.
-      `AnalyticsPanel` wires one real statistic into one Slot, "Sessions
-      this month" (counts real on-disk records for the current calendar
-      month) — adding a new stat anywhere in the app means adding one
-      registry entry + one Slot, not a new panel
+      the separate data registry (id → label + `compute(filters)`) each
+      Widget's value comes from. `AnalyticsPanel`/`SidePanel` are fully
+      transparent shells around a `StatSpace` — no panel-level box or
+      heading. `AnalyticsPanel` wires one real statistic into one Slot,
+      **Meetings** (counts real on-disk records, excluding practice/
+      training calls, filtered by whatever the filter bar is set to) —
+      adding a new stat anywhere in the app means adding one registry
+      entry + one Slot, not a new panel. Grid cells are 75% of their
+      original size — finer spots for the same widgets
 - [x] `StatWidget` is a shell (glass box + pop-in) around a `children/`
       content component — `SingleStat` is the first one, centering one
       value + label dead in the middle. Future widget types (a chart,
@@ -111,11 +113,13 @@ between the two lists. Each page gets its own section as pages get added.
       viewport, with a hidden scrollbar and a soft fade at the top/bottom
       edges instead of a hard clip
 - [x] `StatFilterBar`: an invisible row above the Grid (scrolls away with
-      it, not sticky) holding filter chips — one today, a date-range
-      filter. Its glass-pill chip opens a 3-column popup (presets column
-      + two independent start/end calendars with day/month/year
-      drill-down); UI-complete but not yet wired into what any statistic
-      actually computes
+      it, not sticky). A date-range chip (3-column popup: presets, start
+      calendar, end calendar with day/month/year drill-down) plus a "+"
+      add-filter button at the end that opens a menu of filter types not
+      yet active — one today, **Session type**, whose options are read
+      live off Performance Review's own call-state registry. Both the
+      date range and any added filters persist across restarts and are
+      actually wired into what each statistic computes
 - [x] Training / Chat with AI: listed, selectable, inert (no behavior
       dictated yet)
 - [x] `NavMenu` items aren't text-selectable (they're controls, not
@@ -129,9 +133,7 @@ between the two lists. Each page gets its own section as pages get added.
 - [ ] Training and Chat with AI behavior (not dictated yet)
 - [ ] Multiple Spaces (swipe/page between `StatSpace` pages, each holding
       its own Grid); live edit mode (drag to add/remove/resize/reorder
-      Widgets); wiring `DateRangeFilter`'s selected range into what each
-      statistic's `compute()` actually returns — see
-      `updates/2026-10-30 ANALYTICS - OPEN`
+      Widgets) — see `updates/2026-10-30 ANALYTICS - OPEN`
 
 ## Performance Review page
 

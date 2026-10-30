@@ -1,0 +1,13 @@
+/* Where this element sits within StatFilterBar. No visual styling here. */
+.root {
+  display: inline-flex;
+  align-items: center;
+}
+
+.chip {
+  padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+}
+
+.removeButton {
+  padding: 0.375rem 0.75rem 0.375rem 0.25rem;
+}

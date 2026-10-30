@@ -1,5 +1,40 @@
 # Analytics — decisions
 
+## Filter architecture: shared data shape, shared popup, dynamic options
+- **`src/lib/statistics/filters.ts` is the seam between UI and compute.**
+  `StatFilterBar` produces a `StatFilters` value; every statistic's
+  `compute(filters)` consumes it. Neither side knows about the other's
+  internals — a statistic doesn't know chips exist, a chip doesn't know
+  how any statistic uses its value. `DateRange`/`toIso`/`parseIso` moved
+  here from `DateRangeFilter.script.ts` (where they first landed) once a
+  second consumer (`src/lib/statistics`) needed the exact same shape —
+  moving shared code out once there are 2 real consumers, not before.
+- **`AnchoredPopup` + `useAnchoredPopup` got extracted once a 2nd, then
+  3rd, 4th popup needed the identical shell and mechanics** (glass panel
+  positioned from a chip's `getBoundingClientRect()`, scroll-to-dismiss
+  that ignores scrolling *inside* itself via `data-anchored-popup`,
+  Escape-to-dismiss). `DateRangePopup`, `SessionTypeFilterPopup`, and
+  `AddFilterMenu` all just supply their own content now.
+- **Session-type options are read live off Performance Review's own
+  registry** (`CALL_STATE_ORDER`/`CALL_STATE_META` in
+  `PerformanceReview.data.ts`), not a second hand-kept list — this is
+  what "dynamic" meant: add or remove a call state there, this filter's
+  options change with zero edits here. `src/lib/statistics/filters.ts`
+  still only deals in raw `record.state` strings, not the `CallState`
+  type itself, so `src/lib/statistics` doesn't have to depend on
+  `src/elements/PerformanceReview` — only the UI-level `SessionTypeFilter`
+  popup does, which is a reasonable place for that coupling to live.
+- **A filter chip added via "+" starts as a no-op, not "matches
+  nothing."** `passesSessionTypeFilter` treats an empty `values` array as
+  "filter not actually active yet" regardless of mode — contains-nothing
+  would otherwise vacuously exclude every record, which is the opposite
+  of what "pops up empty, doesn't filter anything by default" asked for.
+- **Practice/training exclusion is hardcoded in `countMeetings`, not a
+  default session-type filter value.** It's a property of what "Meetings"
+  *means*, not a user-adjustable starting filter state — it stays true
+  even if the user's own session-type filter (once added) is configured
+  to include training calls for some other analysis.
+
 ## Date-range filter: positioning, interaction, and deferred scope
 - **No portal, plain `position: fixed`.** `DateRangePopup` renders inline
   in the React tree (inside `StatFilterBar` → `StatSpace`) rather than
@@ -31,10 +66,8 @@
 - **Week starts Monday**; year picker spans "current year − 100" to
   "current year + 1", scrollable, auto-scrolled to the active year on
   open — arbitrary but reasonable defaults, not dictated specifically.
-- **Not wired to statistics yet.** The filter fully works as UI (label,
-  presets, both calendars) but doesn't affect what any `StatWidget` shows
-  — this round's ask was entirely about the filter's own UI/interaction.
-  See `update v1.md` Phase 5.
+- **Now wired into statistics** (see "Filter architecture" above) — this
+  was deliberately deferred for one round, then picked up in Phase 5.
 
 ## Vocabulary
 - **Space** (`StatSpace`) — one page of statistics. Holds one Grid today;

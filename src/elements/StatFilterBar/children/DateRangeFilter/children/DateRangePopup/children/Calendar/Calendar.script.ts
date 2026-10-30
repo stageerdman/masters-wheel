@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { parseIso, toIso } from "@/elements/StatFilterBar/children/DateRangeFilter/DateRangeFilter.script";
+import { parseIso, toIso } from "@/lib/statistics/filters";
 
 export type CalendarView = "days" | "months" | "years";
 

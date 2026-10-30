@@ -1,8 +1,9 @@
-import type { DateRange, PresetId } from "@/elements/StatFilterBar/children/DateRangeFilter/DateRangeFilter.script";
+import { AnchoredPopup } from "@/elements/AnchoredPopup/AnchoredPopup";
+import type { DateRange } from "@/lib/statistics/filters";
+import type { PresetId } from "../../DateRangeFilter.script";
 import { Calendar } from "./children/Calendar/Calendar";
 import { PresetList } from "./children/PresetList/PresetList";
 import position from "./DateRangePopup.position.module.css";
-import styles from "./DateRangePopup.styles.module.css";
 
 type DateRangePopupProps = {
   anchorRect: DOMRect;
@@ -22,18 +23,12 @@ export function DateRangePopup({
   onClose,
 }: DateRangePopupProps) {
   return (
-    <div className={`${styles.backdrop} ${position.backdrop}`} data-construction onClick={onClose}>
-      <div
-        className={`${styles.root} ${position.root}`}
-        data-construction
-        data-date-range-popup
-        style={{ top: anchorRect.bottom + 8, left: anchorRect.left }}
-        onClick={(event) => event.stopPropagation()}
-      >
+    <AnchoredPopup anchorRect={anchorRect} onClose={onClose}>
+      <div className={position.columns} data-construction>
         <PresetList activePreset={activePreset} onSelect={onSelectPreset} />
         <Calendar label="Start date" value={range.start} onSelect={(iso) => onSelectDate("start", iso)} />
         <Calendar label="End date" value={range.end} onSelect={(iso) => onSelectDate("end", iso)} />
       </div>
-    </div>
+    </AnchoredPopup>
   );
 }

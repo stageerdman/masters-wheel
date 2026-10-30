@@ -1,0 +1,17 @@
+/* Same glass-window recipe as every other chip in this bar. */
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.root:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { toIso } from "@/elements/StatFilterBar/children/DateRangeFilter/DateRangeFilter.script";
+import { toIso } from "@/lib/statistics/filters";
 import { daysInMonth, leadingBlanks, MONTH_NAMES, useCalendar, WEEKDAY_LABELS } from "./Calendar.script";
 import position from "./Calendar.position.module.css";
 import styles from "./Calendar.styles.module.css";

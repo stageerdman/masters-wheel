@@ -1,12 +1,9 @@
-"use client";
+// Preset definitions + date math for the date-range chip. The actual
+// DateRange/toIso/parseIso shapes live in src/lib/statistics/filters —
+// this file only owns what's specific to the chip's own UI: which
+// presets exist and how to label the current selection.
 
-// Date math + the open/close/positioning state machine for the date-range
-// filter chip. Dates are plain "YYYY-MM-DD" strings throughout (same
-// format as a record's own `date` field) rather than Date objects, parsed
-// via Date.UTC — same reasoning as src/lib/statistics: avoids local
-// timezone shifting a day when round-tripping.
-
-import { useCallback, useEffect, useRef, useState } from "react";
+import { parseIso, toIso, type DateRange } from "@/lib/statistics/filters";
 
 export type PresetId =
   | "all-time"
@@ -19,11 +16,6 @@ export type PresetId =
   | "last-90-days"
   | "this-year";
 
-export type DateRange = {
-  start: string | null;
-  end: string | null;
-};
-
 export const PRESETS: { id: PresetId; label: string }[] = [
   { id: "all-time", label: "All time" },
   { id: "today", label: "Today" },
@@ -35,19 +27,6 @@ export const PRESETS: { id: PresetId; label: string }[] = [
   { id: "last-90-days", label: "Last 90 days" },
   { id: "this-year", label: "This year" },
 ];
-
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-export function toIso(year: number, month: number, day: number): string {
-  return `${year}-${pad(month)}-${pad(day)}`;
-}
-
-export function parseIso(iso: string): { year: number; month: number; day: number } {
-  const [year, month, day] = iso.split("-").map(Number);
-  return { year, month, day };
-}
 
 function todayParts() {
   const now = new Date();
@@ -117,71 +96,4 @@ export function formatRangeLabel(activePreset: PresetId | null, range: DateRange
   if (range.start && range.end) return `${formatDateLabel(range.start)} – ${formatDateLabel(range.end)}`;
   if (range.start) return `From ${formatDateLabel(range.start)}`;
   return `Until ${formatDateLabel(range.end as string)}`;
-}
-
-export function useDateRangeFilter() {
-  const chipRef = useRef<HTMLButtonElement>(null);
-  const [open, setOpen] = useState(false);
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
-  const [activePreset, setActivePreset] = useState<PresetId | null>("all-time");
-  const [range, setRange] = useState<DateRange>(computePresetRange("all-time"));
-
-  const close = useCallback(() => setOpen(false), []);
-
-  const toggleOpen = useCallback(() => {
-    setOpen((current) => {
-      if (!current) setAnchorRect(chipRef.current?.getBoundingClientRect() ?? null);
-      return !current;
-    });
-  }, []);
-
-  const selectPreset = useCallback((presetId: PresetId) => {
-    setActivePreset(presetId);
-    setRange(computePresetRange(presetId));
-    setOpen(false);
-  }, []);
-
-  const selectDate = useCallback((which: "start" | "end", iso: string) => {
-    setActivePreset(null);
-    setRange((current) => ({ ...current, [which]: iso }));
-  }, []);
-
-  // A popover anchored to a scrolled-away chip reads as broken rather
-  // than "attached" to it — closing when the page behind it scrolls is
-  // simpler and more honest than trying to keep repositioning it live.
-  // Scrolling *inside* the popup itself (the preset list, a calendar's
-  // year list) must not trigger this — those are marked with
-  // data-date-range-popup so this handler can tell the difference.
-  useEffect(() => {
-    if (!open) return;
-    function handleScroll(event: Event) {
-      const target = event.target;
-      if (target instanceof Element && target.closest("[data-date-range-popup]")) return;
-      setOpen(false);
-    }
-    window.addEventListener("scroll", handleScroll, true);
-    return () => window.removeEventListener("scroll", handleScroll, true);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open]);
-
-  return {
-    chipRef,
-    open,
-    anchorRect,
-    label: formatRangeLabel(activePreset, range),
-    activePreset,
-    range,
-    close,
-    toggleOpen,
-    selectPreset,
-    selectDate,
-  };
 }

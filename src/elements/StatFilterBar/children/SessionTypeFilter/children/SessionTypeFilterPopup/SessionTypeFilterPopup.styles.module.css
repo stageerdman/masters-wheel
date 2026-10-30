@@ -1,0 +1,43 @@
+.modeButton {
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.modeButton:hover {
+  text-decoration: underline;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: var(--text-size-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--color-border);
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  color: var(--color-on-chip);
+  font-size: var(--text-size-micro);
+}
+
+.checkboxChecked {
+  background: var(--icon-color);
+  border-color: var(--icon-color);
+}

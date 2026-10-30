@@ -80,13 +80,37 @@ A second `StatWidget/children/` content type (e.g. a chart) is what forces
 `StatWidget` to actually pick between children instead of always rendering
 `SingleStat` — deferred until that widget is dictated.
 
-### Phase 5 — wire the date filter into statistics (not started)
-`DateRangeFilter` currently only drives its own chip label — it isn't
-wired into `src/lib/statistics`' `compute()` calls yet, so changing the
-range doesn't actually change what a `StatWidget` shows. Deferred because
-this round's dictation was entirely about the filter UI itself; wiring it
-in means threading the selected range from `StatSpace` down to `StatGrid`
-and into each statistic's `compute(range)`.
+### Phase 5 — wire filters into statistics; Meetings; session-type filter (done)
+- [x] "Sessions this month" renamed to **Meetings** and actually wired to
+      the filter bar: `compute` is now `compute(filters: StatFilters)`.
+      `src/lib/statistics/filters.ts` is the shared, UI-free shape both
+      `StatFilterBar` and `src/lib/statistics` agree on (`DateRange`,
+      `SessionTypeFilter`, `StatFilters`, plus the pure `isWithinRange`/
+      `passesSessionTypeFilter` matchers). Practice/training calls are
+      excluded from Meetings unconditionally (a business rule of what
+      "Meetings" means), independent of whatever the user filters by.
+- [x] The date range and any added custom filters persist to
+      `localStorage` (key `analytics-stat-filters`) via `StatFilterBar`'s
+      own hook — same hydrate-on-mount pattern `AIAssistant`'s preset
+      overrides already use. The user doesn't have to re-set it up.
+- [x] `StatGrid`'s cells are now 75% of their original size (8rem/6rem →
+      6rem/4.5rem) — finer spots in the grid for the same widgets.
+- [x] A second, generic filter joined the bar: `AddFilterButton` (a "+"
+      glass icon at the end of the row) opens a scrollable menu of filter
+      types not yet active — one today, **Session type**. Picking it adds
+      a `SessionTypeFilter` chip between the date chip and the "+" button,
+      starting empty (no-op until values are picked); clicking it opens a
+      popup with a single `Contains`/`Doesn't contain` toggle up top and a
+      scrollable multi-select below. The options list is read live off
+      `CALL_STATE_ORDER`/`CALL_STATE_META` (Performance Review's own call-
+      state registry) — add or remove a call state there and this filter's
+      options follow with no change needed here. A small `×` on the chip
+      removes the filter, returning "Session type" to the add-menu.
+- [x] Extracted `AnchoredPopup` (`src/elements/AnchoredPopup/`) and
+      `useAnchoredPopup` (`src/lib/`) — the glass-popup-anchored-to-a-chip
+      shell and its open/close/scroll-dismiss/Escape mechanics, shared by
+      every chip's popup now that there are four of them (date range,
+      session type, add-filter menu, and growing).
 
 ## Decisions
 See `wiki.md`.

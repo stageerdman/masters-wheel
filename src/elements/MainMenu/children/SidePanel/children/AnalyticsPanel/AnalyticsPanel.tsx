@@ -3,7 +3,7 @@ import { StatSpace } from "@/elements/StatSpace/StatSpace";
 import position from "./AnalyticsPanel.position.module.css";
 import styles from "./AnalyticsPanel.styles.module.css";
 
-const SLOTS: StatSlot[] = [{ id: "sessions", statisticId: "sessions-this-month" }];
+const SLOTS: StatSlot[] = [{ id: "meetings", statisticId: "meetings" }];
 
 export function AnalyticsPanel() {
   return (

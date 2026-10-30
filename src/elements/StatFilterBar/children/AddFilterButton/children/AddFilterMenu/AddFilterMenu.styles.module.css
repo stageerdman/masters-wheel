@@ -1,0 +1,12 @@
+.option {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: var(--text-size-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--color-border);
+}

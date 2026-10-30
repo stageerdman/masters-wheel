@@ -4,11 +4,13 @@
    standalone StatWidget defaults to 1x1 — the minimal possible footprint.
    Row tracks are explicit (--stat-row-count, set by StatGrid.tsx from
    StatSpace's growing row count) rather than auto — reserving rows beyond
-   the actual widgets is what gives the Space empty room to scroll into. */
+   the actual widgets is what gives the Space empty room to scroll into.
+   Cell size is 75% of the original (8rem/6rem -> 6rem/4.5rem) — a finer
+   grid for the same widget content. */
 .root {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
-  grid-template-rows: repeat(var(--stat-row-count, 1), 6rem);
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  grid-template-rows: repeat(var(--stat-row-count, 1), 4.5rem);
   gap: 1rem;
   width: 100%;
   flex-shrink: 0;

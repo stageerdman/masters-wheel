@@ -1,13 +1,7 @@
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-}
-
-.root {
-  position: absolute;
+/* The glass box itself is AnchoredPopup's root — this is just the 3-column
+   layout of its content (presets, start calendar, end calendar). */
+.columns {
   display: flex;
   gap: 1rem;
   padding: 1rem;
-  max-width: calc(100vw - 2rem);
 }
