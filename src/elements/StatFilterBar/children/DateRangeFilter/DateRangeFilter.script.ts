@@ -147,11 +147,16 @@ export function useDateRangeFilter() {
   }, []);
 
   // A popover anchored to a scrolled-away chip reads as broken rather
-  // than "attached" to it — closing on scroll is simpler and more honest
-  // than trying to keep repositioning it live.
+  // than "attached" to it — closing when the page behind it scrolls is
+  // simpler and more honest than trying to keep repositioning it live.
+  // Scrolling *inside* the popup itself (the preset list, a calendar's
+  // year list) must not trigger this — those are marked with
+  // data-date-range-popup so this handler can tell the difference.
   useEffect(() => {
     if (!open) return;
-    function handleScroll() {
+    function handleScroll(event: Event) {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-date-range-popup]")) return;
       setOpen(false);
     }
     window.addEventListener("scroll", handleScroll, true);

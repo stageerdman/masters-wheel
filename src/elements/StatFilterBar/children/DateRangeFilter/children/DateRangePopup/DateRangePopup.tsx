@@ -26,6 +26,7 @@ export function DateRangePopup({
       <div
         className={`${styles.root} ${position.root}`}
         data-construction
+        data-date-range-popup
         style={{ top: anchorRect.bottom + 8, left: anchorRect.left }}
         onClick={(event) => event.stopPropagation()}
       >
