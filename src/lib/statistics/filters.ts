@@ -53,3 +53,12 @@ export function passesSessionTypeFilter(state: string | null, filter: SessionTyp
   const included = state !== null && filter.values.includes(state);
   return filter.mode === "contains" ? included : !included;
 }
+
+// A statistic can pin its own value for a filter dimension (e.g. Meetings
+// always excludes training calls) — that pin wins outright over whatever
+// the global filter bar is set to for that same dimension, rather than
+// the two being combined/intersected. Dimensions the statistic doesn't
+// pin still come from the global filters untouched.
+export function mergeFilters(global: StatFilters, fixed: Partial<StatFilters> | undefined): StatFilters {
+  return fixed ? { ...global, ...fixed } : global;
+}

@@ -6,7 +6,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { getStatistic } from "@/lib/statistics";
-import type { StatFilters } from "@/lib/statistics/filters";
+import { mergeFilters, type StatFilters } from "@/lib/statistics/filters";
 import { StatWidget } from "@/elements/StatWidget/StatWidget";
 import position from "./StatGrid.position.module.css";
 import styles from "./StatGrid.styles.module.css";
@@ -63,8 +63,9 @@ export function StatGrid({ slots, filters }: StatGridProps) {
   useEffect(() => {
     let cancelled = false;
     for (const slot of slots) {
-      getStatistic(slot.statisticId)
-        .compute(filters)
+      const statistic = getStatistic(slot.statisticId);
+      statistic
+        .compute(mergeFilters(filters, statistic.fixedFilters))
         .then((value) => {
           if (cancelled) return;
           setValues((current) => ({ ...current, [slot.id]: value }));

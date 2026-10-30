@@ -86,9 +86,7 @@ A second `StatWidget/children/` content type (e.g. a chart) is what forces
       `src/lib/statistics/filters.ts` is the shared, UI-free shape both
       `StatFilterBar` and `src/lib/statistics` agree on (`DateRange`,
       `SessionTypeFilter`, `StatFilters`, plus the pure `isWithinRange`/
-      `passesSessionTypeFilter` matchers). Practice/training calls are
-      excluded from Meetings unconditionally (a business rule of what
-      "Meetings" means), independent of whatever the user filters by.
+      `passesSessionTypeFilter` matchers).
 - [x] The date range and any added custom filters persist to
       `localStorage` (key `analytics-stat-filters`) via `StatFilterBar`'s
       own hook — same hydrate-on-mount pattern `AIAssistant`'s preset
@@ -111,6 +109,30 @@ A second `StatWidget/children/` content type (e.g. a chart) is what forces
       shell and its open/close/scroll-dismiss/Escape mechanics, shared by
       every chip's popup now that there are four of them (date range,
       session type, add-filter menu, and growing).
+
+### Phase 6 — per-statistic fixed filters; Closed/Closed amount/Close rates (done)
+- [x] `Statistic.fixedFilters?: Partial<StatFilters>` — a statistic can
+      pin its own value for a filter dimension that the global filter bar
+      then can't override. `mergeFilters` (`src/lib/statistics/filters`)
+      spreads the statistic's pin over the global value before `compute`
+      ever runs; `StatGrid` is the one call site that does this merge, so
+      `compute` itself never has to know whether a value came from the
+      user or from the statistic's own definition. Meetings' training-
+      exclusion moved out of `countMeetings`'s body and into
+      `fixedFilters: { sessionTypeFilter: { mode: "excludes", values:
+      ["training"] } }` — same effect, now expressed as data instead of
+      a hardcoded `record.state !== "training"` check.
+- [x] 4 new widgets, all sharing one `matchingRecords(filters, predicate)`
+      helper (applies date range + session-type filter, then the
+      statistic's own predicate): **Closed** (count), **Closed amount**
+      (sum of `offeredAmount` across closed records — no currency symbol,
+      since records can hold different currencies and assuming one would
+      misrepresent the total), **Real close rate** (closed ÷ (closed +
+      failed) — excludes not-qualified leads, which per
+      `CALL_STATE_META` were never real opportunities), **Close rate**
+      (closed ÷ (closed + failed + not-qualified) — the broader rate).
+      Both rates show "—" rather than dividing by zero when there's no
+      matching data yet.
 
 ## Decisions
 See `wiki.md`.

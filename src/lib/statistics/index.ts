@@ -1,37 +1,105 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { listRecords } from "@/lib/records";
+import { listRecords, type RecordSummary } from "@/lib/records";
 import { isWithinRange, passesSessionTypeFilter, type StatFilters } from "./filters";
 
 export type Statistic = {
   id: string;
   label: string;
+  // Dimensions this statistic pins unconditionally — see mergeFilters in
+  // ./filters. E.g. Meetings always excludes practice/training calls,
+  // regardless of what the global filter bar is set to.
+  fixedFilters?: Partial<StatFilters>;
   compute: (filters: StatFilters) => Promise<string>;
 };
-
-// Practice/training calls are never real meetings — excluded unconditionally,
-// not something the session-type filter needs to be set up to hide.
-const PRACTICE_STATE = "training";
 
 // Outside the Tauri shell (e.g. the plain browser tab used for HMR
 // preview) there's no fs bridge at all — same guard PerformanceReview
 // uses, stay empty rather than throwing.
-async function countMeetings(filters: StatFilters): Promise<string> {
-  if (!isTauri()) return "—";
+async function matchingRecords(
+  filters: StatFilters,
+  predicate: (record: RecordSummary) => boolean = () => true,
+): Promise<RecordSummary[]> {
   const records = await listRecords();
-  const count = records.filter(
+  return records.filter(
     (record) =>
-      record.state !== PRACTICE_STATE &&
+      predicate(record) &&
       isWithinRange(record.date, filters.dateRange) &&
       passesSessionTypeFilter(record.state, filters.sessionTypeFilter),
-  ).length;
-  return String(count);
+  );
+}
+
+async function countMeetings(filters: StatFilters): Promise<string> {
+  if (!isTauri()) return "—";
+  const records = await matchingRecords(filters);
+  return String(records.length);
+}
+
+async function countClosed(filters: StatFilters): Promise<string> {
+  if (!isTauri()) return "—";
+  const records = await matchingRecords(filters, (record) => record.state === "closed");
+  return String(records.length);
+}
+
+async function closedAmount(filters: StatFilters): Promise<string> {
+  if (!isTauri()) return "—";
+  const records = await matchingRecords(filters, (record) => record.state === "closed");
+  const total = records.reduce((sum, record) => sum + (record.offeredAmount ?? 0), 0);
+  return total.toLocaleString();
+}
+
+function formatRate(numerator: number, denominator: number): string {
+  if (denominator === 0) return "—";
+  return `${Math.round((numerator / denominator) * 100)}%`;
+}
+
+// Among genuinely real opportunities only (closed or failed) — excludes
+// not-qualified leads, which per CALL_STATE_META were never real
+// opportunities to begin with.
+async function realCloseRate(filters: StatFilters): Promise<string> {
+  if (!isTauri()) return "—";
+  const records = await matchingRecords(filters, (record) => record.state === "closed" || record.state === "failed");
+  const closed = records.filter((record) => record.state === "closed").length;
+  return formatRate(closed, records.length);
+}
+
+// The broader rate — closed against everything that didn't close,
+// including not-qualified leads in the denominator.
+async function closeRate(filters: StatFilters): Promise<string> {
+  if (!isTauri()) return "—";
+  const records = await matchingRecords(
+    filters,
+    (record) => record.state === "closed" || record.state === "failed" || record.state === "notQualified",
+  );
+  const closed = records.filter((record) => record.state === "closed").length;
+  return formatRate(closed, records.length);
 }
 
 export const STATISTICS: Record<string, Statistic> = {
   meetings: {
     id: "meetings",
     label: "Meetings",
+    fixedFilters: { sessionTypeFilter: { mode: "excludes", values: ["training"] } },
     compute: countMeetings,
+  },
+  closed: {
+    id: "closed",
+    label: "Closed",
+    compute: countClosed,
+  },
+  "closed-amount": {
+    id: "closed-amount",
+    label: "Closed amount",
+    compute: closedAmount,
+  },
+  "real-close-rate": {
+    id: "real-close-rate",
+    label: "Real close rate",
+    compute: realCloseRate,
+  },
+  "close-rate": {
+    id: "close-rate",
+    label: "Close rate",
+    compute: closeRate,
   },
 };
 

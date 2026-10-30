@@ -29,11 +29,32 @@
   "filter not actually active yet" regardless of mode — contains-nothing
   would otherwise vacuously exclude every record, which is the opposite
   of what "pops up empty, doesn't filter anything by default" asked for.
-- **Practice/training exclusion is hardcoded in `countMeetings`, not a
-  default session-type filter value.** It's a property of what "Meetings"
-  *means*, not a user-adjustable starting filter state — it stays true
-  even if the user's own session-type filter (once added) is configured
-  to include training calls for some other analysis.
+- **A statistic's `fixedFilters` override the global filter outright for
+  that dimension — they don't intersect with it.** Meetings pins
+  `sessionTypeFilter: { mode: "excludes", values: ["training"] }`; if the
+  user separately adds their own session-type filter via "+", it simply
+  has no effect on Meetings at all — `mergeFilters` replaces the whole
+  `sessionTypeFilter` field, it doesn't combine the two rule sets. This
+  is what was asked for ("if user adjusts Sessions filter in global it
+  has no impact here"), and it's also simpler to reason about than a
+  combined/intersected rule would be: a widget's own pin is either the
+  final word on that dimension, or the global value is — never both.
+- **The merge happens in `StatGrid`, once, right before `compute` is
+  called — not inside each `compute` function.** This keeps every
+  `compute` function uniform: it only ever reads `filters.dateRange`/
+  `filters.sessionTypeFilter` as given, with no statistic needing to know
+  whether a value in front of it came from the user or from its own
+  definition. `countMeetings` no longer has a `record.state !==
+  "training"` check in its body at all — that same exclusion is now
+  entirely declarative data, not a special case in the compute logic.
+- **New widgets apply the global session-type filter normally (no fixed
+  filters of their own) unless one is actually dictated.** Closed/Closed
+  amount/Real close rate/Close rate all already narrow to specific states
+  as part of their own formula (e.g. Close rate only ever looks at
+  closed/failed/not-qualified) — layering an unrelated global session-type
+  filter on top is an accepted, if occasionally surprising, consequence
+  rather than something these widgets needed to guard against; none of
+  that was dictated, so none of it was added speculatively.
 
 ## Date-range filter: positioning, interaction, and deferred scope
 - **No portal, plain `position: fixed`.** `DateRangePopup` renders inline
