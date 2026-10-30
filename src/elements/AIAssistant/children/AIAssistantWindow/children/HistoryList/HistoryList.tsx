@@ -8,15 +8,16 @@ type HistoryListProps = {
   sessions: ChatSession[];
   activeId: string;
   onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
   agents: Agent[];
 };
 
-// The Sidebar's "History" tab renders this as its sole content, so the
-// section title lives on the tab itself — no label repeated in here. A
-// draft session (see AIAssistant.script.ts's isDraftSession) is just the
-// current "pick someone" prompt, not a real past conversation, so it's
-// filtered out here rather than showing as a fake "Now" entry.
-export function HistoryList({ sessions, activeId, onSelect, agents }: HistoryListProps) {
+// Sidebar's section below AgentStrip — "History" is Sidebar's own section
+// label above this, not repeated in here. A draft session (see
+// AIAssistant.script.ts's isDraftSession) is just the current "pick
+// someone" prompt, not a real past conversation, so it's filtered out
+// here rather than showing as a fake "Now" entry.
+export function HistoryList({ sessions, activeId, onSelect, onDelete, agents }: HistoryListProps) {
   const realSessions = sessions.filter((session) => !isDraftSession(session));
 
   return (
@@ -27,6 +28,7 @@ export function HistoryList({ sessions, activeId, onSelect, agents }: HistoryLis
           session={session}
           active={session.id === activeId}
           onSelect={() => onSelect(session.id)}
+          onDelete={() => onDelete(session.id)}
           agents={agents}
         />
       ))}

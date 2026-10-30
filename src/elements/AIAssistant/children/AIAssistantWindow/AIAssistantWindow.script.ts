@@ -88,8 +88,8 @@ export function useWindowGeometry({ isClosing, hasEntered, dragOffset, manualSiz
   };
 }
 
-// The chat column's drag-and-drop target state for dropping an
-// AgentRoster card into the active conversation.
+// The chat column's drag-and-drop target state for dropping an agent
+// (e.g. from AgentStrip) into the active conversation.
 export function useChatDropTarget(onDropAgentIntoChat: (agentId: string) => void) {
   const [isDragOver, setIsDragOver] = useState(false);
 

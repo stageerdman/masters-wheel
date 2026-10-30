@@ -7,3 +7,14 @@
   color: var(--color-text-muted);
   font-size: var(--text-size-label);
 }
+
+.profileName {
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.profileDescription {
+  font-size: var(--text-size-label);
+  color: var(--color-text-muted);
+}

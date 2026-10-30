@@ -18,6 +18,9 @@
 .title {
   font-size: var(--text-size-label);
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .date {

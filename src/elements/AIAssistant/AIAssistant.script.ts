@@ -14,6 +14,8 @@ export type ChatSession = {
   activeAgentIds: string[];
   agentId?: string;
   claudeSessionId?: string;
+  /** Set only by makeNewSession — see isDraftSession. */
+  isDraft?: boolean;
 };
 
 export type { Agent };
@@ -21,15 +23,19 @@ export type { Agent };
 const NEW_SESSION_ID = "current";
 
 function makeNewSession(id: string = NEW_SESSION_ID): ChatSession {
-  return { id, title: "New chat", relativeDate: "Now", messages: [], activeAgentIds: [] };
+  return { id, title: "New chat", relativeDate: "Now", messages: [], activeAgentIds: [], isDraft: true };
 }
 
 // A freshly-opened chat with nobody picked yet and nothing said yet —
 // AIAssistantWindow shows the AgentPicker instead of the message list for
-// exactly this shape, and HistoryList hides it (it isn't a real past
-// conversation, just the current "pick someone" prompt).
+// one of these, and HistoryList hides it (it isn't a real past
+// conversation, just the current "pick someone" prompt). Deliberately an
+// explicit flag rather than inferring "no agent + no messages" from
+// shape — a real, legitimately-empty session (e.g. a fixture with no
+// messages yet) would otherwise be indistinguishable from an actual
+// draft and vanish from history too.
 export function isDraftSession(session: ChatSession): boolean {
-  return !session.agentId && session.activeAgentIds.length === 0 && session.messages.length === 0;
+  return session.isDraft === true;
 }
 
 function escapeRegExp(value: string) {
@@ -49,9 +55,32 @@ export function findMentionedAgents(text: string, agents: Agent[]): Agent[] {
 // "Chat with X" session marker (session.agentId) and the @mention/drag
 // roster (session.activeAgentIds) are two different ways an agent ends up
 // in a chat, but for "who should reply" purposes they're the same thing.
-function resolveActiveAgents(session: ChatSession | undefined, agents: Agent[]): Agent[] {
+// Exported: also used to resolve a session's avatar in HistoryListItem and
+// the "who am I talking to" profile shown in MessageList/Message.
+export function resolveActiveAgents(session: ChatSession | undefined, agents: Agent[]): Agent[] {
   if (!session) return [];
   return agents.filter((agent) => agent.id === session.agentId || session.activeAgentIds.includes(agent.id));
+}
+
+// Agents ordered by how recently they were chatted with — the order
+// `sessions` is already in (see bringSessionToFront below, called
+// whenever a chat is started/resumed/sent in), read off each session's
+// dedicated agentId. An agent never chatted with yet falls back to the
+// end, in its original roster order. Used by Sidebar's AgentStrip only —
+// everywhere else (the @mention picker, AgentPicker) keeps the plain
+// roster order.
+export function orderAgentsByRecency(agents: Agent[], sessions: ChatSession[]): Agent[] {
+  const seen = new Set<string>();
+  const recent: Agent[] = [];
+  for (const session of sessions) {
+    if (!session.agentId || seen.has(session.agentId)) continue;
+    const agent = agents.find((candidate) => candidate.id === session.agentId);
+    if (!agent) continue;
+    seen.add(agent.id);
+    recent.push(agent);
+  }
+  const rest = agents.filter((agent) => !seen.has(agent.id));
+  return [...recent, ...rest];
 }
 
 // Owns the assistant's open/closed state and every chat session's
@@ -95,6 +124,23 @@ export function useAIAssistant() {
     setActiveSessionId(id);
   }
 
+  // Moves a session to the front of `sessions` — this array's order is
+  // what orderAgentsByRecency and (for free) HistoryList's own display
+  // order read as "most recently used first". Called when a chat is
+  // started/resumed via its agent and whenever a message is actually
+  // sent, deliberately not on every passive history click (selectSession
+  // above) — browsing past chats shouldn't reshuffle the list under you.
+  function bringSessionToFront(id: string) {
+    setSessions((current) => {
+      const index = current.findIndex((session) => session.id === id);
+      if (index <= 0) return current;
+      const next = [...current];
+      const [session] = next.splice(index, 1);
+      next.unshift(session);
+      return next;
+    });
+  }
+
   // Switches to the existing draft session if there already is one
   // (never piles up multiple empty "New chat" entries), otherwise creates
   // a fresh one and switches to it.
@@ -135,6 +181,7 @@ export function useAIAssistant() {
     if (!text || isSending) return;
     const sessionIdAtSend = activeSessionId;
     const session = sessions.find((candidate) => candidate.id === sessionIdAtSend);
+    bringSessionToFront(sessionIdAtSend);
 
     const alreadyActive = resolveActiveAgents(session, agents);
     const mentioned = findMentionedAgents(text, agents);
@@ -210,6 +257,7 @@ export function useAIAssistant() {
     const existing = sessions.find((session) => session.agentId === agentId);
     if (existing) {
       setActiveSessionId(existing.id);
+      bringSessionToFront(existing.id);
       return;
     }
     const agent = agents.find((candidate) => candidate.id === agentId);
@@ -224,6 +272,25 @@ export function useAIAssistant() {
     };
     setSessions((current) => [session, ...current]);
     setActiveSessionId(session.id);
+  }
+
+  // Right-click "Delete chat" in HistoryList. If the deleted session was
+  // the active one, falls back to whatever is now first — the most
+  // recently used remaining chat — or a fresh draft if none are left.
+  function deleteSession(id: string) {
+    setSessions((current) => {
+      const next = current.filter((session) => session.id !== id);
+      if (activeSessionId === id) {
+        if (next.length > 0) {
+          setActiveSessionId(next[0].id);
+          return next;
+        }
+        const draft = makeNewSession(crypto.randomUUID());
+        setActiveSessionId(draft.id);
+        return [draft, ...next];
+      }
+      return next;
+    });
   }
 
   function addAgentToActiveChat(agentId: string) {
@@ -264,6 +331,7 @@ export function useAIAssistant() {
     activeSession,
     selectSession,
     startNewChat,
+    deleteSession,
     composerValue,
     setComposerValue,
     sendMessage,

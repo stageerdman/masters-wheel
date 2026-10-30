@@ -63,7 +63,7 @@ export function Composer({ value, onChange, onSend, isSending, density, agents }
         data-construction
         rows={1}
         value={value}
-        placeholder={isSending ? "Waiting for a reply…" : "Message the assistant — type @ to bring in an agent"}
+        placeholder={isSending ? "Waiting for a reply…" : "Message…"}
         disabled={isSending}
         onChange={handleChange}
         onKeyDown={handleTextareaKeyDown}

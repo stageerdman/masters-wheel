@@ -1,0 +1,28 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  background: none;
+  border: none;
+  color: var(--color-text);
+  text-align: left;
+  cursor: grab;
+}
+
+.root:hover {
+  background: color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+.root:active {
+  cursor: grabbing;
+}
+
+.name {
+  font-size: var(--text-size-label);
+  color: var(--color-text);
+  overflow-wrap: break-word;
+}
+
+.tagline {
+  font-size: var(--text-size-micro);
+  color: var(--color-text-muted);
+  overflow-wrap: break-word;
+}

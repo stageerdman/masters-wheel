@@ -1,0 +1,26 @@
+/* Where this sits within AgentPicker's list. */
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
+}
+
+/* Wraps instead of clipping at narrow widths — a 2-line clamp keeps a
+   long description from pushing the row's height around too much. */
+.tagline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}

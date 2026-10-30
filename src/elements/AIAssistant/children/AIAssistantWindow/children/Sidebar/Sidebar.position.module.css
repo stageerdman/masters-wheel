@@ -5,8 +5,8 @@
    make room automatically.
 
    `.inner` is a fixed 180px regardless of the outer `.root`'s animating
-   width, so the tab row and list content never reflow mid-transition —
-   only the clipping window grows/shrinks around them. */
+   width, so the AgentStrip/History content never reflows mid-transition
+   — only the clipping window grows/shrinks around them. */
 .root {
   width: 0;
   flex-shrink: 0;
@@ -24,16 +24,12 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
 }
 
-.tabs {
-  display: flex;
+.sectionLabel {
   flex-shrink: 0;
-}
-
-.tab {
-  flex: 1;
-  padding: 0.5rem 0;
+  padding: 0.5rem 0.75rem 0;
 }
 
 /* Below this inline-size (set by AIAssistantWindow's .content container),

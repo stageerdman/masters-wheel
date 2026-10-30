@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import position from "./ContextMenu.position.module.css";
 import styles from "./ContextMenu.styles.module.css";
 
@@ -60,7 +61,13 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     };
   }, [onClose]);
 
-  return (
+  // Portaled to `document.body` rather than rendered in place — `position:
+  // fixed` is only viewport-relative when nothing between this node and
+  // the viewport sets `transform` (or similar); AIAssistantWindow's root
+  // always has one (every dock state translates it), which would otherwise
+  // make that window the containing block and clip this menu to its own
+  // bounds instead of the real viewport.
+  return createPortal(
     <div
       ref={rootRef}
       className={`${styles.root} ${position.root}`}
@@ -83,6 +90,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
           {item.label}
         </button>
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }

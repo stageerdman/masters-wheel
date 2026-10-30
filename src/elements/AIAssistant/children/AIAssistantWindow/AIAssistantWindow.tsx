@@ -2,7 +2,7 @@
 
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.script";
-import { isDraftSession } from "@/elements/AIAssistant/AIAssistant.script";
+import { isDraftSession, resolveActiveAgents } from "@/elements/AIAssistant/AIAssistant.script";
 import type { DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
 import { ActiveAgentChip } from "./children/ActiveAgentChip/ActiveAgentChip";
 import { AgentPicker } from "./children/AgentPicker/AgentPicker";
@@ -36,7 +36,9 @@ type AIAssistantWindowProps = {
   sessions: ChatSession[];
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
+  onDeleteSession: (id: string) => void;
   agents: Agent[];
+  agentsByRecency: Agent[];
   onSelectAgent: (id: string) => void;
   onDropAgentIntoChat: (id: string) => void;
   onRemoveAgentFromChat: (id: string) => void;
@@ -70,7 +72,9 @@ export function AIAssistantWindow({
   sessions,
   onSelectSession,
   onNewChat,
+  onDeleteSession,
   agents,
+  agentsByRecency,
   onSelectAgent,
   onDropAgentIntoChat,
   onRemoveAgentFromChat,
@@ -97,6 +101,10 @@ export function AIAssistantWindow({
   const resizingClass = isResizing ? position.resizing : "";
 
   const activeAgents = agents.filter((agent) => activeSession.activeAgentIds.includes(agent.id));
+  // Whoever this session is actually with — the dedicated agentId agent,
+  // else the first dragged/mentioned-in one. MessageList/Message use this
+  // for the "who am I talking to" profile and per-message avatar.
+  const respondingAgent = resolveActiveAgents(activeSession, agents)[0];
 
   return (
     <div
@@ -160,7 +168,9 @@ export function AIAssistantWindow({
           sessions={sessions}
           activeSessionId={activeSession.id}
           onSelectSession={onSelectSession}
+          onDeleteSession={onDeleteSession}
           agents={agents}
+          agentsByRecency={agentsByRecency}
           onSelectAgent={onSelectAgent}
         />
         <div
@@ -181,7 +191,12 @@ export function AIAssistantWindow({
                   ))}
                 </div>
               )}
-              <MessageList messages={activeSession.messages} density={density} agents={agents} />
+              <MessageList
+                messages={activeSession.messages}
+                density={density}
+                agents={agents}
+                respondingAgent={respondingAgent}
+              />
               <Composer
                 value={composerValue}
                 onChange={onComposerChange}

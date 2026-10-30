@@ -3,7 +3,7 @@
 import { AIAssistantTrigger } from "./children/AIAssistantTrigger/AIAssistantTrigger";
 import { AIAssistantWindow } from "./children/AIAssistantWindow/AIAssistantWindow";
 import { DockZoneOverlay } from "./children/DockZoneOverlay/DockZoneOverlay";
-import { useAIAssistant } from "./AIAssistant.script";
+import { orderAgentsByRecency, useAIAssistant } from "./AIAssistant.script";
 import { useWindowDock } from "./AIAssistant.windowDock.script";
 import position from "./AIAssistant.position.module.css";
 import styles from "./AIAssistant.styles.module.css";
@@ -19,6 +19,7 @@ export function AIAssistant() {
     activeSession,
     selectSession,
     startNewChat,
+    deleteSession,
     composerValue,
     setComposerValue,
     sendMessage,
@@ -44,6 +45,7 @@ export function AIAssistant() {
 
   // Left dock stays compact; center gets the roomier feel.
   const density = dockState === "left" ? "compact" : "comfortable";
+  const agentsByRecency = orderAgentsByRecency(agents, sessions);
 
   return (
     <div id="ai-assistant-root" className={`${styles.root} ${position.root}`} data-construction>
@@ -74,7 +76,9 @@ export function AIAssistant() {
           sessions={sessions}
           onSelectSession={selectSession}
           onNewChat={startNewChat}
+          onDeleteSession={deleteSession}
           agents={agents}
+          agentsByRecency={agentsByRecency}
           onSelectAgent={selectAgent}
           onDropAgentIntoChat={addAgentToActiveChat}
           onRemoveAgentFromChat={removeAgentFromActiveChat}

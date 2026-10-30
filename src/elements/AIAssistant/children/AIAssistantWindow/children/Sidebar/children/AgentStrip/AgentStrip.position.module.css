@@ -1,0 +1,29 @@
+/* Where this sits within Sidebar's column — a horizontally scrolling
+   row, not a wrapping grid, so it stays one line regardless of how many
+   agents exist. */
+.root {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem 0;
+  overflow-x: auto;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  width: 48px;
+  padding: 0.25rem 0;
+  border-radius: 6px;
+}
+
+.name {
+  max-width: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}

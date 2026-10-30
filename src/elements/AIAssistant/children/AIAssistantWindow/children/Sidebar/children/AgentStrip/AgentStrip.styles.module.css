@@ -1,26 +1,24 @@
 /* How this element looks. No layout/positioning here. */
 .root {
   background: none;
+}
+
+.item {
+  background: none;
   border: none;
   color: var(--color-text);
-  text-align: left;
   cursor: grab;
 }
 
-.root:hover {
+.item:hover {
   background: color-mix(in srgb, var(--color-border) 50%, transparent);
 }
 
-.root:active {
+.item:active {
   cursor: grabbing;
 }
 
 .name {
-  font-size: var(--text-size-label);
-  color: var(--color-text);
-}
-
-.tagline {
   font-size: var(--text-size-micro);
   color: var(--color-text-muted);
 }

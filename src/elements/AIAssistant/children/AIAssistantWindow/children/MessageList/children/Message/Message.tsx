@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Handlers, State } from "mdast-util-to-hast";
 import type { Agent, ChatMessage } from "@/elements/AIAssistant/AIAssistant.script";
+import { AgentAvatar } from "@/elements/AgentAvatar/AgentAvatar";
 import { remarkMentions } from "./Message.script";
 import position from "./Message.position.module.css";
 import styles from "./Message.styles.module.css";
@@ -11,6 +12,7 @@ type MessageProps = {
   message: ChatMessage;
   density: "compact" | "comfortable";
   agents: Agent[];
+  respondingAgent: Agent | undefined;
 };
 
 // mdast-util-to-hast's Handlers type is keyed to its own known node
@@ -27,9 +29,13 @@ const mentionHandlers = {
   }),
 } as unknown as Handlers;
 
-export function Message({ message, density, agents }: MessageProps) {
+export function Message({ message, density, agents, respondingAgent }: MessageProps) {
   const role = message.role;
   const densityClass = density === "comfortable" ? position.comfortable : "";
+  // Which agent you're talking to stays visible on every one of their
+  // replies, not just at the top of a fresh chat — a tiny avatar + name
+  // row prepended to each assistant bubble.
+  const showAgentLabel = role === "assistant" && Boolean(respondingAgent);
   // An assistant reply starts as an empty placeholder the instant it's
   // sent (see AIAssistant.script.ts's sendMessage) and only gains text once
   // the first streamed delta arrives — render that window as "thinking"
@@ -88,6 +94,12 @@ export function Message({ message, density, agents }: MessageProps) {
       className={`${styles.root} ${position.root} ${styles[role]} ${position[role]} ${densityClass}`}
       data-construction
     >
+      {showAgentLabel && respondingAgent && (
+        <span className={`${styles.agentLabel} ${position.agentLabel}`} data-construction>
+          <AgentAvatar agent={respondingAgent} size={16} />
+          {respondingAgent.name}
+        </span>
+      )}
       {isThinking ? (
         <span className={`${styles.thinking} ${position.thinking}`} data-construction aria-label="Thinking">
           <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />

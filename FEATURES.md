@@ -49,23 +49,34 @@ between the two lists. Each page gets its own section as pages get added.
       list items, etc.) via a custom remark plugin.
 - [x] Opening a brand-new, nobody-picked-yet chat shows an agent picker
       (`AgentPicker`) in the chat column instead of the empty composer —
-      "who do you want to chat with?" is now the first thing, not
-      something buried in the Sidebar's Agents tab. A header button
-      starts a genuinely new chat (previously there was exactly one
-      blank session created at mount and no way to get back to that
-      state after navigating away from it).
-- [x] `HistoryList` shows each past chat's agent photo (or initial-letter
-      badge) next to its title — a session's "primary" agent is its
-      dedicated `agentId` if there is one, else the first
-      `activeAgentIds` entry. Draft (nobody-picked-yet) sessions are
-      filtered out of history entirely rather than showing as a fake
-      "Now" entry.
+      "who do you want to chat with?" is now the first thing. A header
+      button starts a genuinely new chat (previously there was exactly
+      one blank session created at mount and no way to get back to that
+      state after navigating away from it). A draft session is marked
+      explicitly (`ChatSession.isDraft`), not inferred from having no
+      agent/messages — a real, legitimately-empty session can't get
+      mistaken for one.
+- [x] A dedicated chat's empty state shows that agent's own profile
+      (photo, name, description) instead of "Ask anything.", and every
+      one of that agent's replies carries a tiny avatar + name label —
+      which agent you're talking to stays visible the whole conversation,
+      not just at the start.
+- [x] `HistoryList` shows each past chat's title, how long ago it was,
+      and a tiny photo of its agent next to the date — a session's
+      "primary" agent is its dedicated `agentId` if there is one, else
+      the first `activeAgentIds` entry. Draft (nobody-picked-yet)
+      sessions are filtered out of history entirely rather than showing
+      as a fake "Now" entry. Right-clicking a history entry offers
+      "Delete chat" (native confirmation first, not undoable); deleting
+      the active chat falls back to the next most-recently-used one, or
+      a fresh draft if none are left.
 - [x] Every place an agent appears in the chat (`AgentRosterItem`,
-      `ActiveAgentChip`, `AgentPicker`, `HistoryListItem`) now renders its
-      real uploaded photo via the new shared `AgentAvatar` element,
-      falling back to the initial-letter badge only when no photo was
-      uploaded; a blank `description` falls back to "No description
-      yet." instead of an empty line (`src/lib/agents/description.ts`).
+      `ActiveAgentChip`, `AgentPicker`, `AgentStrip`, `HistoryListItem`)
+      renders its real uploaded photo via the shared `AgentAvatar`
+      element, falling back to the initial-letter badge only when no
+      photo was uploaded; a blank `description` falls back to "No
+      description yet." instead of an empty line
+      (`src/lib/agents/description.ts`).
 
 ### Built (UI shell only — no real functionality behind it)
 - [x] `AIAssistant` replaces the Next.js dev-mode badge: fixed bottom-left
@@ -75,7 +86,9 @@ between the two lists. Each page gets its own section as pages get added.
       that corner; a header h-line button collapses it back (both
       directions animate, with a reduced-motion opacity-only fallback)
 - [x] Chat content: message list (user bubbles vs. flush assistant text),
-      auto-growing composer, empty "Ask anything." state
+      auto-growing composer; empty state is that agent's own profile (see
+      "Built — real backend" above) with "Ask anything." as the generic
+      fallback for the rare case of no agent at all
 - [x] Drag the header to snap the window between 2 docked forms — left
       (small, default, bottom-left) and center (bigger, horizontally
       centered) — both bottom-flush, top-rounded corners only; a
@@ -95,16 +108,18 @@ between the two lists. Each page gets its own section as pages get added.
       split layout — it pushes/narrows the chat column (flex width,
       like Claude's sidebar), not an overlay; collapse button sits on
       the header's right side
-- [x] `Sidebar` holds `HistoryList` and `AgentRoster` behind a 2-tab
-      switcher (History | Agents, one visible at a time, more tabs can
-      join later) instead of stacking both — keeps scrolling sane in a
-      narrow dock. Below ~480px of content width, the sidebar takes over
-      the whole content area instead of splitting (phone-drawer
-      behavior) — closing it is the only way back to the chat at that size
-- [x] `HistoryList` switches between fake past sessions; `AgentRoster`
-      lets you click an agent to open a dedicated session with it, or
-      drag one onto the chat to add it alongside — shows an
-      `ActiveAgentChip` + a muted system line, no fake agent reply
+- [x] `Sidebar` is a single stacked panel, no tab switcher: `AgentStrip`
+      (icon + name, ordered by how recently each agent was chatted with,
+      scrolls horizontally rather than wrapping) sits above a small
+      standardized "History" label and `HistoryList` below it. Below
+      ~480px of content width, the sidebar takes over the whole content
+      area instead of splitting (phone-drawer behavior) — closing it is
+      the only way back to the chat at that size.
+- [x] `HistoryList` switches between past sessions; `AgentStrip` lets you
+      click an agent to immediately open a dedicated chat with them
+      (creating it on first click, reusing it after), or drag one onto
+      the chat to add it alongside — shows an `ActiveAgentChip` + a muted
+      system line, no fake agent reply
 - [x] Typing `@` in the composer opens a picker filtered by what you type
       (click or Arrow keys + Enter/Tab to pick, Escape to dismiss);
       selecting an agent inserts `@AgentName` in the message. Sending a
