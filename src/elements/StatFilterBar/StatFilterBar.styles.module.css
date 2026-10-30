@@ -1,0 +1,4 @@
+/* Invisible — only the filter chips inside have any visual presence. */
+.root {
+  background: transparent;
+}

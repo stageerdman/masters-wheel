@@ -1,0 +1,10 @@
+/* Same glass-window recipe as a StatWidget — a lightweight popover, not a
+   dimmed modal, so the backdrop itself stays fully invisible (it only
+   exists to catch outside clicks). */
+.root {
+  background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-text) 16%, transparent);
+}

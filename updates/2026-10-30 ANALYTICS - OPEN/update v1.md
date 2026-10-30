@@ -46,6 +46,23 @@ side of the screen to give the grid real room.
       top/bottom fade mask so widgets dissolve at the edge instead of
       being hard-clipped.
 
+### Phase 1.5 — filter bar (done)
+- [x] `StatFilterBar` — a short, invisible row living inside `StatSpace`
+      above `StatGrid` (scrolls away with it, not a sticky header). Only
+      its chips have visual presence, same shell/content split as
+      `StatWidget`. One filter today: a date-range chip. More filters are
+      future siblings here, same reasoning as `StatWidget/children/`.
+- [x] `DateRangeFilter` chip (`StatFilterBar/children/`) — glass pill
+      showing "All time" by default or the active range/preset label.
+      Clicking opens `DateRangePopup`: 3 columns — a scrollable preset
+      list (All time, Today, Yesterday, This week, Last 7/30/90 days,
+      This year, This month), and two independent `Calendar`s (start,
+      end), each with day/month/year drill-down (click the month name to
+      pick a month, click the year to pick a year, scrollable).
+      Picking a preset applies + closes; picking a calendar day updates
+      that end of the range and leaves the popup open. See `wiki.md` for
+      positioning and scope-deferral decisions.
+
 ### Phase 2 — multiple spaces (not started)
 Deferred until a second space is actually dictated, per "elements get
 dictated one at a time" — building page-switching UI with only one page to
@@ -62,6 +79,14 @@ first).
 A second `StatWidget/children/` content type (e.g. a chart) is what forces
 `StatWidget` to actually pick between children instead of always rendering
 `SingleStat` — deferred until that widget is dictated.
+
+### Phase 5 — wire the date filter into statistics (not started)
+`DateRangeFilter` currently only drives its own chip label — it isn't
+wired into `src/lib/statistics`' `compute()` calls yet, so changing the
+range doesn't actually change what a `StatWidget` shows. Deferred because
+this round's dictation was entirely about the filter UI itself; wiring it
+in means threading the selected range from `StatSpace` down to `StatGrid`
+and into each statistic's `compute(range)`.
 
 ## Decisions
 See `wiki.md`.

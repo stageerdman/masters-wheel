@@ -11,6 +11,7 @@
   grid-template-rows: repeat(var(--stat-row-count, 1), 6rem);
   gap: 1rem;
   width: 100%;
+  flex-shrink: 0;
 }
 
 .slot {

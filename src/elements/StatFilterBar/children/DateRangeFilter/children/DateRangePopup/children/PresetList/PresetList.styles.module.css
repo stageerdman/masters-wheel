@@ -1,0 +1,26 @@
+.root {
+  border-right: 1px solid var(--color-border);
+}
+
+.option {
+  background: transparent;
+  border: none;
+  border-radius: 0.375rem;
+  color: var(--color-text);
+  font-size: var(--text-size-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--color-border);
+}
+
+.optionSelected {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+}
+
+.optionSelected:hover {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+}

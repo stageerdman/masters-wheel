@@ -1,0 +1,9 @@
+/* Where this element sits within StatSpace: a short row above the Grid. */
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.75rem;
+  flex-shrink: 0;
+}

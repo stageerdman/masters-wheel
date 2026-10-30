@@ -1,5 +1,41 @@
 # Analytics — decisions
 
+## Date-range filter: positioning, interaction, and deferred scope
+- **No portal, plain `position: fixed`.** `DateRangePopup` renders inline
+  in the React tree (inside `StatFilterBar` → `StatSpace`) rather than
+  through `createPortal`. A `position: fixed` element escapes to the
+  viewport regardless of DOM depth or an ancestor's `overflow`/`mask`,
+  *unless* an ancestor has `transform`/`filter`/`backdrop-filter`/
+  `perspective`/`will-change`/`contain` — none of `StatSpace`'s ancestors
+  do (`StatWidget`'s `backdrop-filter` is a sibling branch, not an
+  ancestor, so it's irrelevant here). This is the same backdrop +
+  `position: fixed` technique `GenerateTranscriptModal`/`VideoUploadModal`/
+  `TranscriptUploadModal` already use — no portal exists anywhere in this
+  codebase, so this didn't introduce one either.
+- **Close-on-scroll instead of repositioning.** The popup's `top`/`left`
+  are computed once from the chip's `getBoundingClientRect()` when it
+  opens. If the user scrolls the (scrollable, non-sticky) filter bar away,
+  live-repositioning the popup to track it is unnecessary complexity —
+  closing it instead is simpler and reads as intentional. Scroll is caught
+  via a capturing-phase `window` listener (`addEventListener("scroll", fn,
+  true)`), since the native `scroll` event doesn't bubble but capture-phase
+  listeners still see it on the way down to any scrollable descendant.
+- **Presets apply + close; calendar days update + stay open.** Clicking a
+  preset is a complete action (Notion does the same) — apply and close.
+  Clicking a calendar day only sets one end of a two-ended range, so the
+  popup stays open for the other calendar; it closes via outside-click,
+  Escape, or scroll.
+- **Dates are "YYYY-MM-DD" strings end to end**, parsed via `Date.UTC`
+  rather than `new Date(iso)` — same reasoning as `src/lib/statistics`:
+  avoids local-timezone parsing shifting a day.
+- **Week starts Monday**; year picker spans "current year − 100" to
+  "current year + 1", scrollable, auto-scrolled to the active year on
+  open — arbitrary but reasonable defaults, not dictated specifically.
+- **Not wired to statistics yet.** The filter fully works as UI (label,
+  presets, both calendars) but doesn't affect what any `StatWidget` shows
+  — this round's ask was entirely about the filter's own UI/interaction.
+  See `update v1.md` Phase 5.
+
 ## Vocabulary
 - **Space** (`StatSpace`) — one page of statistics. Holds one Grid today;
   the layer a future multi-page "swipe to the next screen" feature would

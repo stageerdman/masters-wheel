@@ -1,5 +1,7 @@
 /* Where this element sits within its parent. No visual styling here. */
 .root {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   overflow-y: auto;

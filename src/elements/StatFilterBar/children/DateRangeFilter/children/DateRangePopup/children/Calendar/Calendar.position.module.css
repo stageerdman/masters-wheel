@@ -1,0 +1,52 @@
+/* Where this element sits within DateRangePopup. No visual styling here. */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 14rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.weekdayRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.dayGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.125rem;
+}
+
+.dayGrid button {
+  aspect-ratio: 1;
+}
+
+.monthGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+}
+
+.monthGrid button {
+  padding: 0.5rem 0;
+}
+
+.yearList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.yearList button {
+  padding: 0.375rem 0.5rem;
+  text-align: center;
+}

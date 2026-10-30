@@ -1,0 +1,13 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.root {
+  position: absolute;
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  max-width: calc(100vw - 2rem);
+}

@@ -110,6 +110,12 @@ between the two lists. Each page gets its own section as pages get added.
       buffer, not from scroll position); `StatSpace` is just the scroll
       viewport, with a hidden scrollbar and a soft fade at the top/bottom
       edges instead of a hard clip
+- [x] `StatFilterBar`: an invisible row above the Grid (scrolls away with
+      it, not sticky) holding filter chips — one today, a date-range
+      filter. Its glass-pill chip opens a 3-column popup (presets column
+      + two independent start/end calendars with day/month/year
+      drill-down); UI-complete but not yet wired into what any statistic
+      actually computes
 - [x] Training / Chat with AI: listed, selectable, inert (no behavior
       dictated yet)
 - [x] `NavMenu` items aren't text-selectable (they're controls, not
@@ -123,7 +129,9 @@ between the two lists. Each page gets its own section as pages get added.
 - [ ] Training and Chat with AI behavior (not dictated yet)
 - [ ] Multiple Spaces (swipe/page between `StatSpace` pages, each holding
       its own Grid); live edit mode (drag to add/remove/resize/reorder
-      Widgets) — see `updates/2026-10-30 ANALYTICS - OPEN`
+      Widgets); wiring `DateRangeFilter`'s selected range into what each
+      statistic's `compute()` actually returns — see
+      `updates/2026-10-30 ANALYTICS - OPEN`
 
 ## Performance Review page
 

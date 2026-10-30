@@ -1,0 +1,4 @@
+/* Where this element sits within StatFilterBar. No visual styling here. */
+.root {
+  padding: 0.375rem 0.75rem;
+}
