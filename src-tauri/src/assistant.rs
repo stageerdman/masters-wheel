@@ -19,11 +19,14 @@
 // would normally offer (the user's own global config/memory) is disabled.
 // The persona's instructions are injected per-call via `--append-system-prompt`
 // (appends to Claude Code's own base system prompt rather than replacing it,
-// so baseline safety/tool framing stays intact). No `--allowedTools` are
-// granted yet — this slice is reply-only, no file/knowledge access or tool
-// calling (that's the next increment, see the update's wiki.md), so
-// `--permission-mode dontAsk` with an empty allowlist means nothing beyond
-// plain text generation can happen even if asked.
+// so baseline safety/tool framing stays intact). Knowledge grounding (see
+// knowledge/mod.rs) happens entirely on the Rust side before this string is
+// built — relevant chunks from the agent's own indexed knowledge files are
+// woven in ahead of the persona instructions, so the CLI itself never needs
+// file access to "know" anything. No `--allowedTools` are granted — this
+// slice is reply-only, no tool calling (that's a later increment, see the
+// update's wiki.md), so `--permission-mode dontAsk` with an empty allowlist
+// means nothing beyond plain text generation can happen even if asked.
 //
 // Session continuity: the first call for a chat session has no session id;
 // claude returns one in its JSON result, which the frontend stores and
@@ -53,6 +56,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter};
 
+use crate::knowledge;
 use crate::util::resolve_binary;
 
 // Self-serve diagnostics: the frontend posts a label + a JSON snapshot of
@@ -90,15 +94,36 @@ fn emit_delta(app: &AppHandle, job_id: &str, delta: &str) {
     let _ = app.emit("ask-agent-progress", AskAgentProgress { job_id: job_id.to_string(), delta: delta.to_string() });
 }
 
+// How many knowledge excerpts to pull into one reply's prompt — enough to
+// cover a question thoroughly without ballooning every turn's token cost,
+// regardless of how large the agent's underlying knowledge base is (see
+// knowledge/prompt.rs and this update's wiki.md).
+const RETRIEVAL_TOP_K: usize = 8;
+
 #[tauri::command]
 pub async fn ask_agent(
     app: AppHandle,
     job_id: String,
     message: String,
     instructions: String,
+    agent_id: Option<String>,
     session_id: Option<String>,
 ) -> Result<AgentReply, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<AgentReply, String> {
+        // Knowledge grounding: if this agent has any indexed knowledge
+        // files, pull the chunks most relevant to this message and weave
+        // them into the system prompt ahead of the persona instructions.
+        // A retrieval failure (e.g. the embedding model hasn't finished
+        // loading) shouldn't block a reply — it just falls back to
+        // persona-only, same as an agent with no knowledge files at all.
+        let system_prompt = match &agent_id {
+            Some(id) => match knowledge::commands::retrieve_for_agent(&app, id, &message, RETRIEVAL_TOP_K) {
+                Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks),
+                Err(_) => instructions.clone(),
+            },
+            None => instructions.clone(),
+        };
+
         let binary = resolve_binary("claude");
         let mut command = Command::new(&binary);
         command
@@ -110,7 +135,7 @@ pub async fn ask_agent(
             .arg("--include-partial-messages")
             .arg("--verbose")
             .arg("--append-system-prompt")
-            .arg(&instructions)
+            .arg(&system_prompt)
             .arg("--permission-mode")
             .arg("dontAsk")
             .stdout(Stdio::piped())

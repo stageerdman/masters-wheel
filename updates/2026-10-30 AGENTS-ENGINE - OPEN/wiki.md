@@ -300,20 +300,25 @@ harness).
    out to the local `claude` CLI headlessly. No Anthropic API, no HTTP
    client crate needed at all (not `curl`, not `reqwest`) — the CLI is the
    entire client.
-2. Whether knowledge files get wired via `--add-dir` (let Claude's own
-   Read/Grep/Glob tools read them directly — verified viable by the CLI
-   research, not yet hand-tested) or manual extraction — still open,
-   deferred past the Phase 1 prototype (see `update v1.md`).
-3. Whether `.xlsx` knowledge files need conversion before a headless
-   invocation can read them via `--add-dir` + Read — unverified either way.
-4. Whether the Agent builder (`/agents`) and the AI Assistant's chat roster
-   (`AIAssistant.script.ts`'s separate `Agent` type) get unified now that
-   there's a real backend to wire, or stay deliberately separate per the
-   existing `2026-10-29 AGENTS - CLOSED` wiki decision ("revisit a merge
-   only if a future update explicitly asks"). Phase 1's prototype added
-   `instructions` directly to the AI Assistant's own lightweight `Agent`
-   type rather than merging with `CoachAgent` — smallest change that gets
-   a real persona into a real reply without resolving the merge question.
+2. ~~Whether knowledge files get wired via `--add-dir` ... or manual
+   extraction~~ — **resolved differently than either option, in Phase
+   1.5**: the user's real next agent (a ~1000-page corpus) needed semantic
+   retrieval, not file access of either kind — built real Tier-2 local
+   embeddings + vector search instead (`src-tauri/src/knowledge/`). See
+   `update v1.md`'s Phase 1.5 and the cross-check research section below.
+3. ~~Whether `.xlsx` knowledge files need conversion~~ — **resolved by
+   scope, not investigation**: Phase 1.5 only supports `.txt`/`.md`/`.pdf`
+   (extracted via `pdf-extract`, a pure-Rust crate, no external binary
+   dependency); `.xlsx` and anything else is rejected with a clear error.
+   Revisit if a real agent actually needs a spreadsheet knowledge file.
+4. ~~Whether the Agent builder (`/agents`) and the AI Assistant's chat
+   roster get unified~~ — **resolved: yes, unified**, in Phase 1.5 — one
+   `Agent` type in `src/lib/agents`, explicit user ask ("just the agents
+   in this AI vision"). A real latent bug fell out of this for free: the
+   two features previously checked agent-activity two different ways
+   (`session.agentId` vs. `session.activeAgentIds`), so a dedicated "Chat
+   with X" session never actually used X's persona — now checked
+   consistently.
 5. Tool/MCP calling (the Notion example) is still unimplemented — Phase 1
    passes no `--allowedTools` at all, so a reply is pure text generation.
    `--mcp-config`/`--allowedTools` are verified-viable flags, not yet
@@ -548,3 +553,69 @@ things to actually adopt:
    agentic judgment to notice files present in its cwd unprompted — needs
    hand-testing once Phase 1.5 is actually built, same as everything else
    in this update marked "unverified."
+
+### Cross-check: a second, independently-run RAG-architecture research pass
+
+A separate research pass, scoped specifically to RAG/knowledge-tier
+architecture rather than instruction-following, reached the Phase 1.5
+design above (per-agent directory as cwd, no chunking/embeddings) from a
+different evidence base — worth recording as corroboration, plus a few
+findings not otherwise covered above:
+
+- **Long-context vs. RAG research is more nuanced than "stuffing always
+  wins" or "retrieval always wins."** LaRA (ICML 2025) and a Jan 2025 study
+  ([arXiv:2409.01666](https://arxiv.org/pdf/2409.01666)) both land on
+  "long-context wins when the base document is stable" — exactly this
+  app's case, since a dictated knowledge file doesn't change turn-to-turn.
+  The clearest framing found: **"long context wins inside a document;
+  retrieval wins across a corpus"**
+  ([arXiv:2510.09106](https://arxiv.org/pdf/2510.09106)). One agent, one
+  50-page document is squarely "inside a document" — evidence, not just
+  intuition, that Tier 0 (in its corrected, file-read-based form) is the
+  right starting point rather than a shortcut.
+- **Anthropic's own "Contextual Retrieval"** (Sept 2024, their
+  [cookbook](https://platform.claude.com/cookbook/capabilities-contextual-embeddings-guide))
+  — prepending an LLM-generated blurb to each chunk before embedding —
+  measurably cuts retrieval failure (35% alone, 49% combined with BM25 +
+  reranking). Confirmed as solving a different problem than this app has:
+  retrieval failure *across many chunks from a large corpus*. Anthropic's
+  own guidance says it's unnecessary for small, already-self-contained
+  corpora — this app's one-document-per-agent case. Not something to
+  build here.
+- **Chunking strategy (semantic chunking, Jina AI's "late chunking",**
+  [**arXiv:2409.04701**](https://huggingface.co/papers/2409.04701)**) is
+  moot once nothing is chunked or retrieved** — Tier 0 (file-read form)
+  hands the model the whole document; "which chunking strategy" is a
+  non-question without a retrieval step to serve. Another confirmation to
+  not build chunking infrastructure.
+- **GraphRAG / Self-RAG / Corrective RAG / agentic iterative retrieval**
+  — each solves multi-document, large-corpus, or uncertain-retrieval-
+  quality problems. A single 50-page document per agent has none of
+  those; each technique's own motivating use case is explicitly
+  corpus-scale, not single-document. Confirmed overkill, not just assumed.
+- **The single most direct piece of supporting evidence found**: a 2026
+  analysis (["Is RAG Dead?"](https://akitaonrails.com/en/2026/04/06/rag-is-dead-long-context/))
+  reports that Claude Code's own architecture uses **no embeddings at
+  all** — files on disk, a markdown index, lexical grep search, and
+  context compaction, treating retrieved content as a hint to verify
+  rather than a trusted ranked result — citing BEIR benchmarks showing
+  plain BM25/lexical search remains highly competitive with embeddings in
+  zero-shot settings. This independently arrives at the same per-agent-
+  directory / `--add-dir`-shaped design as the primary research pass
+  above, starting from "what does Claude Code's own production design do"
+  rather than "what does the instruction-placement literature say" — two
+  different roads to the same answer.
+- **Open-source survey, same conclusion from a different list**: RAGFlow
+  (Apache 2.0, Docker/Python — architecture reference only), AnythingLLM
+  (MIT — closest desktop-app product analog, worth studying its
+  ingestion/persona UX, not its code, wrong runtime), Onyx/Danswer (MIT —
+  enterprise connectors/ACLs, not relevant at this scale), Verba (BSD-3 —
+  Weaviate-centric, this app has no vector DB and doesn't need one yet),
+  txtai (Apache 2.0 — smallest-footprint reference *if* Tier 2 is ever
+  reached, still Python, still not directly embeddable in this Rust app).
+  None adoptable as dependencies; all are architecture references at most.
+
+**Net effect**: two independently-run research passes, starting from
+different questions and different source material, converge on the same
+Phase 1.5 design. Treat confidence in "per-agent directory as cwd, no
+chunking/embeddings/GraphRAG" as high, not speculative.

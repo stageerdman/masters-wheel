@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { askAgent, onAskAgentProgress } from "@/lib/assistant/askAgent";
-import { AGENTS, HISTORY_FIXTURES } from "./children/AIAssistantWindow/AIAssistantWindow.data";
+import { listAgents, type Agent } from "@/lib/agents";
+import { HISTORY_FIXTURES } from "./children/AIAssistantWindow/AIAssistantWindow.data";
 
 export type AssistantPhase = "closed" | "open" | "closing";
 export type ChatMessageRole = "user" | "assistant" | "system";
 export type ChatMessage = { id: string; role: ChatMessageRole; text: string };
-export type Agent = { id: string; name: string; tagline: string; initial: string; instructions: string };
 export type ChatSession = {
   id: string;
   title: string;
@@ -16,11 +16,7 @@ export type ChatSession = {
   claudeSessionId?: string;
 };
 
-// Voice used when no single agent is active in the session — the plain
-// "just chat" case. Real agent personas (AGENTS) carry their own
-// instructions instead of this.
-const DEFAULT_INSTRUCTIONS =
-  "You are the Master's Wheel assistant — a focused mastery coach for the person using this app. Keep replies concise and actionable.";
+export type { Agent };
 
 const NEW_SESSION_ID = "current";
 
@@ -41,6 +37,15 @@ export function findMentionedAgents(text: string, agents: Agent[]): Agent[] {
   return agents.filter((agent) => new RegExp(`@${escapeRegExp(agent.name)}\\b`).test(text));
 }
 
+// Every agent actually active in a session right now — the dedicated
+// "Chat with X" session marker (session.agentId) and the @mention/drag
+// roster (session.activeAgentIds) are two different ways an agent ends up
+// in a chat, but for "who should reply" purposes they're the same thing.
+function resolveActiveAgents(session: ChatSession | undefined, agents: Agent[]): Agent[] {
+  if (!session) return [];
+  return agents.filter((agent) => agent.id === session.agentId || session.activeAgentIds.includes(agent.id));
+}
+
 // Owns the assistant's open/closed state and every chat session's
 // content. Lives here (not inside AIAssistantWindow) so it survives
 // collapsing the window back to the icon — collapsing minimizes, it
@@ -48,12 +53,21 @@ export function findMentionedAgents(text: string, agents: Agent[]): Agent[] {
 // separate, unrelated concern — see AIAssistant.windowDock.script.ts.
 export function useAIAssistant() {
   const [phase, setPhase] = useState<AssistantPhase>("closed");
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([makeNewSession(), ...HISTORY_FIXTURES]);
   const [activeSessionId, setActiveSessionId] = useState(NEW_SESSION_ID);
   const [composerValue, setComposerValue] = useState("");
   const [isSending, setIsSending] = useState(false);
 
   const activeSession = sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
+
+  // Refreshes the roster from disk every time the window opens — cheap,
+  // and good enough to pick up an agent created/edited on the Agents page
+  // without needing a live cross-page store.
+  useEffect(() => {
+    if (phase !== "open") return;
+    listAgents().then(setAgents);
+  }, [phase]);
 
   function open() {
     setPhase("open");
@@ -98,21 +112,36 @@ export function useAIAssistant() {
     const text = composerValue.trim();
     if (!text || isSending) return;
     const sessionIdAtSend = activeSessionId;
+    const session = sessions.find((candidate) => candidate.id === sessionIdAtSend);
+
+    const alreadyActive = resolveActiveAgents(session, agents);
+    const mentioned = findMentionedAgents(text, agents);
+    const resolvedActive = [...alreadyActive, ...mentioned.filter((agent) => !alreadyActive.some((a) => a.id === agent.id))];
+
+    // There is no default/generic assistant in this app — a message only
+    // ever gets a real reply once exactly one real agent is active in
+    // this chat (drag one in, click one, or @mention one). Multiple
+    // agents replying together is a later increment (see this update's
+    // wiki.md) — for now, more than one active agent blocks sending
+    // rather than silently picking one or falling back to a generic voice.
+    if (resolvedActive.length !== 1) {
+      appendMessageToActive({
+        id: crypto.randomUUID(),
+        role: "system",
+        text:
+          resolvedActive.length === 0
+            ? "Add an agent to this chat first — drag one in from the roster, click one, or type @ to mention one."
+            : "Only one agent can reply at a time right now — remove one before sending.",
+      });
+      return;
+    }
+    const activeAgent = resolvedActive[0];
+
     appendMessageToActive({ id: crypto.randomUUID(), role: "user", text });
     setComposerValue("");
-    // Mentioning an agent in the message text brings them into the
-    // conversation the same way dragging their roster card does.
-    for (const agent of findMentionedAgents(text, AGENTS)) {
+    for (const agent of mentioned) {
       addAgentToActiveChat(agent.id);
     }
-
-    const session = sessions.find((candidate) => candidate.id === sessionIdAtSend);
-    const activeAgents = AGENTS.filter((agent) => session?.activeAgentIds.includes(agent.id));
-    // v1 only gives a real, persona-specific reply when exactly one agent
-    // is active; 0 or 2+ falls back to the generic assistant voice for now
-    // — real multi-agent replies are the next increment (see this app's
-    // AGENTS-ENGINE update).
-    const instructions = activeAgents.length === 1 ? activeAgents[0].instructions : DEFAULT_INSTRUCTIONS;
 
     // An empty assistant bubble renders as a "thinking" indicator (see
     // Message.tsx) until the first delta arrives, then grows token-by-token
@@ -128,7 +157,7 @@ export function useAIAssistant() {
 
     setIsSending(true);
     try {
-      const reply = await askAgent(jobId, text, instructions, session?.claudeSessionId);
+      const reply = await askAgent(jobId, text, activeAgent.instructions, activeAgent.id, session?.claudeSessionId);
       // The streamed-in text above is provisional (deltas could in theory
       // drop or reorder); the CLI's final `result` text is authoritative,
       // so it always wins here.
@@ -161,7 +190,7 @@ export function useAIAssistant() {
       setActiveSessionId(existing.id);
       return;
     }
-    const agent = AGENTS.find((candidate) => candidate.id === agentId);
+    const agent = agents.find((candidate) => candidate.id === agentId);
     if (!agent) return;
     const session: ChatSession = {
       id: crypto.randomUUID(),
@@ -176,7 +205,7 @@ export function useAIAssistant() {
   }
 
   function addAgentToActiveChat(agentId: string) {
-    const agent = AGENTS.find((candidate) => candidate.id === agentId);
+    const agent = agents.find((candidate) => candidate.id === agentId);
     if (!agent) return;
     setSessions((current) =>
       current.map((session) => {
@@ -216,7 +245,7 @@ export function useAIAssistant() {
     setComposerValue,
     sendMessage,
     isSending,
-    agents: AGENTS,
+    agents,
     selectAgent,
     addAgentToActiveChat,
     removeAgentFromActiveChat,

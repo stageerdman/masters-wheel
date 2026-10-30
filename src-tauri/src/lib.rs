@@ -1,4 +1,5 @@
 mod assistant;
+mod knowledge;
 mod media_server;
 mod transcribe;
 mod util;
@@ -43,7 +44,9 @@ pub fn run() {
       transcribe::generate_transcript,
       transcribe::cancel_generate_transcript,
       assistant::ask_agent,
-      assistant::debug_log
+      assistant::debug_log,
+      knowledge::commands::ingest_knowledge_file,
+      knowledge::commands::remove_knowledge_file
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {

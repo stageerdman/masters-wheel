@@ -1,78 +1,45 @@
 "use client";
 
-import { useRef } from "react";
-import type { ChangeEvent, DragEvent } from "react";
 import type { KnowledgeFile } from "@/elements/Agents/Agents.data";
-import { contextPercent, fileKindLabel, filesToKnowledgeFiles, formatFileSize } from "./KnowledgeManager.script";
+import { fileKindLabel, formatFileSize, useKnowledgeUpload } from "./KnowledgeManager.script";
 import position from "./KnowledgeManager.position.module.css";
 import styles from "./KnowledgeManager.styles.module.css";
 
 type KnowledgeManagerProps = {
+  agentId: string;
   files: KnowledgeFile[];
   onAddFile: (file: KnowledgeFile) => void;
   onRemoveFile: (id: string) => void;
 };
 
-export function KnowledgeManager({ files, onAddFile, onRemoveFile }: KnowledgeManagerProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const percent = contextPercent(files);
-
-  function handleFilesPicked(fileList: FileList | null) {
-    if (!fileList) return;
-    for (const file of filesToKnowledgeFiles(fileList)) {
-      onAddFile(file);
-    }
-  }
-
-  function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
-    handleFilesPicked(event.target.files);
-    event.target.value = "";
-  }
-
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    handleFilesPicked(event.dataTransfer.files);
-  }
-
-  function handleDragOver(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-  }
+export function KnowledgeManager({ agentId, files, onAddFile, onRemoveFile }: KnowledgeManagerProps) {
+  const { isIndexing, error, addFiles } = useKnowledgeUpload(agentId, onAddFile);
+  const totalChunks = files.reduce((sum, file) => sum + file.chunkCount, 0);
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
       <span className={`${styles.label} ${position.label}`} data-construction>
         Knowledge
       </span>
-      <div className={position.meter} data-construction>
-        <div
-          className={`${styles.meterTrack} ${position.meterTrack}`}
-          data-construction
-          role="progressbar"
-          aria-valuenow={percent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label="Context used"
-        >
-          <div className={`${styles.meterFill} ${position.meterFill}`} data-construction style={{ width: `${percent}%` }} />
-        </div>
-        <span className={`${styles.meterLabel} ${position.meterLabel}`} data-construction aria-live="polite">
-          {percent >= 100 ? "Context full — large files may be truncated" : `${percent}% of context used`}
+      {files.length > 0 && (
+        <span className={`${styles.summary} ${position.summary}`} data-construction>
+          {totalChunks.toLocaleString()} chunk{totalChunks === 1 ? "" : "s"} indexed — the agent answers from this directly, it isn&apos;t just stuffed into context
         </span>
-      </div>
+      )}
       {files.length === 0 ? (
-        <div
+        <button
+          type="button"
           className={`${styles.dropZone} ${position.dropZone}`}
           data-construction
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onClick={() => inputRef.current?.click()}
+          onClick={addFiles}
+          disabled={isIndexing}
         >
           <span className={styles.dropZoneText} data-construction>
-            Drag files here or click to add knowledge
+            {isIndexing ? "Indexing…" : "Click to add knowledge (.txt, .md, .pdf)"}
           </span>
-        </div>
+        </button>
       ) : (
-        <div className={`${styles.fileList} ${position.fileList}`} data-construction onDrop={handleDrop} onDragOver={handleDragOver}>
+        <div className={`${styles.fileList} ${position.fileList}`} data-construction>
           {files.map((file) => (
             <div key={file.id} className={`${styles.fileRow} ${position.fileRow}`} data-construction>
               <span className={`${styles.fileKind} ${position.fileKind}`} data-construction aria-hidden="true">
@@ -82,7 +49,7 @@ export function KnowledgeManager({ files, onAddFile, onRemoveFile }: KnowledgeMa
                 {file.name}
               </span>
               <span className={`${styles.fileMeta} ${position.fileMeta}`} data-construction>
-                {formatFileSize(file.size)} · {fileKindLabel(file.type)}
+                {formatFileSize(file.size)} · {file.chunkCount.toLocaleString()} chunk{file.chunkCount === 1 ? "" : "s"}
               </span>
               <button
                 type="button"
@@ -95,20 +62,22 @@ export function KnowledgeManager({ files, onAddFile, onRemoveFile }: KnowledgeMa
               </button>
             </div>
           ))}
-          <button type="button" className={`${styles.addRow} ${position.addRow}`} data-construction onClick={() => inputRef.current?.click()}>
-            + Add file
+          <button
+            type="button"
+            className={`${styles.addRow} ${position.addRow}`}
+            data-construction
+            onClick={addFiles}
+            disabled={isIndexing}
+          >
+            {isIndexing ? "Indexing…" : "+ Add file"}
           </button>
         </div>
       )}
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        className={position.hiddenInput}
-        data-construction
-        onChange={handleInputChange}
-        aria-label="Add knowledge files"
-      />
+      {error && (
+        <span className={`${styles.error} ${position.error}`} data-construction role="alert">
+          {error}
+        </span>
+      )}
     </div>
   );
 }

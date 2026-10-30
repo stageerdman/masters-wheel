@@ -9,22 +9,12 @@
   flex-shrink: 0;
 }
 
-.meter {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.summary {
+  flex-shrink: 0;
 }
 
-.meterTrack {
-  width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.meterFill {
-  height: 100%;
-  transition: width 150ms ease-out;
+.error {
+  flex-shrink: 0;
 }
 
 .dropZone {
@@ -34,6 +24,7 @@
   min-height: 6rem;
   padding: 1rem;
   text-align: center;
+  width: 100%;
 }
 
 .fileList {
@@ -84,12 +75,5 @@
 .addRow {
   padding: 0.5rem 0.75rem;
   text-align: left;
-}
-
-.hiddenInput {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  pointer-events: none;
+  width: 100%;
 }

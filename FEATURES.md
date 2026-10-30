@@ -18,6 +18,27 @@ between the two lists. Each page gets its own section as pages get added.
 
 ## AI Assistant (global — every page)
 
+### Built — real backend
+- [x] Real replies: the user's own authenticated local Claude Code CLI,
+      invoked headlessly (not the Anthropic API — see
+      `updates/2026-10-30 AGENTS-ENGINE - OPEN/wiki.md`), streamed in
+      token-by-token. Session continuity via a resumed `claudeSessionId`
+      per chat session.
+- [x] Knowledge grounding (real RAG, Tier 2 — local embeddings + vector
+      search, no server/API key): an agent's knowledge files are
+      extracted, chunked, and embedded on-device (`fastembed`), stored in
+      a per-agent SQLite + `sqlite-vec` database, and the chunks most
+      relevant to each message are retrieved and woven into that turn's
+      system prompt — bounded context cost no matter how large the
+      underlying knowledge base is.
+- [x] No default/generic assistant persona. Sending requires exactly one
+      real agent active in the chat (dragged in, clicked, or @mentioned);
+      0 or 2+ active agents blocks sending with an inline system message
+      instead of falling back to a generic voice.
+- [x] The chat roster is the same real, persisted `Agent` as the `Agents`
+      builder page — not a separate fixture list (see the Agents page
+      section below; this was previously an explicitly deferred decision).
+
 ### Built (UI shell only — no real functionality behind it)
 - [x] `AIAssistant` replaces the Next.js dev-mode badge: fixed bottom-left
       trigger icon (3 rotating unfinished concentric rings), lives above
@@ -26,8 +47,7 @@ between the two lists. Each page gets its own section as pages get added.
       that corner; a header h-line button collapses it back (both
       directions animate, with a reduced-motion opacity-only fallback)
 - [x] Chat content: message list (user bubbles vs. flush assistant text),
-      auto-growing composer, empty "Ask anything." state; sending only
-      appends the user's own message — no fake AI reply yet
+      auto-growing composer, empty "Ask anything." state
 - [x] Drag the header to snap the window between 2 docked forms — left
       (small, default, bottom-left) and center (bigger, horizontally
       centered) — both bottom-flush, top-rounded corners only; a
@@ -66,7 +86,10 @@ between the two lists. Each page gets its own section as pages get added.
       card does
 
 ### To build (real functionality — not started)
-- [ ] Real AI backend/model wiring (currently 100% static/local state)
+- [ ] Multi-agent replies in one thread (2+ active agents currently
+      blocks sending rather than dispatching to all of them)
+- [ ] Tool/MCP calling (e.g. Notion) — no tool access is granted to a
+      reply yet
 - [ ] Persisting chat sessions across reloads (dock placement can now
       persist via Option-place; sessions/messages still reset)
 - [ ] Keyboard-only path to cycle dock states / toggle the side menu
@@ -238,6 +261,21 @@ between the two lists. Each page gets its own section as pages get added.
 
 ## Agents page
 
+### Built — real backend
+- [x] Agents are real and persisted: one folder per agent under the app's
+      own data directory (`<app data>/agents/<id>/agent.json` +
+      `versions.json`), not in-memory fixtures — see `src/lib/agents`.
+      Creating, editing, saving, and version history all survive a
+      reload.
+- [x] Knowledge files are real: picked via the native file dialog
+      (`.txt`/`.md`/`.pdf`), copied in, and indexed for retrieval (extract
+      → chunk → embed locally → store) — see `src-tauri/src/knowledge/`.
+      An agent's knowledge is retrieved and grounds its replies in the AI
+      Assistant chat, not just displayed as a file list.
+- [x] One shared `Agent` type with the AI Assistant's chat roster — no
+      more separate fixture type to keep in sync (previously deferred,
+      see `updates/2026-10-30 AGENTS-ENGINE - OPEN/wiki.md`).
+
 ### Built (UI shell only — no real functionality behind it)
 - [x] `Agents` at `/agents`: left `AgentNav` roster / right `AgentEditor`,
       same 2-column shape as Performance Review's navigation+detail split
@@ -254,10 +292,11 @@ between the two lists. Each page gets its own section as pages get added.
       renders as a styled tag once the field is blurred, same visual
       language as the AI Assistant's chat-mention tags; a reference to a
       since-removed file just reverts to plain text
-- [x] Knowledge: add files via a drop zone/file picker or a persistent
-      "+ Add file" row, remove via a per-row button; fake size/type
-      metadata per file; a context-usage meter (bar + %) against a fixed
-      fake byte cap, clamped at 100% for display
+- [x] Knowledge: add real files via a native file picker or a persistent
+      "+ Add file" row, remove via a per-row button; real size/type
+      metadata plus a real indexed-chunk count per file (no more fake
+      context-window percentage meter — retrieval means file size isn't
+      a hard context budget anymore, see this update's wiki.md)
 - [x] Save button only appears while there are unsaved edits, with a
       brief "Saved" confirmation; Version History opens a right-side
       panel (reusing the AI Assistant Sidebar's push-split mechanic) of
@@ -271,13 +310,12 @@ between the two lists. Each page gets its own section as pages get added.
       by both features
 
 ### To build (real functionality — not started)
-- [ ] Real photo/file upload + storage (currently local object-URL
-      previews and in-memory fake metadata only)
-- [ ] Persistence across reloads — agents, edits, and version history are
-      all in-memory state, reset on refresh
-- [ ] Real AI behavior for a created agent (currently just a name/
-      nickname/description/instructions/knowledge record with no model
-      behind it)
-- [ ] Wiring these agents into the AI Assistant's existing chat roster/
-      @mention system (explicitly deferred — see this update's wiki.md)
+- [ ] Real photo upload/storage (knowledge files are real now — see
+      above — but the agent photo is still a local object-URL preview,
+      not a persisted file)
+- [ ] Only `.txt`/`.md`/`.pdf` knowledge files are supported; `.xlsx`/
+      other types are rejected with an error rather than silently failing
+- [ ] Tool/MCP calling, and multi-agent replies — same as the AI
+      Assistant's "to build" list above, since both features now share
+      one real backend
 - [ ] Auth (not started — no users yet)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AgentFields, CoachAgent, KnowledgeFile } from "@/elements/Agents/Agents.data";
+import { removeKnowledgeFile as removeKnowledgeFileOnDisk } from "@/lib/agents";
 
 export function deriveNickname(name: string) {
   return name.toLowerCase().replace(/\s+/g, "");
@@ -106,8 +107,13 @@ export function useAgentDraft(agent: CoachAgent, onSave: (fields: AgentFields) =
     commitImmediate({ ...draft, knowledgeFiles: [...draft.knowledgeFiles, file] });
   }
 
+  // Commits the removal locally right away; cleaning up the stored copy
+  // and its indexed chunks on disk happens after, best-effort (a failure
+  // there would at most leave an orphaned file behind, not a visible bug).
   function removeKnowledgeFile(id: string) {
-    commitImmediate({ ...draft, knowledgeFiles: draft.knowledgeFiles.filter((file) => file.id !== id) });
+    const file = draft.knowledgeFiles.find((candidate) => candidate.id === id);
+    commitImmediate({ ...draft, knowledgeFiles: draft.knowledgeFiles.filter((candidate) => candidate.id !== id) });
+    if (file) void removeKnowledgeFileOnDisk(agent.id, file);
   }
 
   // One atomic commit, same as any other action — one Cmd+Z right after a

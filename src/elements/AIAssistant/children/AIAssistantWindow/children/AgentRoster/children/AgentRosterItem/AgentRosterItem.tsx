@@ -1,5 +1,6 @@
 import type { DragEvent } from "react";
 import type { Agent } from "@/elements/AIAssistant/AIAssistant.script";
+import { agentInitial } from "@/lib/agents";
 import position from "./AgentRosterItem.position.module.css";
 import styles from "./AgentRosterItem.styles.module.css";
 
@@ -24,14 +25,14 @@ export function AgentRosterItem({ agent, onSelect }: AgentRosterItemProps) {
       onDragStart={handleDragStart}
     >
       <span className={`${styles.avatar} ${position.avatar}`} data-construction>
-        {agent.initial}
+        {agentInitial(agent.name)}
       </span>
       <span className={`${position.text}`} data-construction>
         <span className={styles.name} data-construction>
           {agent.name}
         </span>
         <span className={`${styles.tagline} ${position.tagline}`} data-construction>
-          {agent.tagline}
+          {agent.description}
         </span>
       </span>
     </button>

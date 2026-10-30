@@ -12,9 +12,10 @@ export async function askAgent(
   jobId: string,
   message: string,
   instructions: string,
+  agentId: string,
   sessionId?: string,
 ): Promise<AgentReply> {
-  return invoke<AgentReply>("ask_agent", { jobId, message, instructions, sessionId: sessionId ?? null });
+  return invoke<AgentReply>("ask_agent", { jobId, message, instructions, agentId, sessionId: sessionId ?? null });
 }
 
 export type AskAgentProgress = { jobId: string; delta: string };

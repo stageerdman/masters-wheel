@@ -8,17 +8,14 @@
   color: var(--color-text);
 }
 
-.meterTrack {
-  background: var(--color-border);
-}
-
-.meterFill {
-  background: var(--color-accent);
-}
-
-.meterLabel {
+.summary {
   font-size: var(--text-size-micro);
   color: var(--color-text-muted);
+}
+
+.error {
+  font-size: var(--text-size-micro);
+  color: var(--color-accent);
 }
 
 .dropZone {
@@ -26,6 +23,11 @@
   border: 1px dashed var(--color-border);
   border-radius: 6px;
   cursor: pointer;
+}
+
+.dropZone:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .dropZoneText {
@@ -81,4 +83,9 @@
   color: var(--color-accent);
   font-size: var(--text-size-label);
   cursor: pointer;
+}
+
+.addRow:disabled {
+  cursor: default;
+  opacity: 0.6;
 }

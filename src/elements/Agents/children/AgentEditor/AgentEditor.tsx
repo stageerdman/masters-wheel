@@ -79,7 +79,12 @@ export function AgentEditor({ agent, versions, onSave }: AgentEditorProps) {
           onFocus={handleFocusField}
           onBlur={handleBlurField}
         />
-        <KnowledgeManager files={draft.knowledgeFiles} onAddFile={addKnowledgeFile} onRemoveFile={removeKnowledgeFile} />
+        <KnowledgeManager
+          agentId={agent.id}
+          files={draft.knowledgeFiles}
+          onAddFile={addKnowledgeFile}
+          onRemoveFile={removeKnowledgeFile}
+        />
       </div>
       <VersionHistoryPanel isOpen={historyOpen} versions={versions} onRestore={handleRestore} />
     </div>

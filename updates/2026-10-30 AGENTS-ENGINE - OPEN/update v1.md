@@ -8,10 +8,11 @@ GPT-builder-style) and `AIAssistant` (chat, with multiple agents
 instructions per agent, knowledge grounding, tool/MCP calling (e.g.
 Notion), and real multi-agent replies in one conversation.
 
-## Status: Phase 1 prototype built, streaming fix built
+## Status: Phase 1 + streaming fix + Phase 1.5 (real agents, real RAG) built
 Research came first, per the user's ask (findings in `wiki.md`). The one
-blocking decision got resolved directly by the user (see below), and Phase
-1 is now built and installed to `/Applications/Master's Wheel.app`.
+blocking decision got resolved directly by the user (see below). Phase 1,
+the streaming fix, and Phase 1.5 are all built and installed to
+`/Applications/Master's Wheel.app`.
 
 ## Blocking decision — resolved
 **Where does the engine run?** Neither of the two options originally
@@ -70,22 +71,63 @@ rebuilt and reinstalled to `/Applications/Master's Wheel.app`. Not yet
 confirmed by the user's own click-through (browser automation is off-limits
 for this project).
 
-**Phase 1.5 — Knowledge files + persona fidelity (Tier 0, done properly), not yet built.**
-Second research pass landed a concrete design (see `wiki.md`'s "Phase 1.5
-research" section): a per-agent directory (e.g.
-`~/Library/Application Support/Master's Wheel/agents/<agentId>/`) holding
-a short `CLAUDE.md` (core identity/voice/non-negotiable rules, critical
-rule repeated at top *and* bottom per the "lost in the middle" research)
-plus the agent's real knowledge files alongside it, with the subprocess's
-`current_dir` pointed at that directory instead of a neutral temp dir —
-letting Claude Code's own CLAUDE.md discovery and Read/Grep/Glob tools do
-the grounding, instead of stuffing all 50 pages into one
-`--append-system-prompt` blob (which the research found works against
-Anthropic's own documented long-context placement guidance). Needs:
-`Read`/`Grep`/`Glob` granted via `--allowedTools` (Phase 1 currently grants
-none), and a real file-upload-to-disk path for `Agents`' `KnowledgeFile`
-type (currently pure fixture metadata with no stored bytes). Resolves open
-decision #2/#3 below in favor of the cwd-as-knowledge-directory approach.
+**Phase 1.5 — Real agents, real knowledge, real RAG. Built.**
+The Phase 1.5 research above (per-agent `CLAUDE.md` + cwd) was scoped for
+"a handful of small files per agent" and got superseded before being
+built: the user's real next agent is a single ~1000-page compiled corpus
+(a public figure's full body of work), which breaks that scale assumption
+outright — `--add-dir`/grep-based file access gives keyword matching, not
+the semantic matching a corpus that size needs, and naive full-context
+stuffing wouldn't fit a context window at all. This is exactly the
+Tier-2 escalation `wiki.md`'s original research flagged as "only if a
+concrete agent's corpus outgrows Tier 0" — now a real, not hypothetical,
+need. See `wiki.md`'s newest section for the full reasoning (including
+why ChatGPT's GPT knowledge feature handles this better than Claude
+Projects today — GPTs actually run retrieval; Projects just stuffs
+context).
+
+Built, end to end:
+- **Agents are real and persisted.** `src/lib/agents` replaces every
+  fixture: one folder per agent under the app's own data directory
+  (`agent.json` + `versions.json`), survives a reload. `AgentNav`'s
+  "Add new agent" and `AgentEditor`'s Save now write to disk for real.
+- **Knowledge files are real.** Picked via the native file dialog
+  (`.txt`/`.md`/`.pdf` — `.xlsx` and others are rejected with a clear
+  error rather than silently mishandled), copied into the agent's own
+  folder.
+- **Real Tier-2 RAG, fully local.** `src-tauri/src/knowledge/` (one file
+  per concern: `extract` → `chunk` → `embedder` → `store` → `prompt` →
+  `commands`) extracts each file's text, splits it into ~1500-character
+  overlapping chunks, embeds every chunk on-device via `fastembed`
+  (`AllMiniLML6V2`, 384-dim, no network call, no API key — matches the
+  "local CLI, not a pay-per-token key" decision above), and stores
+  chunks + vectors in a per-agent SQLite database via the `sqlite-vec`
+  extension. Before every reply, `assistant.rs` embeds the user's message
+  and retrieves the 8 most relevant chunks, which `knowledge::prompt`
+  weaves into that turn's `--append-system-prompt` ahead of the persona
+  instructions (knowledge first, persona last, core rule repeated at both
+  ends — same placement research as the superseded Phase 1.5 plan, just
+  applied to retrieved chunks instead of a whole document). Context cost
+  per turn is now bounded by `top_k`, not by how large the underlying
+  knowledge base is — a 1000-page corpus costs the same per-reply as a
+  10-page one.
+- **No default/generic assistant persona.** `AIAssistant.script.ts`
+  dropped `DEFAULT_INSTRUCTIONS` entirely; `sendMessage` now requires
+  exactly one real agent active in the chat or it blocks sending with an
+  inline system message — explicit user ask ("there even shouldn't be
+  any default AI, just the agents").
+- **The Agents builder and the AI Assistant's chat roster are unified**
+  into the one `Agent` type in `src/lib/agents` — resolves open decision
+  #4 below. A real fix fell out of this for free: dedicated "Chat with
+  X" sessions (via clicking an agent) previously never actually marked
+  that agent as active for persona purposes, since `session.agentId` and
+  `session.activeAgentIds` were checked inconsistently — `AIAssistant.script.ts`'s
+  `resolveActiveAgents` now checks both.
+
+Verified: `cargo check`, `tsc --noEmit`, `npm run lint`, `npm run build`
+all clean; `npm run app:build` rebuilt and reinstalled to
+`/Applications/Master's Wheel.app`. Not yet confirmed by the user's own
+click-through (browser automation is off-limits for this project).
 
 **Phase 2 — Multi-agent, one thread.**
 Extend to `activeAgentIds`/@mentions: parallel calls per mentioned agent
@@ -112,9 +154,19 @@ point where "real logic lands" starts applying.
 ## Decided
 - Research-first, per explicit user instruction — no prototype built in
   this round yet.
-- Tier-0 (full-context stuffing + prompt caching) is the right knowledge
+- ~~Tier-0 (full-context stuffing + prompt caching) is the right knowledge
   architecture to start with; no embeddings/vector DB until a concrete
-  agent's corpus outgrows it.
+  agent's corpus outgrows it.~~ **Superseded in Phase 1.5**: the user's
+  real next agent (a ~1000-page corpus) is exactly the "corpus outgrows
+  Tier 0" case this bullet already anticipated — built real Tier-2 local
+  embeddings + vector search (`fastembed` + `sqlite-vec`) instead. Small
+  agents could still use Tier 0/1 in principle; Phase 1.5 only built
+  Tier 2, since every real agent so far needs it.
+- No default/generic assistant persona — exactly one real agent must be
+  active to send a message (explicit user ask, Phase 1.5).
+- The `Agents` builder and the AI Assistant's chat roster share one real
+  `Agent` type now — resolves open decision #4 below (explicit user ask,
+  Phase 1.5).
 - Multi-agent v1 is explicit-mention-only with parallel calls and a fully
   shared transcript — no moderator/selector.
 - Anthropic's MCP Connector (beta) is the preferred path for external
@@ -124,13 +176,18 @@ point where "real logic lands" starts applying.
 
 ## Next
 Try it: open `/Applications/Master's Wheel.app` (freshly rebuilt and
-reinstalled with the streaming fix), open the AI Assistant, drag/@mention
-one agent (e.g. Coach) into a chat, and send a message — the window should
-stay fully responsive (draggable/collapsible) while a "thinking" dot
-indicator appears immediately, then the reply types itself in live rather
-than appearing all at once. Not yet verified by actually clicking through
-the live UI (browser automation is off-limits for this project; `cargo
-check`/`tsc --noEmit`/`npm run build` all pass and the CLI's streaming
-output shape was verified by hand) — this needs the user's own click-through
-to confirm end to end. Then decide whether to continue to Phase 1.5
-(knowledge files) or Phase 2 (multi-agent).
+reinstalled with Phase 1.5). On the Agents page, create an agent, give it
+instructions, and add a real knowledge file (`.txt`/`.md`/`.pdf`) — it
+should show a real indexed chunk count once added (the first file ever
+added in a fresh install also downloads the local embedding model, so
+that one will take longer). Then open the AI Assistant, drag/click/
+@mention that same agent into a chat, and ask it something the knowledge
+file actually covers — the reply should be grounded in it, not just
+generic. Sending with 0 or 2+ agents active should block with an inline
+message instead of replying generically. Not yet verified by actually
+clicking through the live UI (browser automation is off-limits for this
+project; `cargo check`/`tsc --noEmit`/`npm run lint`/`npm run build` all
+pass) — this needs the user's own click-through to confirm end to end,
+especially retrieval quality once a real large (e.g. ~1000-page) corpus
+is loaded. Then decide whether to continue to Phase 2 (multi-agent) or
+Phase 3 (tool/MCP calling).

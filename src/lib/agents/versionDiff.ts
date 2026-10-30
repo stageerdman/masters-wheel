@@ -1,4 +1,8 @@
-import type { AgentFields, AgentVersion } from "./Agents.data";
+// Pure logic for turning two field snapshots into a version entry —
+// no disk access (see storage.ts for that). Split out so the "what changed,
+// in words" question can be understood and tested on its own.
+
+import type { AgentFields, AgentVersion } from "./types";
 
 const FIELD_LABELS: Record<keyof AgentFields, string> = {
   name: "Name",
@@ -10,18 +14,13 @@ const FIELD_LABELS: Record<keyof AgentFields, string> = {
   knowledgeFiles: "Knowledge",
 };
 
-// Diffs two field snapshots to build a version's auto change-label (e.g.
-// "Instructions, Name changed") — computed client-side since there's no
-// backend to generate real commit messages from.
 function describeChange(previous: AgentFields | null, next: AgentFields): string {
   if (!previous) return "Created";
   const changed = new Set<string>();
   for (const key of Object.keys(next) as (keyof AgentFields)[]) {
     if (key === "nicknameLocked") continue;
     const isEqual =
-      key === "knowledgeFiles"
-        ? JSON.stringify(previous[key]) === JSON.stringify(next[key])
-        : previous[key] === next[key];
+      key === "knowledgeFiles" ? JSON.stringify(previous[key]) === JSON.stringify(next[key]) : previous[key] === next[key];
     if (!isEqual) changed.add(FIELD_LABELS[key]);
   }
   if (changed.size === 0) return "No changes";

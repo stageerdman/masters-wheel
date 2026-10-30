@@ -2,6 +2,7 @@
 
 import type { KeyboardEvent } from "react";
 import type { Agent } from "@/elements/AIAssistant/AIAssistant.script";
+import { agentInitial } from "@/lib/agents";
 import { useMentionPicker } from "@/lib/useMentionPicker";
 import position from "./Composer.position.module.css";
 import styles from "./Composer.styles.module.css";
@@ -47,7 +48,7 @@ export function Composer({ value, onChange, onSend, isSending, density, agents }
               onClick={() => selectItem(agent)}
             >
               <span className={`${styles.mentionAvatar} ${position.mentionAvatar}`} data-construction>
-                {agent.initial}
+                {agentInitial(agent.name)}
               </span>
               <span className={styles.mentionName} data-construction>
                 {agent.name}
