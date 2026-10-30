@@ -11,47 +11,54 @@ side of the screen to give the grid real room.
 
 ## Phased roadmap
 
-### Phase 1 — registry + standalone tile + static grid (this phase)
+### Phase 1 — registry + standalone widget + static grid (done)
 - [x] `src/lib/statistics/` — statistic registry: id → `{ label, compute() }`,
       `compute` is `async` and reads real data. "Sessions this month" counts
       real on-disk records (`src/lib/records`) whose date falls in the
       current month; guarded by `isTauri()` so it stays empty outside the
       Tauri shell instead of throwing (same pattern as `PerformanceReview`).
-- [x] `StatTile` element — the standalone number statistic block. Fills
-      whatever box it's given, carries its own glass-box visual identity
-      (blurred semi-transparent surface) and its own staggered pop-in
-      animation — it's the widget, not the grid, that has a visual
-      presence.
 - [x] `StatGrid` element — Control Center–style grid. Takes a list of slots
       (`statisticId` + optional `cols`/`rows`), looks up each statistic,
-      renders a `StatTile` per slot. Per-slot size travels as CSS custom
+      renders a `StatWidget` per slot. Per-slot size travels as CSS custom
       properties (`--stat-cols`/`--stat-rows`) set by the grid on its own
       slot wrapper — same pattern as `--badge-color`/`--icon-color` — so a
-      widget can span more than 1×1 without `StatGrid` or `StatTile` needing
-      a closed enum of size names. Also assigns each slot a `--stat-delay`
-      so tiles cascade in individually instead of popping as one block.
-- [x] `AnalyticsPanel` and `SidePanel` are now fully transparent shells
-      (no heading, no background/blur of their own) — just layout
-      containers around `StatGrid`. `AnalyticsPanel` composes `StatGrid`
-      with one real slot (`sessions-this-month`) instead of 4 fake ones.
+      widget can span more than 1×1 without `StatGrid` or `StatWidget`
+      needing a closed enum of size names. Also assigns each slot a
+      `--stat-delay` so widgets cascade in individually instead of popping
+      as one block.
+- [x] `AnalyticsPanel` and `SidePanel` are fully transparent shells (no
+      heading, no background/blur of their own) — just layout containers.
+      `AnalyticsPanel` composes one real slot (`sessions-this-month`).
 - [x] `SidePanel` grows from a fixed 20rem column to fill the remaining
       width next to `NavMenu` (flex: 1), so the grid has real estate.
+- [x] Settled vocabulary — see `wiki.md`: Space (`StatSpace`) holds a Grid
+      (`StatGrid`), a Grid is made of Slots (`StatSlot`), each Slot holds
+      one Widget (`StatWidget`).
+- [x] The glass-box look and the pop-in animation moved from the container
+      down onto each `StatWidget` — every widget type gets this for free.
+- [x] `StatWidget` is now a shell around a `children/` content component;
+      the first content type is `SingleStat` (one value + label, centered
+      dead-middle of the box) — see `wiki.md` for naming reasoning.
+- [x] `StatSpace` is infinite downward: reserves empty row tracks below
+      the real widgets and grows the row count by 3 whenever the user
+      scrolls within 3 rows of the bottom, so the grid never visibly ends.
 
 ### Phase 2 — multiple spaces (not started)
 Deferred until a second space is actually dictated, per "elements get
 dictated one at a time" — building page-switching UI with only one page to
-switch to would be speculative. When it lands: `StatGrid` takes `spaces`
-(array of slot-lists) instead of one flat `slots` list, plus minimal
-prev/next + dot paging.
+switch to would be speculative. When it lands: `StatSpace` takes multiple
+slot-lists (one Grid per Space) instead of one, plus minimal prev/next +
+dot paging.
 
 ### Phase 3 — live edit mode (not started)
 Long-press/edit-mode gesture, drag to add/remove/resize/reorder widgets.
 Deferred per this phase's scope decision (architecture + static placement
 first).
 
-### Phase 4 — real data (not started)
-Swap each statistic's fake `compute()` for a real query once there's an
-actual session/record backend to query (see `LOCAL-RECORDS-BACKEND` update).
+### Phase 4 — more widget types (not started)
+A second `StatWidget/children/` content type (e.g. a chart) is what forces
+`StatWidget` to actually pick between children instead of always rendering
+`SingleStat` — deferred until that widget is dictated.
 
 ## Decisions
 See `wiki.md`.

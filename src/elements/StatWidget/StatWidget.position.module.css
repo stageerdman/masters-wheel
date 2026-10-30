@@ -1,11 +1,7 @@
-/* Fills whatever box its parent grid gives it — the widget itself has no
-   opinion on size, only on how its own content lays out inside that box. */
+/* Fills whatever box its parent grid gives it — the shell has no opinion
+   on size, just on filling its slot. Its child's own position module
+   handles how its content lays out inside that box. */
 .root {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.25rem;
   width: 100%;
   height: 100%;
-  padding: 0.75rem;
 }

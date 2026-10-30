@@ -101,6 +101,13 @@ between the two lists. Each page gets its own section as pages get added.
       this month" (counts real on-disk records for the current calendar
       month) — adding a new stat anywhere in the app means adding one
       registry entry + one Slot, not a new panel
+- [x] `StatWidget` is a shell (glass box + pop-in) around a `children/`
+      content component — `SingleStat` is the first one, centering one
+      value + label dead in the middle. Future widget types (a chart,
+      etc.) join as siblings under `StatWidget/children/`
+- [x] `StatSpace` scrolls and never visibly ends: it reserves empty row
+      tracks below the real widgets and grows the row count by 3 every
+      time the user scrolls within 3 rows of the bottom
 - [x] Training / Chat with AI: listed, selectable, inert (no behavior
       dictated yet)
 - [x] `NavMenu` items aren't text-selectable (they're controls, not

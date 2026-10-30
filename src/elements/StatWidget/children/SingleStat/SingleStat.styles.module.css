@@ -1,0 +1,10 @@
+.value {
+  color: var(--color-text);
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+}
+
+.label {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}

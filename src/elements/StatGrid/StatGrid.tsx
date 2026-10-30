@@ -21,13 +21,17 @@ export type StatSlot = {
 
 type StatGridProps = {
   slots: StatSlot[];
+  // Total row tracks to reserve — including empty ones below the actual
+  // widgets. StatSpace grows this as the user scrolls near the bottom;
+  // the grid itself just renders however many rows it's told to.
+  rowCount: number;
 };
 
 // Each slot's widget pops in individually rather than the whole grid
 // arriving as one block — a short per-index stagger, not a JS animation.
 const STAGGER_MS = 40;
 
-export function StatGrid({ slots }: StatGridProps) {
+export function StatGrid({ slots, rowCount }: StatGridProps) {
   const [values, setValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -46,7 +50,11 @@ export function StatGrid({ slots }: StatGridProps) {
   }, [slots]);
 
   return (
-    <div className={`${styles.root} ${position.root}`} data-construction>
+    <div
+      className={`${styles.root} ${position.root}`}
+      data-construction
+      style={{ "--stat-row-count": rowCount } as CSSProperties}
+    >
       {slots.map((slot, index) => {
         const statistic = getStatistic(slot.statisticId);
         return (
