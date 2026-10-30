@@ -177,3 +177,21 @@ Three things surfaced trying the shipped glass window:
    (no tooling here to attach to the packaged app's WKWebView) — this is
    the most plausible fix grounded in known WebKit behavior, pending the
    user's own retest.
+
+### Correction — the crash was never CSS
+The `.glassShell` restructure above didn't fix it, because the crash had
+nothing to do with WebKit/backdrop-filter at all — it reproduced in the
+plain dev-server browser tab too, with a real stack trace: `Message.tsx`
+passed `remarkMentions(agents)` (already the *transformer* function,
+`(tree) => void`) directly into `remarkPlugins`. Unified calls each
+`remarkPlugins` entry as the *attacher* at plugin-attach time and expects
+it to *return* a transformer — handing it an already-built transformer
+instead meant unified invoked it immediately with no `tree` argument,
+so `tree` was `undefined` and `node.children` threw on literally the
+first render of any non-empty message. In dev that shows as Next's
+error overlay; in the packaged production build (no dev overlay to
+catch it) the same uncaught exception is what WKWebView was surfacing
+as "This page couldn't load." Fixed by passing the tuple form instead —
+`[remarkMentions, agents]` — so unified calls `remarkMentions(agents)`
+itself and gets the transformer back correctly. The `.glassShell` change
+stays (still reasonable defensively), it just wasn't the actual bug.

@@ -108,7 +108,7 @@ export function Message({ message, density, agents, respondingAgent }: MessagePr
         </span>
       ) : (
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMentions(agents)]}
+          remarkPlugins={[remarkGfm, [remarkMentions, agents]]}
           remarkRehypeOptions={{ handlers: mentionHandlers }}
           components={components}
         >
