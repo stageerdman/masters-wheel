@@ -9,6 +9,7 @@ const SLOTS: StatSlot[] = [
   { id: "closed-amount", statisticId: "closed-amount" },
   { id: "real-close-rate", statisticId: "real-close-rate" },
   { id: "close-rate", statisticId: "close-rate" },
+  { id: "lost-amount", statisticId: "lost-amount" },
 ];
 
 export function AnalyticsPanel() {

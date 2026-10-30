@@ -171,14 +171,16 @@ between the two lists. Each page gets its own section as pages get added.
       the separate data registry (id → label + `compute(filters)`) each
       Widget's value comes from. `AnalyticsPanel`/`SidePanel` are fully
       transparent shells around a `StatSpace` — no panel-level box or
-      heading. 5 real statistics now: **Meetings** (real on-disk records,
+      heading. 6 real statistics now: **Meetings** (real on-disk records,
       always excludes practice/training — pinned via `fixedFilters` so
       the global session-type filter can't override it), **Closed**,
       **Closed amount** (sum of closed deals' offered amount), **Real
       close rate** (closed ÷ closed+failed, excluding not-qualified
-      leads), **Close rate** (closed ÷ closed+failed+not-qualified) — all
-      5 respect the filter bar's date range; adding a new stat anywhere
-      in the app means adding one registry entry + one Slot, not a new
+      leads), **Close rate** (closed ÷ closed+failed+not-qualified),
+      **Lost amount** (sum of failed deals' offered amount — how much
+      money walked away) — all 6 respect the filter bar's date range;
+      adding a new stat anywhere in the app means adding one registry
+      entry + one Slot, not a new
       panel. Grid cells are 75% of their original size — finer spots for
       the same widgets
 - [x] `StatWidget` is a shell (glass box + pop-in) around a `children/`

@@ -47,6 +47,16 @@ async function closedAmount(filters: StatFilters): Promise<string> {
   return total.toLocaleString();
 }
 
+// How much money walked away — the sum of offeredAmount across every
+// failed (lost) deal that actually had one written in; same reduce
+// pattern as closedAmount above, just the other outcome.
+async function lostAmount(filters: StatFilters): Promise<string> {
+  if (!isTauri()) return "—";
+  const records = await matchingRecords(filters, (record) => record.state === "failed");
+  const total = records.reduce((sum, record) => sum + (record.offeredAmount ?? 0), 0);
+  return total.toLocaleString();
+}
+
 function formatRate(numerator: number, denominator: number): string {
   if (denominator === 0) return "—";
   return `${Math.round((numerator / denominator) * 100)}%`;
@@ -100,6 +110,11 @@ export const STATISTICS: Record<string, Statistic> = {
     id: "close-rate",
     label: "Close rate",
     compute: closeRate,
+  },
+  "lost-amount": {
+    id: "lost-amount",
+    label: "Lost amount",
+    compute: lostAmount,
   },
 };
 
