@@ -218,6 +218,15 @@ export function useWindowDock() {
     setIsSideMenuOpen((current) => !current);
   }
 
+  // Picking an agent (AgentStrip or AgentPicker) should drop straight
+  // into the new chat, not leave the history/agents panel sitting open
+  // over it — called alongside selectAgent, not merged into it, since
+  // dock/sidebar state and chat state are deliberately separate concerns
+  // (see this hook's own module-level comment vs. AIAssistant.script.ts's).
+  function closeSideMenu() {
+    setIsSideMenuOpen(false);
+  }
+
   return {
     windowRef,
     dockState,
@@ -230,5 +239,6 @@ export function useWindowDock() {
     presetOverrides,
     isSideMenuOpen,
     toggleSideMenu,
+    closeSideMenu,
   };
 }

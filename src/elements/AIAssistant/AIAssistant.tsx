@@ -41,11 +41,19 @@ export function AIAssistant() {
     presetOverrides,
     isSideMenuOpen,
     toggleSideMenu,
+    closeSideMenu,
   } = useWindowDock();
 
   // Left dock stays compact; center gets the roomier feel.
   const density = dockState === "left" ? "compact" : "comfortable";
   const agentsByRecency = orderAgentsByRecency(agents, sessions);
+
+  // Picking an agent should drop straight into their chat, not leave the
+  // sidebar sitting open over it.
+  function handleSelectAgent(id: string) {
+    selectAgent(id);
+    closeSideMenu();
+  }
 
   return (
     <div id="ai-assistant-root" className={`${styles.root} ${position.root}`} data-construction>
@@ -79,7 +87,7 @@ export function AIAssistant() {
           onDeleteSession={deleteSession}
           agents={agents}
           agentsByRecency={agentsByRecency}
-          onSelectAgent={selectAgent}
+          onSelectAgent={handleSelectAgent}
           onDropAgentIntoChat={addAgentToActiveChat}
           onRemoveAgentFromChat={removeAgentFromActiveChat}
         />
