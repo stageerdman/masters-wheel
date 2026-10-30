@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { KnowledgeFile } from "@/elements/Agents/Agents.data";
-import { ingestKnowledgeFile, pickKnowledgeFiles } from "@/lib/agents";
+import { basenameOf, ingestKnowledgeFile, onKnowledgeIngestProgress, pickKnowledgeFiles } from "@/lib/agents";
 
 export function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -16,31 +16,59 @@ export function fileKindLabel(extension: string) {
   return "File";
 }
 
-// Owns the whole "add knowledge files" flow: opening the native file
-// picker, then indexing each selected file one at a time (extract, chunk,
-// embed, store — see src-tauri/src/knowledge/). This can take a few
-// seconds per file, longer on the very first call ever made (which also
-// downloads the local embedding model) — isIndexing drives the button's
-// loading state for that wait. One file failing (e.g. an unsupported
-// type) doesn't abort the rest of the batch.
+export type IndexingStatus = { fileName: string; processed: number; total: number };
+
+// Owns the whole "add knowledge files" flow, from however the files were
+// selected (native dialog or a window drop — see
+// KnowledgeManager.tsx/useWindowFileDrop) through indexing each one. Files
+// are indexed one at a time, not in parallel, so `indexing` always
+// describes exactly one real in-progress file rather than needing to
+// track a list. One file failing (e.g. an unsupported type) doesn't abort
+// the rest of the batch.
 export function useKnowledgeUpload(agentId: string, onAdded: (file: KnowledgeFile) => void) {
-  const [isIndexing, setIsIndexing] = useState(false);
+  const [indexing, setIndexing] = useState<IndexingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function addFiles() {
-    const paths = await pickKnowledgeFiles();
-    if (paths.length === 0) return;
-    setIsIndexing(true);
-    setError(null);
-    for (const path of paths) {
+  const ingestOne = useCallback(
+    async (path: string) => {
+      const fileName = basenameOf(path);
+      const jobId = crypto.randomUUID();
+      setIndexing({ fileName, processed: 0, total: 0 });
+
+      const unlisten = await onKnowledgeIngestProgress((progress) => {
+        if (progress.jobId !== jobId) return;
+        setIndexing({ fileName, processed: progress.processed, total: progress.total });
+      });
+
       try {
-        onAdded(await ingestKnowledgeFile(agentId, path));
+        onAdded(await ingestKnowledgeFile(agentId, path, jobId));
       } catch (e) {
         setError(String(e));
+      } finally {
+        unlisten();
       }
-    }
-    setIsIndexing(false);
-  }
+    },
+    [agentId, onAdded],
+  );
 
-  return { isIndexing, error, addFiles };
+  // Stable across renders (as long as agentId/onAdded are) so a consumer
+  // using this as a `useWindowFileDrop` callback doesn't tear down and
+  // re-register the native drag listener on every render.
+  const addFiles = useCallback(
+    async (paths: string[]) => {
+      if (paths.length === 0) return;
+      setError(null);
+      for (const path of paths) {
+        await ingestOne(path);
+      }
+      setIndexing(null);
+    },
+    [ingestOne],
+  );
+
+  const pickAndAddFiles = useCallback(async () => {
+    addFiles(await pickKnowledgeFiles());
+  }, [addFiles]);
+
+  return { indexing, error, addFiles, pickAndAddFiles };
 }

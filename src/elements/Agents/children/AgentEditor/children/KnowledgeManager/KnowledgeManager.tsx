@@ -1,6 +1,7 @@
 "use client";
 
 import type { KnowledgeFile } from "@/elements/Agents/Agents.data";
+import { useWindowFileDrop } from "@/lib/useWindowFileDrop";
 import { fileKindLabel, formatFileSize, useKnowledgeUpload } from "./KnowledgeManager.script";
 import position from "./KnowledgeManager.position.module.css";
 import styles from "./KnowledgeManager.styles.module.css";
@@ -12,8 +13,14 @@ type KnowledgeManagerProps = {
   onRemoveFile: (id: string) => void;
 };
 
+function indexingLabel(indexing: { fileName: string; processed: number; total: number }) {
+  if (indexing.total === 0) return `Reading ${indexing.fileName}…`;
+  return `Indexing ${indexing.fileName}… ${indexing.processed}/${indexing.total} chunks`;
+}
+
 export function KnowledgeManager({ agentId, files, onAddFile, onRemoveFile }: KnowledgeManagerProps) {
-  const { isIndexing, error, addFiles } = useKnowledgeUpload(agentId, onAddFile);
+  const { indexing, error, addFiles, pickAndAddFiles } = useKnowledgeUpload(agentId, onAddFile);
+  const isDragActive = useWindowFileDrop(true, addFiles);
   const totalChunks = files.reduce((sum, file) => sum + file.chunkCount, 0);
 
   return (
@@ -29,17 +36,20 @@ export function KnowledgeManager({ agentId, files, onAddFile, onRemoveFile }: Kn
       {files.length === 0 ? (
         <button
           type="button"
-          className={`${styles.dropZone} ${position.dropZone}`}
+          className={`${styles.dropZone} ${position.dropZone} ${isDragActive ? styles.dropZoneActive : ""}`}
           data-construction
-          onClick={addFiles}
-          disabled={isIndexing}
+          onClick={pickAndAddFiles}
+          disabled={indexing !== null}
         >
           <span className={styles.dropZoneText} data-construction>
-            {isIndexing ? "Indexing…" : "Click to add knowledge (.txt, .md, .pdf)"}
+            {indexing ? indexingLabel(indexing) : "Drag files here, or click to add knowledge (.txt, .md, .pdf)"}
           </span>
         </button>
       ) : (
-        <div className={`${styles.fileList} ${position.fileList}`} data-construction>
+        <div
+          className={`${styles.fileList} ${position.fileList} ${isDragActive ? styles.fileListActive : ""}`}
+          data-construction
+        >
           {files.map((file) => (
             <div key={file.id} className={`${styles.fileRow} ${position.fileRow}`} data-construction>
               <span className={`${styles.fileKind} ${position.fileKind}`} data-construction aria-hidden="true">
@@ -66,10 +76,10 @@ export function KnowledgeManager({ agentId, files, onAddFile, onRemoveFile }: Kn
             type="button"
             className={`${styles.addRow} ${position.addRow}`}
             data-construction
-            onClick={addFiles}
-            disabled={isIndexing}
+            onClick={pickAndAddFiles}
+            disabled={indexing !== null}
           >
-            {isIndexing ? "Indexing…" : "+ Add file"}
+            {indexing ? indexingLabel(indexing) : "+ Add file (or drag one in)"}
           </button>
         </div>
       )}

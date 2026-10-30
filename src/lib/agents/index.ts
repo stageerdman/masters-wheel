@@ -10,5 +10,6 @@
 export * from "./types";
 export { ensureAgentsRoot, listAgents, saveAgent, deleteAgent, listVersions, appendVersion } from "./storage";
 export { makeVersion } from "./versionDiff";
-export { pickKnowledgeFiles, ingestKnowledgeFile, removeKnowledgeFile } from "./knowledgeFiles";
+export { basenameOf, pickKnowledgeFiles, ingestKnowledgeFile, onKnowledgeIngestProgress, removeKnowledgeFile } from "./knowledgeFiles";
+export type { KnowledgeIngestProgress } from "./knowledgeFiles";
 export { agentInitial } from "./initial";

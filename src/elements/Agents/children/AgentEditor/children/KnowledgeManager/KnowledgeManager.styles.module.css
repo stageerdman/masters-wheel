@@ -30,6 +30,17 @@
   opacity: 0.6;
 }
 
+/* `outline` is reserved for construction mode (see CLAUDE.md) — real
+   drag-over feedback uses box-shadow instead. */
+.dropZoneActive {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.fileListActive {
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
 .dropZoneText {
   font-size: var(--text-size-label);
   color: var(--color-text-muted);

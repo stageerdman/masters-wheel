@@ -3,7 +3,7 @@
 // assistant.rs calls internally before every reply.
 
 use serde::Serialize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 use super::chunk::chunk_text;
 use super::embedder::{embed_many, embed_one};
@@ -22,9 +22,26 @@ pub struct KnowledgeFileMeta {
     pub chunk_count: usize,
 }
 
+#[derive(Serialize, Clone)]
+struct KnowledgeIngestProgress {
+    #[serde(rename = "jobId")]
+    job_id: String,
+    processed: usize,
+    total: usize,
+}
+
+fn emit_ingest_progress(app: &AppHandle, job_id: &str, processed: usize, total: usize) {
+    let _ = app.emit("knowledge-ingest-progress", KnowledgeIngestProgress { job_id: job_id.to_string(), processed, total });
+}
+
 fn file_extension(file_name: &str) -> String {
     std::path::Path::new(file_name).extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase()
 }
+
+// How many chunks to embed per fastembed call — small enough that the
+// frontend sees real incremental progress on a large file, large enough
+// that batching still beats embedding one chunk at a time.
+const EMBED_BATCH_SIZE: usize = 16;
 
 // Copies a knowledge file in, extracts its text, chunks it, embeds every
 // chunk locally, and stores the result in the agent's own knowledge
@@ -35,6 +52,7 @@ fn file_extension(file_name: &str) -> String {
 #[tauri::command]
 pub async fn ingest_knowledge_file(
     app: AppHandle,
+    job_id: String,
     agent_id: String,
     file_id: String,
     source_path: String,
@@ -54,12 +72,24 @@ pub async fn ingest_knowledge_file(
         if chunks.is_empty() {
             return Err("This file had no readable text to learn from.".to_string());
         }
-        let embeddings = embed_many(&app, chunks.clone())?;
+        let total = chunks.len();
+        emit_ingest_progress(&app, &job_id, 0, total);
 
         let db_path = agent_db_path(&app, &agent_id)?;
         let conn = open_db(&db_path)?;
-        let paired: Vec<(String, Vec<f32>)> = chunks.into_iter().zip(embeddings).collect();
-        insert_file_chunks(&conn, &file_id, &file_name, &paired)?;
+
+        // Embedded and stored in small batches (not all at once) so the
+        // frontend sees real incremental progress on a large file instead
+        // of one long silence followed by "done".
+        let mut processed = 0;
+        for batch in chunks.chunks(EMBED_BATCH_SIZE) {
+            let batch_texts: Vec<String> = batch.to_vec();
+            let embeddings = embed_many(&app, batch_texts.clone())?;
+            let paired: Vec<(String, Vec<f32>)> = batch_texts.into_iter().zip(embeddings).collect();
+            insert_file_chunks(&conn, &file_id, &file_name, &paired)?;
+            processed += batch.len();
+            emit_ingest_progress(&app, &job_id, processed, total);
+        }
         let chunk_count = count_chunks_for_file(&conn, &file_id)?;
 
         Ok(KnowledgeFileMeta { id: file_id, name: file_name.clone(), size, kind: file_extension(&file_name), chunk_count })

@@ -18,8 +18,15 @@ pub fn chunk_text(text: &str) -> Vec<String> {
             chunks.push(current.clone());
             // Carry the tail of the chunk we just closed forward, so a
             // fact sitting right at a chunk boundary still appears in full
-            // in at least one chunk instead of being cut in half.
-            let overlap_start = current.len().saturating_sub(OVERLAP_CHARS);
+            // in at least one chunk instead of being cut in half. Byte
+            // length, not char count, is what String slicing needs, but a
+            // non-ASCII character (e.g. "č") can be more than one byte —
+            // slicing straight at `len() - OVERLAP_CHARS` can land inside
+            // one and panic, so this walks forward to the next real char
+            // boundary instead of assuming the arithmetic already landed
+            // on one.
+            let target = current.len().saturating_sub(OVERLAP_CHARS);
+            let overlap_start = (target..=current.len()).find(|&i| current.is_char_boundary(i)).unwrap_or(current.len());
             current = current[overlap_start..].to_string();
         }
         if !current.is_empty() {
