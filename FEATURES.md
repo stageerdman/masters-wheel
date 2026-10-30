@@ -70,6 +70,14 @@ between the two lists. Each page gets its own section as pages get added.
       "Delete chat" (native confirmation first, not undoable); deleting
       the active chat falls back to the next most-recently-used one, or
       a fresh draft if none are left.
+- [x] The window itself is a real glass surface ("Dock" concept, explored
+      as a standalone HTML artifact first — see
+      `updates/2026-10-30 CHAT-UX - OPEN`): transparent background +
+      `backdrop-filter: blur(4px)` + a hairline border + a faint diagonal
+      sheen, one blur region for the whole window (not one per
+      sub-panel, deliberately, for performance) — `Sidebar`/`Composer`/
+      the chat column all dropped their opaque fill so it shows through
+      consistently.
 - [x] Every place an agent appears in the chat (`AgentRosterItem`,
       `ActiveAgentChip`, `AgentPicker`, `AgentStrip`, `HistoryListItem`)
       renders its real uploaded photo via the shared `AgentAvatar`

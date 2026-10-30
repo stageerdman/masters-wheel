@@ -1,9 +1,25 @@
 /* How this element looks. No layout/positioning here. */
 .root {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: transparent;
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--color-glass-border);
   border-radius: 0.75rem 0.75rem 0 0;
+  box-shadow: 0 14px 40px color-mix(in srgb, var(--color-text) 10%, transparent);
   opacity: 0;
+}
+
+/* A faint diagonal highlight on top of everything else — the one bit of
+   "glass" that isn't just transparency+blur. Sits on `.root` itself
+   (not a child) so it's always the topmost paint layer regardless of
+   what's inside; `.root`'s own `overflow: hidden` (position module)
+   keeps it clipped to the rounded corners. */
+.root::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-glass-sheen) 0%, transparent 46%);
+  pointer-events: none;
 }
 
 .visible {
@@ -15,7 +31,6 @@
 }
 
 .header {
-  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -53,8 +68,11 @@
   cursor: grabbing;
 }
 
+/* No background of its own — transparent, so the whole window's one
+   backdrop-filter (see .root above) shows through consistently instead
+   of this region painting over it with an opaque fill. */
 .chatColumn {
-  background: var(--color-surface);
+  background: none;
 }
 
 .dragOver {

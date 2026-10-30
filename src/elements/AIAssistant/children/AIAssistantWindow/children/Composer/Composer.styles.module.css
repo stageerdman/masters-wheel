@@ -1,11 +1,14 @@
 /* How this element looks. No layout/positioning here. */
+/* No background of its own — transparent, same reasoning as Sidebar's
+   root: AIAssistantWindow's one backdrop-filter should show through
+   every region of the window consistently. */
 .root {
-  background: var(--color-surface);
+  background: none;
   border-top: 1px solid var(--color-border);
 }
 
 .input {
-  background: var(--color-surface);
+  background: none;
   color: var(--color-text);
   font-size: var(--text-size-body);
   border: none;

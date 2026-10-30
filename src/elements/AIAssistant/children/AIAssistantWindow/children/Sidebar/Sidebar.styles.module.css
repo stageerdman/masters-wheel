@@ -1,6 +1,9 @@
 /* How this element looks. No layout/positioning here. */
+/* No background of its own — transparent, so AIAssistantWindow's one
+   backdrop-filter shows through consistently across the whole window
+   instead of this region painting over it with an opaque fill. */
 .root {
-  background: var(--color-surface);
+  background: none;
   border-right: 1px solid var(--color-border);
 }
 

@@ -120,3 +120,30 @@ Dictated after trying the first pass live:
   (`AIAssistantWindow` resolves one `respondingAgent` per session via the
   now-exported `resolveActiveAgents`, passed down through
   `MessageList`/`Message`).
+
+### Follow-up pass — glass material ("Dock" concept)
+Explored as a separate HTML artifact first (3 throwaway rounds — the
+first two tried real glass refraction via SVG `feTurbulence` +
+`feDisplacementMap` on `backdrop-filter`; that combination isn't
+reliably supported as one value in most engines, and when rejected it
+silently dropped the *whole* `backdrop-filter` declaration, blur
+included, then a heavier version of the same idea made the page
+unresponsive — dropped entirely for a `box-shadow`-only edge fringe,
+which the user ended up tuning to 0 anyway). Landed on "Dock": blur 4px,
+tint 0%, edge 0% (off), border 6%, sheen 10%.
+
+Implemented for real: `globals.css` gets a small "Glass surface" token
+group (`--glass-blur`, `--color-glass-border`, `--color-glass-sheen`) —
+both colors derived from the existing core palette via `color-mix`
+(`--color-text` and white), not a 6th hue, same reasoning
+`--color-on-chip` is already exempt. `AIAssistantWindow`'s `.root` is the
+one actual glass surface (transparent background + `backdrop-filter:
+blur(4px)` + the new hairline border + a `::after` diagonal sheen);
+`Sidebar`/`Composer`/`.chatColumn`/the composer's own input field all
+drop their opaque `--color-surface` fill so the window's single blur
+shows through consistently instead of being painted over — deliberately
+only *one* backdrop-filter region (the window itself), not one per
+sub-panel, for performance. Internal dividers (header/sidebar/composer
+border lines) stay on the plain `--color-border` token, unchanged — the
+new glass-border is for the window's own outer edge specifically, not
+every internal hairline.
