@@ -1,6 +1,11 @@
 /* How this element looks. No layout/positioning here. */
+/* No background of its own — this was the real cause of the chat area
+   looking like solid black in dark mode: an opaque --color-surface fill
+   covering the entire scrollable message area completely hid
+   AIAssistantWindow's glass blur behind it. Transparent, so that one
+   blur shows through consistently. */
 .root {
-  background: var(--color-surface);
+  background: none;
 }
 
 .empty {

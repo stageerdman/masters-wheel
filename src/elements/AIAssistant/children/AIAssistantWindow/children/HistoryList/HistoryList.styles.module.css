@@ -1,4 +1,7 @@
 /* How this element looks. No layout/positioning here. */
+/* No background of its own — missed in the first glass pass, same
+   reasoning as Sidebar/Composer: transparent, so the window's one blur
+   shows through here too instead of this opaque fill hiding it. */
 .root {
-  background: var(--color-surface);
+  background: none;
 }

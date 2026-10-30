@@ -115,98 +115,100 @@ export function AIAssistantWindow({
       data-construction
       onTransitionEnd={handleTransitionEnd}
     >
-      <div className={`${styles.header} ${position.header}`} data-construction>
-        <button
-          type="button"
-          className={`${styles.headerButton} ${position.headerButton}`}
-          data-construction
-          onClick={onToggleSideMenu}
-          aria-label={isSideMenuOpen ? "Collapse side menu" : "Expand side menu"}
-          aria-pressed={isSideMenuOpen}
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-            <rect x="2.5" y="3" width="11" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
-            <line x1="6.5" y1="3" x2="6.5" y2="13" stroke="currentColor" strokeWidth="1.3" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className={`${styles.headerButton} ${position.headerButton}`}
-          data-construction
-          onClick={onNewChat}
-          aria-label="Start a new chat"
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-            <line x1="8" y1="2.5" x2="8" y2="13.5" stroke="currentColor" strokeWidth="1.3" />
-            <line x1="2.5" y1="8" x2="13.5" y2="8" stroke="currentColor" strokeWidth="1.3" />
-          </svg>
-        </button>
+      <div className={`${styles.glassShell} ${position.glassShell}`} data-construction>
+        <div className={`${styles.header} ${position.header}`} data-construction>
+          <button
+            type="button"
+            className={`${styles.headerButton} ${position.headerButton}`}
+            data-construction
+            onClick={onToggleSideMenu}
+            aria-label={isSideMenuOpen ? "Collapse side menu" : "Expand side menu"}
+            aria-pressed={isSideMenuOpen}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <rect x="2.5" y="3" width="11" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+              <line x1="6.5" y1="3" x2="6.5" y2="13" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className={`${styles.headerButton} ${position.headerButton}`}
+            data-construction
+            onClick={onNewChat}
+            aria-label="Start a new chat"
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <line x1="8" y1="2.5" x2="8" y2="13.5" stroke="currentColor" strokeWidth="1.3" />
+              <line x1="2.5" y1="8" x2="13.5" y2="8" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+          </button>
+          <div
+            className={`${styles.dragHandle} ${position.dragHandle}`}
+            data-construction
+            onPointerDown={onHeaderPointerDown}
+          />
+          <button
+            type="button"
+            className={`${styles.headerButton} ${position.headerButton}`}
+            data-construction
+            onClick={onCollapse}
+            aria-label="Collapse AI assistant"
+          >
+            <span className={`${styles.collapseGlyph} ${position.collapseGlyph}`} data-construction />
+          </button>
+        </div>
         <div
-          className={`${styles.dragHandle} ${position.dragHandle}`}
+          className={position.resizeHandle}
           data-construction
-          onPointerDown={onHeaderPointerDown}
+          aria-hidden="true"
+          onPointerDown={onResizeHandlePointerDown}
         />
-        <button
-          type="button"
-          className={`${styles.headerButton} ${position.headerButton}`}
-          data-construction
-          onClick={onCollapse}
-          aria-label="Collapse AI assistant"
-        >
-          <span className={`${styles.collapseGlyph} ${position.collapseGlyph}`} data-construction />
-        </button>
-      </div>
-      <div
-        className={position.resizeHandle}
-        data-construction
-        aria-hidden="true"
-        onPointerDown={onResizeHandlePointerDown}
-      />
-      <div className={`${styles.content} ${position.content}`} data-construction>
-        <Sidebar
-          isOpen={isSideMenuOpen}
-          sessions={sessions}
-          activeSessionId={activeSession.id}
-          onSelectSession={onSelectSession}
-          onDeleteSession={onDeleteSession}
-          agents={agents}
-          agentsByRecency={agentsByRecency}
-          onSelectAgent={onSelectAgent}
-        />
-        <div
-          className={`${styles.chatColumn} ${position.chatColumn} ${isDragOver ? styles.dragOver : ""} ${isSideMenuOpen ? position.chatColumnSidebarOpen : ""}`}
-          data-construction
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-        >
-          {isDraftSession(activeSession) ? (
-            <AgentPicker agents={agents} onSelectAgent={onSelectAgent} />
-          ) : (
-            <>
-              {activeAgents.length > 0 && (
-                <div className={`${styles.chipRow} ${position.chipRow}`} data-construction>
-                  {activeAgents.map((agent) => (
-                    <ActiveAgentChip key={agent.id} agent={agent} onRemove={() => onRemoveAgentFromChat(agent.id)} />
-                  ))}
-                </div>
-              )}
-              <MessageList
-                messages={activeSession.messages}
-                density={density}
-                agents={agents}
-                respondingAgent={respondingAgent}
-              />
-              <Composer
-                value={composerValue}
-                onChange={onComposerChange}
-                onSend={onSend}
-                isSending={isSending}
-                density={density}
-                agents={agents}
-              />
-            </>
-          )}
+        <div className={`${styles.content} ${position.content}`} data-construction>
+          <Sidebar
+            isOpen={isSideMenuOpen}
+            sessions={sessions}
+            activeSessionId={activeSession.id}
+            onSelectSession={onSelectSession}
+            onDeleteSession={onDeleteSession}
+            agents={agents}
+            agentsByRecency={agentsByRecency}
+            onSelectAgent={onSelectAgent}
+          />
+          <div
+            className={`${styles.chatColumn} ${position.chatColumn} ${isDragOver ? styles.dragOver : ""} ${isSideMenuOpen ? position.chatColumnSidebarOpen : ""}`}
+            data-construction
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+          >
+            {isDraftSession(activeSession) ? (
+              <AgentPicker agents={agents} onSelectAgent={onSelectAgent} />
+            ) : (
+              <>
+                {activeAgents.length > 0 && (
+                  <div className={`${styles.chipRow} ${position.chipRow}`} data-construction>
+                    {activeAgents.map((agent) => (
+                      <ActiveAgentChip key={agent.id} agent={agent} onRemove={() => onRemoveAgentFromChat(agent.id)} />
+                    ))}
+                  </div>
+                )}
+                <MessageList
+                  messages={activeSession.messages}
+                  density={density}
+                  agents={agents}
+                  respondingAgent={respondingAgent}
+                />
+                <Composer
+                  value={composerValue}
+                  onChange={onComposerChange}
+                  onSend={onSend}
+                  isSending={isSending}
+                  density={density}
+                  agents={agents}
+                />
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

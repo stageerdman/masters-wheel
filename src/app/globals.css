@@ -54,14 +54,15 @@
 
   /* Glass surface — the AI Assistant window's material ("Dock" concept,
      tuned via updates/2026-10-30 CHAT-UX - OPEN's glass-concepts
-     exploration: blur 4px, tint 0, edge 0, border 6%, sheen 10%). Both
+     exploration: blur 8px (bumped up from the concept's 4px once seen in
+     the real app), tint 0, edge 0, border 6%, sheen 10%). Both
      colors are derived from the core palette via color-mix (--color-text
      and white, not a new hue), same reasoning --color-on-chip is already
      exempt from the core-5 count — this isn't a 6th color, just an
      alpha-adjusted view of ones that already exist. No "tint"/"edge"
      tokens here: both were tuned to 0 (fully transparent/off), so there's
      nothing to encode. */
-  --glass-blur: 4px;
+  --glass-blur: 8px;
   --color-glass-border: color-mix(in srgb, var(--color-text) 6%, transparent);
   --color-glass-sheen: color-mix(in srgb, white 10%, transparent);
 

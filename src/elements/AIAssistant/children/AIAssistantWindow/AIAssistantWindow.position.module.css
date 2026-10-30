@@ -87,6 +87,19 @@
   height: var(--dock-center-h);
 }
 
+/* Fills .root exactly — see styles module for why the glass material
+   lives here instead of on .root itself. `position: relative` anchors
+   the resize handle below (now nested inside this, not .root directly)
+   to a box that always coincides with .root's own bounds. */
+.glassShell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .header {
   display: flex;
   align-items: center;

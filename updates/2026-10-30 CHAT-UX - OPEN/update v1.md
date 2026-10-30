@@ -147,3 +147,33 @@ sub-panel, for performance. Internal dividers (header/sidebar/composer
 border lines) stay on the plain `--color-border` token, unchanged — the
 new glass-border is for the window's own outer edge specifically, not
 every internal hairline.
+
+### Follow-up pass — real-app bugs after trying it live
+Three things surfaced trying the shipped glass window:
+1. **History/the message area still looked opaque (black in dark mode).**
+   Missed two nested opaque fills on the first pass:
+   `MessageList.styles.module.css` and `HistoryList.styles.module.css`
+   each had their own `background: var(--color-surface)` on `.root`,
+   covering the *entire* scrollable area and completely hiding the
+   window's blur behind them — in dark mode that's `#0a0a0a`, which
+   reads as plain black. Both dropped to `background: none`, same as
+   Sidebar/Composer/chatColumn before them.
+2. **Blur bumped from 4px to 8px** per request, once seen for real.
+3. **The packaged app crashed ("This page couldn't load") the moment a
+   chat actually started streaming a reply in.** Likely cause: `.root`
+   (the floating window) carried both `backdrop-filter` *and* continuous
+   CSS transitions on `transform`/`width`/`height`/`opacity` (drag/dock/
+   resize), plus `overflow: hidden` and a `::after` pseudo-element — all
+   on the same element. That specific combination (backdrop-filter +
+   animated transform/opacity + overflow:hidden + a pseudo-element) is a
+   known WebKit compositing crash class; StatWidget's own
+   `backdrop-filter` ships fine elsewhere in this same app precisely
+   because it's never the subject of a *continuous* transform/opacity
+   transition the way this window is. Fixed by moving the entire glass
+   treatment (background/backdrop-filter/border/box-shadow/sheen) onto a
+   new static, non-animated child — `.glassShell`, sized to fill `.root`
+   exactly — so nothing with `backdrop-filter` is ever also the thing
+   being dragged/resized. Not independently confirmed via a crash log
+   (no tooling here to attach to the packaged app's WKWebView) — this is
+   the most plausible fix grounded in known WebKit behavior, pending the
+   user's own retest.
