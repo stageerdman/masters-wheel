@@ -1,0 +1,24 @@
+.root {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-text) 20%, transparent);
+}
+
+.item {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: var(--text-size-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--color-border);
+}
+
+.destructive {
+  color: var(--color-status-failed);
+}

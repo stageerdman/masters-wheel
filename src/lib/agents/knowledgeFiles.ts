@@ -10,11 +10,16 @@ import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { KnowledgeFile } from "./types";
 
-const SUPPORTED_EXTENSIONS = ["txt", "md", "markdown", "pdf"];
+export const SUPPORTED_KNOWLEDGE_EXTENSIONS = ["txt", "md", "markdown", "pdf"];
+
+export function isKnowledgeFilePath(path: string): boolean {
+  const extension = path.split(".").pop()?.toLowerCase() ?? "";
+  return SUPPORTED_KNOWLEDGE_EXTENSIONS.includes(extension);
+}
 
 // Opens the native "add files" dialog; returns [] if the user cancels.
 export async function pickKnowledgeFiles(): Promise<string[]> {
-  const selection = await open({ multiple: true, filters: [{ name: "Knowledge", extensions: SUPPORTED_EXTENSIONS }] });
+  const selection = await open({ multiple: true, filters: [{ name: "Knowledge", extensions: SUPPORTED_KNOWLEDGE_EXTENSIONS }] });
   if (!selection) return [];
   return Array.isArray(selection) ? selection : [selection];
 }

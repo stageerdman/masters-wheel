@@ -9,8 +9,25 @@
   cursor: pointer;
 }
 
+.photo:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* `outline` is reserved for construction mode (see CLAUDE.md) — real
+   drag-over feedback uses box-shadow instead. */
+.photoActive {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
 .photoPlaceholder {
   color: var(--color-text-muted);
+}
+
+.photoError {
+  font-size: var(--text-size-micro);
+  color: var(--color-accent);
 }
 
 .nameInput,

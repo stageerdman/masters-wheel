@@ -1,4 +1,5 @@
 mod assistant;
+mod avatar;
 mod knowledge;
 mod media_server;
 mod transcribe;
@@ -46,7 +47,8 @@ pub fn run() {
       assistant::ask_agent,
       assistant::debug_log,
       knowledge::commands::ingest_knowledge_file,
-      knowledge::commands::remove_knowledge_file
+      knowledge::commands::remove_knowledge_file,
+      avatar::read_image_as_data_url
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {

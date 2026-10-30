@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import type { CoachAgent } from "@/elements/Agents/Agents.data";
 import position from "./AgentNavItem.position.module.css";
 import styles from "./AgentNavItem.styles.module.css";
@@ -8,9 +9,10 @@ type AgentNavItemProps = {
   agent: CoachAgent | null;
   active: boolean;
   onClick: () => void;
+  onContextMenu?: (event: MouseEvent) => void;
 };
 
-export function AgentNavItem({ agent, active, onClick }: AgentNavItemProps) {
+export function AgentNavItem({ agent, active, onClick, onContextMenu }: AgentNavItemProps) {
   const isAdd = agent === null;
   const trimmedName = isAdd ? "" : agent.name.trim();
   const name = isAdd ? "Add new agent" : trimmedName.length > 0 ? agent.name : "Untitled agent";
@@ -22,6 +24,7 @@ export function AgentNavItem({ agent, active, onClick }: AgentNavItemProps) {
       className={`${styles.root} ${position.root} ${active ? styles.active : ""}`}
       data-construction
       onClick={onClick}
+      onContextMenu={isAdd ? undefined : onContextMenu}
       aria-pressed={isAdd ? undefined : active}
       title={!isAdd && agent.description ? agent.description : undefined}
     >

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import type { KnowledgeFile } from "@/elements/Agents/Agents.data";
-import { basenameOf, ingestKnowledgeFile, onKnowledgeIngestProgress, pickKnowledgeFiles } from "@/lib/agents";
+import { basenameOf, ingestKnowledgeFile, isKnowledgeFilePath, onKnowledgeIngestProgress, pickKnowledgeFiles } from "@/lib/agents";
 
 export function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -53,12 +53,18 @@ export function useKnowledgeUpload(agentId: string, onAdded: (file: KnowledgeFil
 
   // Stable across renders (as long as agentId/onAdded are) so a consumer
   // using this as a `useWindowFileDrop` callback doesn't tear down and
-  // re-register the native drag listener on every render.
+  // re-register the native drag listener on every render. Filters to
+  // this feature's own supported extensions — IdentityHeader's photo
+  // drop zone listens on the same window-wide drop event, so a dropped
+  // image needs to be silently ignored here rather than surfacing an
+  // "unsupported file type" error for a file that was never meant for
+  // this drop target in the first place.
   const addFiles = useCallback(
     async (paths: string[]) => {
-      if (paths.length === 0) return;
+      const relevant = paths.filter(isKnowledgeFilePath);
+      if (relevant.length === 0) return;
       setError(null);
-      for (const path of paths) {
+      for (const path of relevant) {
         await ingestOne(path);
       }
       setIndexing(null);

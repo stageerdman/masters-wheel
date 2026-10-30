@@ -48,6 +48,14 @@ function parseAgent(id: string, text: string): Agent | null {
   if (!raw || typeof raw !== "object") return null;
   const candidate = raw as Partial<AgentFields>;
   if (typeof candidate.name !== "string") return null;
+  // A `blob:` photoUrl (from this app's pre-fix photo picker) only ever
+  // worked for the webview session that created it — on any later load
+  // it's a permanently dead reference, not a real photo. Treating it as
+  // "no photo" here means a previously-saved agent heals itself back to
+  // the "+" placeholder instead of staying a broken image forever; the
+  // user re-uploading via the current (persistent) picker is what
+  // actually restores a working photo.
+  const photoUrl = typeof candidate.photoUrl === "string" && !candidate.photoUrl.startsWith("blob:") ? candidate.photoUrl : null;
   return {
     id,
     name: candidate.name,
@@ -55,7 +63,7 @@ function parseAgent(id: string, text: string): Agent | null {
     nicknameLocked: typeof candidate.nicknameLocked === "boolean" ? candidate.nicknameLocked : false,
     description: typeof candidate.description === "string" ? candidate.description : "",
     instructions: typeof candidate.instructions === "string" ? candidate.instructions : "",
-    photoUrl: typeof candidate.photoUrl === "string" ? candidate.photoUrl : null,
+    photoUrl,
     knowledgeFiles: Array.isArray(candidate.knowledgeFiles) ? candidate.knowledgeFiles : [],
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import type { ChangeEvent } from "react";
+import { useWindowFileDrop } from "@/lib/useWindowFileDrop";
+import { usePhotoUpload } from "./IdentityHeader.script";
 import position from "./IdentityHeader.position.module.css";
 import styles from "./IdentityHeader.styles.module.css";
 
@@ -30,24 +30,24 @@ export function IdentityHeader({
   onFieldFocus,
   onFieldBlur,
 }: IdentityHeaderProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  function handlePhotoSelect(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) onPhotoChange(URL.createObjectURL(file));
-    event.target.value = "";
-  }
+  const { isUploading, error, pickPhoto, handleDroppedPaths } = usePhotoUpload(onPhotoChange);
+  const isDragActive = useWindowFileDrop(true, handleDroppedPaths);
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
       <button
         type="button"
-        className={`${styles.photo} ${position.photo}`}
+        className={`${styles.photo} ${position.photo} ${isDragActive ? styles.photoActive : ""}`}
         data-construction
-        onClick={() => fileInputRef.current?.click()}
-        aria-label="Change agent photo"
+        onClick={pickPhoto}
+        disabled={isUploading}
+        aria-label="Change agent photo (click, or drag an image here)"
       >
-        {photoUrl ? (
+        {isUploading ? (
+          <span className={`${styles.photoPlaceholder} ${position.photoPlaceholder}`} data-construction aria-hidden="true">
+            …
+          </span>
+        ) : photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photoUrl} alt="" className={`${styles.photoImage} ${position.photoImage}`} data-construction />
         ) : (
@@ -56,14 +56,6 @@ export function IdentityHeader({
           </span>
         )}
       </button>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className={position.hiddenInput}
-        data-construction
-        onChange={handlePhotoSelect}
-      />
       <div className={position.textStack} data-construction>
         <input
           className={`${styles.nameInput} ${position.nameInput}`}
@@ -100,6 +92,11 @@ export function IdentityHeader({
           onBlur={onFieldBlur}
           aria-label="Agent description"
         />
+        {error && (
+          <span className={`${styles.photoError} ${position.photoError}`} data-construction role="alert">
+            {error}
+          </span>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import type { CoachAgent } from "@/elements/Agents/Agents.data";
 import { AgentNavItem } from "./children/AgentNavItem/AgentNavItem";
 import position from "./AgentNav.position.module.css";
@@ -10,9 +11,10 @@ type AgentNavProps = {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onAddAgent: () => void;
+  onContextMenuAgent: (event: MouseEvent, agentId: string) => void;
 };
 
-export function AgentNav({ agents, selectedId, onSelect, onAddAgent }: AgentNavProps) {
+export function AgentNav({ agents, selectedId, onSelect, onAddAgent, onContextMenuAgent }: AgentNavProps) {
   return (
     <nav className={`${styles.root} ${position.root}`} data-construction>
       <ul className={`${styles.list} ${position.list}`} data-construction>
@@ -21,7 +23,12 @@ export function AgentNav({ agents, selectedId, onSelect, onAddAgent }: AgentNavP
         </li>
         {agents.map((agent) => (
           <li key={agent.id}>
-            <AgentNavItem agent={agent} active={agent.id === selectedId} onClick={() => onSelect(agent.id)} />
+            <AgentNavItem
+              agent={agent}
+              active={agent.id === selectedId}
+              onClick={() => onSelect(agent.id)}
+              onContextMenu={(event) => onContextMenuAgent(event, agent.id)}
+            />
           </li>
         ))}
       </ul>

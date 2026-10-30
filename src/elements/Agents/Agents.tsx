@@ -1,12 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { useHeaderActions } from "@/elements/AppHeader/AppHeader.context";
-import { listAgents, makeVersion, saveAgent, appendVersion, listVersions, type AgentFields, type AgentVersion, type Agent } from "@/lib/agents";
+import {
+  listAgents,
+  makeVersion,
+  saveAgent,
+  appendVersion,
+  listVersions,
+  deleteAgent,
+  type AgentFields,
+  type AgentVersion,
+  type Agent,
+} from "@/lib/agents";
 import { AgentNav } from "./children/AgentNav/AgentNav";
 import { AgentEditor } from "./children/AgentEditor/AgentEditor";
+import { ContextMenu, type ContextMenuItem } from "@/elements/ContextMenu/ContextMenu";
 import position from "./Agents.position.module.css";
 import styles from "./Agents.styles.module.css";
+
+type AgentContextMenuState = { agentId: string; x: number; y: number };
 
 function makeDraftAgent(): Agent {
   return {
@@ -27,6 +42,7 @@ export function Agents() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [versionsByAgent, setVersionsByAgent] = useState<Record<string, AgentVersion[]>>({});
+  const [agentContextMenu, setAgentContextMenu] = useState<AgentContextMenuState | null>(null);
 
   const selected = agents.find((agent) => agent.id === selectedId) ?? null;
 
@@ -70,11 +86,67 @@ export function Agents() {
     setVersionsByAgent((current) => ({ ...current, [agentId]: [...previous, version] }));
   }
 
+  function handleContextMenuAgent(event: MouseEvent, agentId: string) {
+    event.preventDefault();
+    setAgentContextMenu({ agentId, x: event.clientX, y: event.clientY });
+  }
+
+  async function handleDeleteAgent(agentId: string) {
+    const agent = agents.find((candidate) => candidate.id === agentId);
+    const confirmed = await confirm(`Delete "${agent?.name || "this agent"}"? This can't be undone.`, {
+      title: "Delete agent",
+      kind: "warning",
+    });
+    if (!confirmed) return;
+
+    // A draft that was never saved has no folder on disk at all — every
+    // saved agent has a versionsByAgent entry (populated on load, or by
+    // the first handleSave), so this is enough to tell the two apart.
+    if (versionsByAgent[agentId] !== undefined) await deleteAgent(agentId);
+
+    setAgents((current) => current.filter((agent) => agent.id !== agentId));
+    setVersionsByAgent((current) => {
+      const next = { ...current };
+      delete next[agentId];
+      return next;
+    });
+    setSelectedId((current) => {
+      if (current !== agentId) return current;
+      const remaining = agents.filter((agent) => agent.id !== agentId);
+      return remaining[0]?.id ?? null;
+    });
+  }
+
   if (isLoading) return null;
+
+  const contextMenuItems: ContextMenuItem[] = agentContextMenu
+    ? [
+        {
+          id: "remove",
+          label: "Remove",
+          destructive: true,
+          onSelect: () => handleDeleteAgent(agentContextMenu.agentId),
+        },
+      ]
+    : [];
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      <AgentNav agents={agents} selectedId={selectedId} onSelect={setSelectedId} onAddAgent={handleAddAgent} />
+      <AgentNav
+        agents={agents}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+        onAddAgent={handleAddAgent}
+        onContextMenuAgent={handleContextMenuAgent}
+      />
+      {agentContextMenu && (
+        <ContextMenu
+          x={agentContextMenu.x}
+          y={agentContextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setAgentContextMenu(null)}
+        />
+      )}
       {selected ? (
         <AgentEditor
           key={selected.id}

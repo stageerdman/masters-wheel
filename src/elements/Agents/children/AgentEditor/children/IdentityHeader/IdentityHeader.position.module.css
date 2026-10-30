@@ -27,12 +27,8 @@
   font-size: var(--text-size-heading);
 }
 
-.hiddenInput {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  pointer-events: none;
+.photoError {
+  flex-shrink: 0;
 }
 
 .textStack {
