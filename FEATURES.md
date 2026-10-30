@@ -89,12 +89,16 @@ between the two lists. Each page gets its own section as pages get added.
       again while open closes it
 - [x] Statistics are now a standardized, reusable system instead of one
       hardcoded panel: `src/lib/statistics` is a registry of statistics
-      (id → label + fake `compute()`), `StatTile` is the standalone
-      single-stat widget (minimal 1x1 footprint), and `StatGrid` places a
-      list of tiles in a Control Center–style grid where each slot can
-      span more than 1x1 if a future widget needs the room. `AnalyticsPanel`
-      is just `StatGrid` wired to 4 statistics — adding a new stat anywhere
-      in the app means adding one registry entry + one slot, not a new panel
+      (id → label + `compute()`), `StatTile` is the standalone single-stat
+      widget (minimal 1x1 footprint, its own glass-box look, its own
+      staggered pop-in), and `StatGrid` places a list of tiles in a
+      Control Center–style grid where each slot can span more than 1x1 if
+      a future widget needs the room. `AnalyticsPanel`/`SidePanel` are
+      fully transparent shells around it — no panel-level box or heading.
+      `AnalyticsPanel` is `StatGrid` wired to one real statistic,
+      "Sessions this month" (counts real on-disk records for the current
+      calendar month) — adding a new stat anywhere in the app means
+      adding one registry entry + one slot, not a new panel
 - [x] Training / Chat with AI: listed, selectable, inert (no behavior
       dictated yet)
 - [x] `NavMenu` items aren't text-selectable (they're controls, not
@@ -106,8 +110,6 @@ between the two lists. Each page gets its own section as pages get added.
 
 ### To build (real functionality — not started)
 - [ ] Training and Chat with AI behavior (not dictated yet)
-- [ ] Real data behind each statistic's `compute()` (currently static fake
-      numbers)
 - [ ] Multiple spaces in `StatGrid` (swipe/page between widget screens);
       live edit mode (drag to add/remove/resize/reorder widgets) — see
       `updates/2026-10-30 ANALYTICS - OPEN`

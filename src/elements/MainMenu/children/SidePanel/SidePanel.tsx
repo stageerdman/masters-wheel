@@ -38,7 +38,7 @@ export function SidePanel({ content }: SidePanelProps) {
 
   return (
     <div
-      className={`${styles.root} ${position.root} ${mounted ? styles.filled : ""} ${
+      className={`${styles.root} ${position.root} ${
         closing ? styles.popOut : mounted ? styles.popIn : ""
       }`}
       data-construction

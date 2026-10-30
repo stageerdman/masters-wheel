@@ -1,6 +1,15 @@
+/* The glass-window look — same recipe as the Main Menu's SidePanel pop-out
+   (color-mix surface + blur + border) — now lives on each individual
+   statistic rather than the grid's container, since every widget that
+   joins this grid (a number today, a graph later) should look like its
+   own standalone glass box. */
 .root {
-  background: var(--color-border);
-  border-radius: 0.5rem;
+  background-color: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  backdrop-filter: blur(6px);
+  animation: stat-pop-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation-delay: var(--stat-delay, 0ms);
 }
 
 .value {
@@ -12,4 +21,21 @@
 .label {
   color: var(--color-text-muted);
   font-size: var(--text-size-micro);
+}
+
+@keyframes stat-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    animation-duration: 0.01ms;
+  }
 }

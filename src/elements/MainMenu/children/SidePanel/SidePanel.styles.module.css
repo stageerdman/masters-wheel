@@ -1,44 +1,33 @@
+/* Completely transparent — this is just a mount/unmount shell. The glass
+   box lives on each individual StatTile now, not on the container, so
+   content pops in tile-by-tile instead of as one block. */
 .root {
-  background-color: transparent;
-  border: 1px solid transparent;
-  border-radius: 0.75rem;
   opacity: 0;
-  transform: scale(0.9);
-}
-
-.filled {
-  background-color: color-mix(in srgb, var(--color-surface) 80%, transparent);
-  border-color: var(--color-border);
-  backdrop-filter: blur(6px);
 }
 
 .popIn {
-  animation: pop-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: fade-in 160ms ease-out forwards;
 }
 
 .popOut {
-  animation: pop-out 160ms ease-in forwards;
+  animation: fade-out 160ms ease-in forwards;
 }
 
-@keyframes pop-in {
+@keyframes fade-in {
   from {
     opacity: 0;
-    transform: scale(0.9);
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }
 
-@keyframes pop-out {
+@keyframes fade-out {
   from {
     opacity: 1;
-    transform: scale(1);
   }
   to {
     opacity: 0;
-    transform: scale(0.9);
   }
 }
 

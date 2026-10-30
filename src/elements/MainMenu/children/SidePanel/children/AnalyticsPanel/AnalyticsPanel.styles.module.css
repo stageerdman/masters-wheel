@@ -1,5 +1,6 @@
-.heading {
-  color: var(--color-text);
-  font-size: var(--text-size-heading);
-  font-weight: 600;
+/* Completely transparent — a plain layout shell around StatGrid. Every
+   visual identity (the glass box, color, typography) lives on each
+   individual StatTile instead. */
+.root {
+  background: transparent;
 }

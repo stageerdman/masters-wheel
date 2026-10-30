@@ -12,20 +12,28 @@ side of the screen to give the grid real room.
 ## Phased roadmap
 
 ### Phase 1 — registry + standalone tile + static grid (this phase)
-- [x] `src/lib/statistics/` — statistic registry: id → `{ label, compute() }`.
-      Fake/static compute for now (no backend yet). Seeded with the 4
-      statistics the old fake `AnalyticsPanel` hardcoded.
+- [x] `src/lib/statistics/` — statistic registry: id → `{ label, compute() }`,
+      `compute` is `async` and reads real data. "Sessions this month" counts
+      real on-disk records (`src/lib/records`) whose date falls in the
+      current month; guarded by `isTauri()` so it stays empty outside the
+      Tauri shell instead of throwing (same pattern as `PerformanceReview`).
 - [x] `StatTile` element — the standalone number statistic block. Fills
-      whatever box it's given; knows nothing about grids or sizing.
+      whatever box it's given, carries its own glass-box visual identity
+      (blurred semi-transparent surface) and its own staggered pop-in
+      animation — it's the widget, not the grid, that has a visual
+      presence.
 - [x] `StatGrid` element — Control Center–style grid. Takes a list of slots
       (`statisticId` + optional `cols`/`rows`), looks up each statistic,
       renders a `StatTile` per slot. Per-slot size travels as CSS custom
       properties (`--stat-cols`/`--stat-rows`) set by the grid on its own
       slot wrapper — same pattern as `--badge-color`/`--icon-color` — so a
       widget can span more than 1×1 without `StatGrid` or `StatTile` needing
-      a closed enum of size names.
-- [x] `AnalyticsPanel` now composes `StatGrid` with its own slot list
-      instead of hardcoding a 2-col grid of fake divs.
+      a closed enum of size names. Also assigns each slot a `--stat-delay`
+      so tiles cascade in individually instead of popping as one block.
+- [x] `AnalyticsPanel` and `SidePanel` are now fully transparent shells
+      (no heading, no background/blur of their own) — just layout
+      containers around `StatGrid`. `AnalyticsPanel` composes `StatGrid`
+      with one real slot (`sessions-this-month`) instead of 4 fake ones.
 - [x] `SidePanel` grows from a fixed 20rem column to fill the remaining
       width next to `NavMenu` (flex: 1), so the grid has real estate.
 
