@@ -20,8 +20,16 @@ export type { Agent };
 
 const NEW_SESSION_ID = "current";
 
-function makeNewSession(): ChatSession {
-  return { id: NEW_SESSION_ID, title: "New chat", relativeDate: "Now", messages: [], activeAgentIds: [] };
+function makeNewSession(id: string = NEW_SESSION_ID): ChatSession {
+  return { id, title: "New chat", relativeDate: "Now", messages: [], activeAgentIds: [] };
+}
+
+// A freshly-opened chat with nobody picked yet and nothing said yet —
+// AIAssistantWindow shows the AgentPicker instead of the message list for
+// exactly this shape, and HistoryList hides it (it isn't a real past
+// conversation, just the current "pick someone" prompt).
+export function isDraftSession(session: ChatSession): boolean {
+  return !session.agentId && session.activeAgentIds.length === 0 && session.messages.length === 0;
 }
 
 function escapeRegExp(value: string) {
@@ -85,6 +93,20 @@ export function useAIAssistant() {
 
   function selectSession(id: string) {
     setActiveSessionId(id);
+  }
+
+  // Switches to the existing draft session if there already is one
+  // (never piles up multiple empty "New chat" entries), otherwise creates
+  // a fresh one and switches to it.
+  function startNewChat() {
+    const existingDraft = sessions.find(isDraftSession);
+    if (existingDraft) {
+      setActiveSessionId(existingDraft.id);
+      return;
+    }
+    const session = makeNewSession(crypto.randomUUID());
+    setSessions((current) => [session, ...current]);
+    setActiveSessionId(session.id);
   }
 
   function appendMessageToActive(message: ChatMessage) {
@@ -241,6 +263,7 @@ export function useAIAssistant() {
     activeSessionId,
     activeSession,
     selectSession,
+    startNewChat,
     composerValue,
     setComposerValue,
     sendMessage,

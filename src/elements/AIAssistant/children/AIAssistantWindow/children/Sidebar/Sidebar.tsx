@@ -54,7 +54,7 @@ export function Sidebar({
           ))}
         </div>
         {activeTab === "history" ? (
-          <HistoryList sessions={sessions} activeId={activeSessionId} onSelect={onSelectSession} />
+          <HistoryList sessions={sessions} activeId={activeSessionId} onSelect={onSelectSession} agents={agents} />
         ) : (
           <AgentRoster agents={agents} onSelect={onSelectAgent} />
         )}

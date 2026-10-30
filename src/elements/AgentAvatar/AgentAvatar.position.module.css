@@ -1,0 +1,19 @@
+/* Where this sits relative to whatever row/chip it's embedded in. Size is
+   the one thing a caller controls, via the --avatar-size custom property
+   AgentAvatar.tsx sets inline. */
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

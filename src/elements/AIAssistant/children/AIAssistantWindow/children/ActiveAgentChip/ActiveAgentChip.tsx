@@ -1,4 +1,5 @@
 import type { Agent } from "@/elements/AIAssistant/AIAssistant.script";
+import { AgentAvatar } from "@/elements/AgentAvatar/AgentAvatar";
 import position from "./ActiveAgentChip.position.module.css";
 import styles from "./ActiveAgentChip.styles.module.css";
 
@@ -10,6 +11,7 @@ type ActiveAgentChipProps = {
 export function ActiveAgentChip({ agent, onRemove }: ActiveAgentChipProps) {
   return (
     <span className={`${styles.root} ${position.root}`} data-construction>
+      <AgentAvatar agent={agent} size={16} />
       {agent.name}
       <button
         type="button"

@@ -7,6 +7,7 @@
 //   knowledgeFiles.ts  - picking + indexing/removing knowledge files
 //   photo.ts           - picking + persisting an agent's photo
 //   initial.ts         - an agent's single-letter avatar glyph
+//   description.ts     - an agent's description, with a default fallback
 
 export * from "./types";
 export { ensureAgentsRoot, listAgents, saveAgent, deleteAgent, listVersions, appendVersion } from "./storage";
@@ -22,3 +23,4 @@ export {
 export { isImagePath, pickAgentPhoto, readImageAsDataUrl } from "./photo";
 export type { KnowledgeIngestProgress } from "./knowledgeFiles";
 export { agentInitial } from "./initial";
+export { agentDescription } from "./description";

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { AIAssistant } from "@/elements/AIAssistant/AIAssistant";
 import { AppHeader } from "@/elements/AppHeader/AppHeader";
 import { HeaderActionsProvider } from "@/elements/AppHeader/AppHeader.context";
@@ -10,14 +10,21 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+// Chat code blocks only — see globals.css's --font-family-mono. Prose
+// stays on the single base font everywhere else.
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "Master's Circle",
+  title: "Master's Wheel",
   description: "Mastery platform prototype.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={geistSans.variable}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <HeaderActionsProvider>
           <AppHeader />

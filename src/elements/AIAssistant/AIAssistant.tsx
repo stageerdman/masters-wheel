@@ -18,6 +18,7 @@ export function AIAssistant() {
     sessions,
     activeSession,
     selectSession,
+    startNewChat,
     composerValue,
     setComposerValue,
     sendMessage,
@@ -72,6 +73,7 @@ export function AIAssistant() {
           onToggleSideMenu={toggleSideMenu}
           sessions={sessions}
           onSelectSession={selectSession}
+          onNewChat={startNewChat}
           agents={agents}
           onSelectAgent={selectAgent}
           onDropAgentIntoChat={addAgentToActiveChat}

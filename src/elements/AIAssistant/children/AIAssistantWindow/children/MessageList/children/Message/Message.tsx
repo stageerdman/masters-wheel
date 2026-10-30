@@ -1,5 +1,9 @@
+import type { ComponentPropsWithoutRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { Handlers, State } from "mdast-util-to-hast";
 import type { Agent, ChatMessage } from "@/elements/AIAssistant/AIAssistant.script";
-import { splitMentions } from "./Message.script";
+import { remarkMentions } from "./Message.script";
 import position from "./Message.position.module.css";
 import styles from "./Message.styles.module.css";
 
@@ -9,6 +13,20 @@ type MessageProps = {
   agents: Agent[];
 };
 
+// mdast-util-to-hast's Handlers type is keyed to its own known node
+// types — "mention" is Message.script.ts's own addition, not one of
+// them, so it needs the cast. The handler turns it into a real <mark>
+// (carrying the agent id as a data attribute) rather than inventing a
+// fictional HTML tag — `components.mark` below is what actually styles it.
+const mentionHandlers = {
+  mention: (_state: State, node: unknown) => ({
+    type: "element",
+    tagName: "mark",
+    properties: { dataAgentId: (node as { agentId: string }).agentId },
+    children: [{ type: "text", value: (node as { value: string }).value }],
+  }),
+} as unknown as Handlers;
+
 export function Message({ message, density, agents }: MessageProps) {
   const role = message.role;
   const densityClass = density === "comfortable" ? position.comfortable : "";
@@ -17,7 +35,53 @@ export function Message({ message, density, agents }: MessageProps) {
   // the first streamed delta arrives — render that window as "thinking"
   // rather than an empty bubble.
   const isThinking = role === "assistant" && message.text === "";
-  const parts = splitMentions(message.text, agents);
+
+  const components: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"] = {
+    p: (props) => <p className={`${styles.paragraph} ${position.paragraph}`} data-construction {...props} />,
+    h1: (props) => <p className={`${styles.heading} ${position.heading}`} data-construction {...props} />,
+    h2: (props) => <p className={`${styles.heading} ${position.heading}`} data-construction {...props} />,
+    h3: (props) => <p className={`${styles.heading} ${position.heading}`} data-construction {...props} />,
+    ul: (props) => <ul className={`${styles.list} ${position.list}`} data-construction {...props} />,
+    ol: (props) => <ol className={`${styles.list} ${position.list}`} data-construction {...props} />,
+    li: (props) => <li className={position.listItem} data-construction {...props} />,
+    blockquote: (props) => (
+      <blockquote className={`${styles.blockquote} ${position.blockquote}`} data-construction {...props} />
+    ),
+    hr: () => <hr className={`${styles.hr} ${position.hr}`} data-construction />,
+    a: (props) => <a className={styles.link} target="_blank" rel="noreferrer" data-construction {...props} />,
+    mark: (props) => <mark className={`${styles.mention} ${position.mention}`} data-construction {...props} />,
+    code: ({ className, children, ...rest }) => {
+      const isBlock = /language-/.test(className ?? "");
+      if (!isBlock) {
+        return (
+          <code className={`${styles.inlineCode} ${position.inlineCode}`} data-construction {...rest}>
+            {children}
+          </code>
+        );
+      }
+      const language = className?.replace("language-", "") ?? "";
+      return (
+        <span className={`${styles.codeBlock} ${position.codeBlock}`} data-construction>
+          {language && (
+            <span className={`${styles.codeLanguage} ${position.codeLanguage}`} data-construction>
+              {language}
+            </span>
+          )}
+          <code className={`${styles.codeBlockInner} ${position.codeBlockInner}`} data-construction {...rest}>
+            {children}
+          </code>
+        </span>
+      );
+    },
+    pre: (props) => <pre className={`${styles.pre} ${position.pre}`} data-construction {...props} />,
+    table: (props) => (
+      <div className={`${styles.tableWrap} ${position.tableWrap}`} data-construction>
+        <table className={`${styles.table} ${position.table}`} data-construction {...props} />
+      </div>
+    ),
+    th: (props) => <th className={`${styles.th} ${position.th}`} data-construction {...props} />,
+    td: (props) => <td className={`${styles.td} ${position.td}`} data-construction {...props} />,
+  };
 
   return (
     <div
@@ -31,15 +95,13 @@ export function Message({ message, density, agents }: MessageProps) {
           <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
         </span>
       ) : (
-        parts.map((part, index) =>
-          part.mentionedAgent ? (
-            <span key={index} className={`${styles.mention} ${position.mention}`} data-construction>
-              {part.text}
-            </span>
-          ) : (
-            part.text
-          ),
-        )
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMentions(agents)]}
+          remarkRehypeOptions={{ handlers: mentionHandlers }}
+          components={components}
+        >
+          {message.text}
+        </ReactMarkdown>
       )}
     </div>
   );

@@ -1,0 +1,13 @@
+/* How this element looks. No layout/positioning here. */
+.heading {
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.empty {
+  font-size: var(--text-size-label);
+  color: var(--color-text-muted);
+  text-align: center;
+}

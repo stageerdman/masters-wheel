@@ -37,8 +37,14 @@
   --color-speaker-3: #0d9488;
   --color-speaker-4: #7c3aed;
 
-  /* Single font. */
+  /* Single font for prose. One deliberate exception: --font-family-mono,
+     used only inside chat code blocks (Message's markdown rendering) —
+     distinguishing code from prose is the entire point of a code block,
+     same reasoning as why the category color palette is allowed to exist
+     alongside the core 5. No element outside that one case may set
+     font-family. */
   --font-family-base: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --font-family-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
   /* Exactly 4 text sizes, each with one purpose. */
   --text-size-heading: 1.125rem; /* section/page headings */

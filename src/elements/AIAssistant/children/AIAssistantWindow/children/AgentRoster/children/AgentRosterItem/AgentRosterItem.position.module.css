@@ -8,16 +8,6 @@
   border-radius: 6px;
 }
 
-.avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  border-radius: 50%;
-}
-
 .text {
   display: flex;
   flex-direction: column;

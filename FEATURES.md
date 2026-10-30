@@ -38,6 +38,34 @@ between the two lists. Each page gets its own section as pages get added.
 - [x] The chat roster is the same real, persisted `Agent` as the `Agents`
       builder page — not a separate fixture list (see the Agents page
       section below; this was previously an explicitly deferred decision).
+- [x] Messages render real markdown (headings, bold/italics, lists,
+      blockquotes, tables, links, inline/fenced code) instead of plain
+      text — see `updates/2026-10-30 CHAT-UX - OPEN`. Fenced code blocks
+      get a monospace font (Geist Mono, a deliberate one-case exception
+      to the single-font rule) and a bordered box, but no per-token
+      syntax-highlighting colors — that would need a many-color token
+      budget the app's deliberate 5-color core palette doesn't have.
+      `@mention` highlighting still works inside markdown (bold text,
+      list items, etc.) via a custom remark plugin.
+- [x] Opening a brand-new, nobody-picked-yet chat shows an agent picker
+      (`AgentPicker`) in the chat column instead of the empty composer —
+      "who do you want to chat with?" is now the first thing, not
+      something buried in the Sidebar's Agents tab. A header button
+      starts a genuinely new chat (previously there was exactly one
+      blank session created at mount and no way to get back to that
+      state after navigating away from it).
+- [x] `HistoryList` shows each past chat's agent photo (or initial-letter
+      badge) next to its title — a session's "primary" agent is its
+      dedicated `agentId` if there is one, else the first
+      `activeAgentIds` entry. Draft (nobody-picked-yet) sessions are
+      filtered out of history entirely rather than showing as a fake
+      "Now" entry.
+- [x] Every place an agent appears in the chat (`AgentRosterItem`,
+      `ActiveAgentChip`, `AgentPicker`, `HistoryListItem`) now renders its
+      real uploaded photo via the new shared `AgentAvatar` element,
+      falling back to the initial-letter badge only when no photo was
+      uploaded; a blank `description` falls back to "No description
+      yet." instead of an empty line (`src/lib/agents/description.ts`).
 
 ### Built (UI shell only — no real functionality behind it)
 - [x] `AIAssistant` replaces the Next.js dev-mode badge: fixed bottom-left
@@ -275,6 +303,11 @@ between the two lists. Each page gets its own section as pages get added.
 - [x] One shared `Agent` type with the AI Assistant's chat roster — no
       more separate fixture type to keep in sync (previously deferred,
       see `updates/2026-10-30 AGENTS-ENGINE - OPEN/wiki.md`).
+- [x] Real photo upload/storage: picked via the native file dialog or a
+      window drop, decoded/resized/encoded on the Rust side
+      (`src-tauri/src/avatar.rs`) into a persistable `data:` URL — not a
+      `blob:` object-URL preview, so it survives a reload (see
+      `src/lib/agents/photo.ts`).
 
 ### Built (UI shell only — no real functionality behind it)
 - [x] `Agents` at `/agents`: left `AgentNav` roster / right `AgentEditor`,
@@ -310,9 +343,6 @@ between the two lists. Each page gets its own section as pages get added.
       by both features
 
 ### To build (real functionality — not started)
-- [ ] Real photo upload/storage (knowledge files are real now — see
-      above — but the agent photo is still a local object-URL preview,
-      not a persisted file)
 - [ ] Only `.txt`/`.md`/`.pdf` knowledge files are supported; `.xlsx`/
       other types are rejected with an error rather than silently failing
 - [ ] Tool/MCP calling, and multi-agent replies — same as the AI
