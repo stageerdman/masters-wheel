@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { askAgent } from "@/lib/assistant/askAgent";
 import { AGENTS, HISTORY_FIXTURES } from "./children/AIAssistantWindow/AIAssistantWindow.data";
 
 export type AssistantPhase = "closed" | "open" | "closing";
 export type ChatMessageRole = "user" | "assistant" | "system";
 export type ChatMessage = { id: string; role: ChatMessageRole; text: string };
-export type Agent = { id: string; name: string; tagline: string; initial: string };
+export type Agent = { id: string; name: string; tagline: string; initial: string; instructions: string };
 export type ChatSession = {
   id: string;
   title: string;
@@ -12,7 +13,14 @@ export type ChatSession = {
   messages: ChatMessage[];
   activeAgentIds: string[];
   agentId?: string;
+  claudeSessionId?: string;
 };
+
+// Voice used when no single agent is active in the session — the plain
+// "just chat" case. Real agent personas (AGENTS) carry their own
+// instructions instead of this.
+const DEFAULT_INSTRUCTIONS =
+  "You are the Master's Wheel assistant — a focused mastery coach for the person using this app. Keep replies concise and actionable.";
 
 const NEW_SESSION_ID = "current";
 
@@ -43,6 +51,7 @@ export function useAIAssistant() {
   const [sessions, setSessions] = useState<ChatSession[]>([makeNewSession(), ...HISTORY_FIXTURES]);
   const [activeSessionId, setActiveSessionId] = useState(NEW_SESSION_ID);
   const [composerValue, setComposerValue] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const activeSession = sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
 
@@ -72,15 +81,59 @@ export function useAIAssistant() {
     );
   }
 
-  function sendMessage() {
+  async function sendMessage() {
     const text = composerValue.trim();
-    if (!text) return;
+    if (!text || isSending) return;
+    const sessionIdAtSend = activeSessionId;
     appendMessageToActive({ id: crypto.randomUUID(), role: "user", text });
     setComposerValue("");
     // Mentioning an agent in the message text brings them into the
     // conversation the same way dragging their roster card does.
     for (const agent of findMentionedAgents(text, AGENTS)) {
       addAgentToActiveChat(agent.id);
+    }
+
+    const session = sessions.find((candidate) => candidate.id === sessionIdAtSend);
+    const activeAgents = AGENTS.filter((agent) => session?.activeAgentIds.includes(agent.id));
+    // v1 only gives a real, persona-specific reply when exactly one agent
+    // is active; 0 or 2+ falls back to the generic assistant voice for now
+    // — real multi-agent replies are the next increment (see this app's
+    // AGENTS-ENGINE update).
+    const instructions = activeAgents.length === 1 ? activeAgents[0].instructions : DEFAULT_INSTRUCTIONS;
+
+    setIsSending(true);
+    try {
+      const reply = await askAgent(text, instructions, session?.claudeSessionId);
+      setSessions((current) =>
+        current.map((candidate) =>
+          candidate.id === sessionIdAtSend
+            ? {
+                ...candidate,
+                claudeSessionId: reply.sessionId,
+                messages: [
+                  ...candidate.messages,
+                  { id: crypto.randomUUID(), role: "assistant", text: reply.text || "(no reply)" },
+                ],
+              }
+            : candidate,
+        ),
+      );
+    } catch (error) {
+      setSessions((current) =>
+        current.map((candidate) =>
+          candidate.id === sessionIdAtSend
+            ? {
+                ...candidate,
+                messages: [
+                  ...candidate.messages,
+                  { id: crypto.randomUUID(), role: "system", text: `Couldn't reach Claude: ${error}` },
+                ],
+              }
+            : candidate,
+        ),
+      );
+    } finally {
+      setIsSending(false);
     }
   }
 
@@ -146,6 +199,7 @@ export function useAIAssistant() {
     composerValue,
     setComposerValue,
     sendMessage,
+    isSending,
     agents: AGENTS,
     selectAgent,
     addAgentToActiveChat,

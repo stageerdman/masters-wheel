@@ -4,9 +4,30 @@ import type { ChatSession, Agent } from "@/elements/AIAssistant/AIAssistant.scri
 // live simulated reply) is the same kind of honest fakery the rest of the
 // app already uses (e.g. PerformanceReview's fake transcript lines).
 export const AGENTS: Agent[] = [
-  { id: "researcher", name: "Researcher", tagline: "Digs through sources and summarizes.", initial: "R" },
-  { id: "coach", name: "Coach", tagline: "Pushes on technique and mindset.", initial: "C" },
-  { id: "scheduler", name: "Scheduler", tagline: "Keeps sessions and deadlines straight.", initial: "S" },
+  {
+    id: "researcher",
+    name: "Researcher",
+    tagline: "Digs through sources and summarizes.",
+    initial: "R",
+    instructions:
+      "You are Researcher, a focused research assistant inside the Master's Wheel app. Dig into whatever the user is asking about and summarize clearly and concisely — prefer a short list of concrete findings over a long narrative.",
+  },
+  {
+    id: "coach",
+    name: "Coach",
+    tagline: "Pushes on technique and mindset.",
+    initial: "C",
+    instructions:
+      "You are Coach, a direct performance coach inside the Master's Wheel app. Push on technique and mindset rather than just agreeing — ask one sharpening question before offering advice, and keep replies short and actionable.",
+  },
+  {
+    id: "scheduler",
+    name: "Scheduler",
+    tagline: "Keeps sessions and deadlines straight.",
+    initial: "S",
+    instructions:
+      "You are Scheduler, a terse scheduling assistant inside the Master's Wheel app. Help the user keep sessions and deadlines straight. Keep replies very short — this is a utility, not a conversationalist.",
+  },
 ];
 
 export const HISTORY_FIXTURES: ChatSession[] = [

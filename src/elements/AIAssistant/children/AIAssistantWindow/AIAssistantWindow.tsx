@@ -19,6 +19,7 @@ type AIAssistantWindowProps = {
   composerValue: string;
   onComposerChange: (value: string) => void;
   onSend: () => void;
+  isSending: boolean;
   density: "compact" | "comfortable";
   dockState: DockState;
   dragOffset: { x: number; y: number } | null;
@@ -51,6 +52,7 @@ export function AIAssistantWindow({
   composerValue,
   onComposerChange,
   onSend,
+  isSending,
   density,
   dockState,
   dragOffset,
@@ -94,6 +96,7 @@ export function AIAssistantWindow({
 
   return (
     <div
+      id="ai-assistant-window"
       ref={windowRef}
       className={`${styles.root} ${position.root} ${geometryClass} ${visibilityClass} ${transitionSpeedClass} ${draggingClass} ${resizingClass}`}
       style={style}
@@ -163,6 +166,7 @@ export function AIAssistantWindow({
             value={composerValue}
             onChange={onComposerChange}
             onSend={onSend}
+            isSending={isSending}
             density={density}
             agents={agents}
           />

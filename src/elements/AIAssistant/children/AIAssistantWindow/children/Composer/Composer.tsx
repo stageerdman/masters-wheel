@@ -10,11 +10,12 @@ type ComposerProps = {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
+  isSending: boolean;
   density: "compact" | "comfortable";
   agents: Agent[];
 };
 
-export function Composer({ value, onChange, onSend, density, agents }: ComposerProps) {
+export function Composer({ value, onChange, onSend, isSending, density, agents }: ComposerProps) {
   const { textareaRef, isOpen, matches, activeIndex, selectItem, handleChange, handleKeyDown } = useMentionPicker(
     value,
     onChange,
@@ -61,7 +62,8 @@ export function Composer({ value, onChange, onSend, density, agents }: ComposerP
         data-construction
         rows={1}
         value={value}
-        placeholder="Message the assistant — type @ to bring in an agent"
+        placeholder={isSending ? "Waiting for a reply…" : "Message the assistant — type @ to bring in an agent"}
+        disabled={isSending}
         onChange={handleChange}
         onKeyDown={handleTextareaKeyDown}
       />
@@ -70,7 +72,7 @@ export function Composer({ value, onChange, onSend, density, agents }: ComposerP
         className={`${styles.send} ${position.send}`}
         data-construction
         onClick={onSend}
-        disabled={value.trim().length === 0}
+        disabled={value.trim().length === 0 || isSending}
         aria-label="Send message"
       >
         <svg className={styles.sendGlyph} data-construction viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">

@@ -21,6 +21,7 @@ export function AIAssistant() {
     composerValue,
     setComposerValue,
     sendMessage,
+    isSending,
     agents,
     selectAgent,
     addAgentToActiveChat,
@@ -44,7 +45,7 @@ export function AIAssistant() {
   const density = dockState === "left" ? "compact" : "comfortable";
 
   return (
-    <div className={`${styles.root} ${position.root}`} data-construction>
+    <div id="ai-assistant-root" className={`${styles.root} ${position.root}`} data-construction>
       <DockZoneOverlay activeZone={dragZone} presetOverrides={presetOverrides} />
       {phase === "closed" ? (
         <AIAssistantTrigger onOpen={open} />
@@ -57,6 +58,7 @@ export function AIAssistant() {
           composerValue={composerValue}
           onComposerChange={setComposerValue}
           onSend={sendMessage}
+          isSending={isSending}
           density={density}
           dockState={dockState}
           dragOffset={dragOffset}
