@@ -16,14 +16,14 @@
 
 .ghostLeft {
   left: var(--dock-gap);
-  top: calc(100vh - var(--dock-left-h));
+  bottom: 0;
   width: var(--dock-left-w);
   height: var(--dock-left-h);
 }
 
 .ghostCenter {
   left: 50%;
-  top: calc(100vh - var(--dock-center-h));
+  bottom: 0;
   transform: translate(-50%, 0);
   width: var(--dock-center-w);
   height: var(--dock-center-h);

@@ -48,6 +48,35 @@ function savePresetOverrides(overrides: PresetOverrides) {
   }
 }
 
+// Root cause of a real, confirmed bug (not a guess — found via logged
+// getComputedStyle output): a persisted override captured against one
+// window size keeps getting applied verbatim forever, even once the
+// window is a completely different size (a different machine, a resized
+// Tauri window, a display change). The dock classes only ever set
+// `bottom`, never `top` — but this hook's `top`-based override, applied
+// as an inline style, wins over the class's `bottom` when both are
+// present (the browser resolves top+height+bottom as over-constrained by
+// honoring top), so a stale override silently relocates the whole window
+// off-screen with zero error. The wiki for this feature already flagged
+// "no way to clear a bad override" as a known risk — this is that risk,
+// materialized. Fix: never trust a persisted override blindly — check it
+// still lands within the current viewport before applying it, and drop
+// (and re-persist without) anything that doesn't.
+function isOverrideOnScreen(override: PresetOverride): boolean {
+  if (typeof window === "undefined") return true;
+  const withinX = override.left >= -1 && override.left + override.width <= window.innerWidth + 1;
+  const withinY = override.top >= -1 && override.top + override.height <= window.innerHeight + 1;
+  return withinX && withinY;
+}
+
+function sanitizePresetOverrides(overrides: PresetOverrides): PresetOverrides {
+  const clean: PresetOverrides = {};
+  for (const [key, override] of Object.entries(overrides)) {
+    if (override && isOverrideOnScreen(override)) clean[key as DockState] = override;
+  }
+  return clean;
+}
+
 // Drag-to-dock state machine: which of the 2 presets is committed
 // (dockState), which preset zone the cursor is currently over while
 // dragging (dragZone, drives the drop-zone affordance — null during an
@@ -90,7 +119,9 @@ export function useWindowDock() {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const saved = loadPresetOverrides();
-    if (Object.keys(saved).length > 0) setPresetOverrides(saved);
+    const sane = sanitizePresetOverrides(saved);
+    if (Object.keys(sane).length > 0) setPresetOverrides(sane);
+    if (Object.keys(sane).length !== Object.keys(saved).length) savePresetOverrides(sane);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 

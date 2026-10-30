@@ -23,10 +23,14 @@
 }
 
 /* Below this width, dragging is disabled (see useWindowDock) and the
-   left dock becomes near-full-bleed instead of a small corner panel. */
+   left dock becomes near-full-bleed instead of a small corner panel.
+   Width still comes from `vw` here (unconfirmed as a problem), but height
+   no longer comes from `vh` — AIAssistantWindow.position.module.css
+   stretches `.dockLeft` between `top`/`bottom` at this breakpoint instead
+   of computing a fixed height from `100vh`, for the same reason the
+   bottom-flush positioning itself moved off `vh` (see that file). */
 @media (max-width: 640px) {
   .root {
     --dock-left-w: calc(100vw - 2rem);
-    --dock-left-h: calc(100vh - 2rem);
   }
 }

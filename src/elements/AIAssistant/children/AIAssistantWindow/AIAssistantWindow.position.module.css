@@ -1,15 +1,19 @@
 /* Positioning for the floating window — absolute within AIAssistant's
    full-viewport fixed root. Every dock state (plus the collapsed "enter"
-   geometry) sets left/top/width/height/transform explicitly — never
-   `bottom`, never an implicit value — so every transition between them
-   has a concrete start and end to animate across. Sizes come from the
-   shared --dock-* custom properties on AIAssistant's root (so the
-   DockZoneOverlay ghost previews always match exactly); both dock
-   states are bottom-flush (top computed as 100vh minus height), only
-   their horizontal placement and size differ. The `transform` on each
-   state composes a fixed centering offset with a live drag offset read
-   from --drag-x/--drag-y custom properties, so dragging never has to
-   fight the dock classes for the `transform` property. */
+   geometry) sets left/bottom/width/height/transform explicitly — the same
+   property on every side of every transition, so each one has a concrete
+   start and end to animate across. Bottom-flush is expressed via
+   `bottom: 0` directly against the already-correctly-sized root, not via
+   `top: calc(100vh - height)` — that vh-based version used to double up
+   on the root's own viewport-fit and, in the packaged Tauri app, `100vh`
+   was measured wildly inconsistent with the real window, rendering the
+   whole thing off-screen below the fold. Sizes come from the shared
+   --dock-* custom properties on AIAssistant's root (so the DockZoneOverlay
+   ghost previews always match exactly); the dock states only differ in
+   horizontal placement and size. The `transform` on each state composes a
+   fixed centering offset with a live drag offset read from
+   --drag-x/--drag-y custom properties, so dragging never has to fight the
+   dock classes for the `transform` property. */
 .root {
   position: absolute;
   pointer-events: auto;
@@ -46,10 +50,20 @@
 /* Collapsed geometry shared by "not yet entered" and "closing": a
    zero-size point sitting exactly at the trigger's corner, so opening
    always grows out of that corner and closing always shrinks back into
-   it, regardless of which dock state it was in. */
+   it, regardless of which dock state it was in.
+
+   Anchored via `bottom`, not `top: calc(100vh - height)` — this box's
+   positioned ancestor (AIAssistant's root) is already pinned to the real
+   viewport with `inset: 0`, with no `vh` unit involved. Computing `top`
+   from `100vh` here used to double up on that and, in the packaged Tauri
+   app, `100vh` was measured wildly inconsistent with the actual window
+   (confirmed by hand — the window rendered off-screen, far below the
+   visible area). `bottom` ties this box directly to its parent's already-
+   correct edge instead, with no dependence on how this particular webview
+   happens to report viewport units. */
 .enter {
   left: var(--dock-gap);
-  top: calc(100vh - var(--dock-gap));
+  bottom: var(--dock-gap);
   transform: translate(0, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
   width: 0px;
   height: 0px;
@@ -58,7 +72,7 @@
 /* Default: small, bottom-left. */
 .dockLeft {
   left: var(--dock-gap);
-  top: calc(100vh - var(--dock-left-h));
+  bottom: 0;
   transform: translate(0, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
   width: var(--dock-left-w);
   height: var(--dock-left-h);
@@ -67,7 +81,7 @@
 /* Larger, horizontally centered. */
 .dockCenter {
   left: 50%;
-  top: calc(100vh - var(--dock-center-h));
+  bottom: 0;
   transform: translate(-50%, 0) translate(var(--drag-x, 0px), var(--drag-y, 0px));
   width: var(--dock-center-w);
   height: var(--dock-center-h);
@@ -149,6 +163,17 @@
   flex-wrap: wrap;
   gap: 0.375rem;
   padding: 0.5rem 0.75rem 0;
+}
+
+/* Near-full-bleed left dock below 640px (see AIAssistant.position.module.css)
+   stretches between top and bottom instead of a fixed `--dock-left-h` —
+   deliberately not computed from `vh` at all, for the same reason the
+   bottom-flush positioning above moved off `vh`. */
+@media (max-width: 640px) {
+  .dockLeft {
+    top: var(--dock-gap);
+    height: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

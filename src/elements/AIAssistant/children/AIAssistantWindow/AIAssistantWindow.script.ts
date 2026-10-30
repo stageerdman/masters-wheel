@@ -5,12 +5,31 @@ import type { PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDo
 // Drives the mount-in transition: render first at the "entering" (shrunk,
 // transparent) visual state, then flip to "entered" one frame later so the
 // CSS transition actually animates instead of snapping straight to open.
+//
+// Relying on a single requestAnimationFrame call is fine in a normal
+// browser tab, but inside the packaged Tauri app the window stayed
+// permanently stuck at zero size/opacity — the native webview can throttle
+// or simply never deliver that first rAF callback while the window is
+// still settling focus right after a click opened it, and with no
+// fallback, hasEntered then never becomes true. The timeout fallback below
+// guarantees the transition resolves either way; whichever fires first
+// wins and the other is cleaned up.
 export function useWindowEnterTransition() {
   const [hasEntered, setHasEntered] = useState(false);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setHasEntered(true));
-    return () => cancelAnimationFrame(frame);
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      setHasEntered(true);
+    };
+    const frame = requestAnimationFrame(settle);
+    const timeout = setTimeout(settle, 100);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timeout);
+    };
   }, []);
 
   return hasEntered;
@@ -39,13 +58,12 @@ export function useWindowGeometry({ isClosing, hasEntered, dragOffset, manualSiz
     Object.assign(style, { "--drag-x": `${dragOffset.x}px`, "--drag-y": `${dragOffset.y}px` });
   }
   if (manualSize && !showCollapsedGeometry) {
-    // Ephemeral resize of the current preset — overrides width/height
-    // (and top, so the bottom edge stays flush); clears the moment the
-    // window redocks.
+    // Ephemeral resize of the current preset — overrides width/height;
+    // `bottom: 0` (set by the dock class itself) already keeps the bottom
+    // edge flush with no `top`/`vh` math needed here.
     Object.assign(style, {
       width: `${manualSize.width}px`,
       height: `${manualSize.height}px`,
-      top: `calc(100vh - ${manualSize.height}px)`,
     });
   } else if (activeOverride && !showCollapsedGeometry) {
     // The current preset has been Option-redefined — exact pixels,
