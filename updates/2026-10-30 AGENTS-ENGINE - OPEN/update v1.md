@@ -8,7 +8,7 @@ GPT-builder-style) and `AIAssistant` (chat, with multiple agents
 instructions per agent, knowledge grounding, tool/MCP calling (e.g.
 Notion), and real multi-agent replies in one conversation.
 
-## Status: Phase 1 prototype built
+## Status: Phase 1 prototype built, streaming fix built
 Research came first, per the user's ask (findings in `wiki.md`). The one
 blocking decision got resolved directly by the user (see below), and Phase
 1 is now built and installed to `/Applications/Master's Wheel.app`.
@@ -41,6 +41,34 @@ persona-only, no file access, no tools at all (`--permission-mode dontAsk`
 with nothing allow-listed). No tests added yet — this is still fixture-
 backed UI-adjacent glue rather than the kind of standalone logic CLAUDE.md
 asks to lock in with tests; revisit once knowledge/tool logic lands.
+
+**Phase 1 fix — real streaming, no more frozen UI. Built.**
+Trying Phase 1 live surfaced a real bug, not a UX nice-to-have: the app
+visibly froze (macOS beachball) for the whole multi-second reply, then the
+full answer appeared all at once. Root cause: `ask_agent` was a plain
+synchronous Tauri command blocking on `Command::output()` — it blocked
+Tauri's main thread for the entire round-trip, unlike `transcribe.rs`'s
+`generate_transcript` which deliberately runs as `async fn` +
+`spawn_blocking` + progress events for exactly this reason. Fixed by
+bringing `ask_agent` in line with that precedent: it's now `async`, does its
+blocking subprocess work inside `spawn_blocking`, and switches the CLI call
+from `--output-format json` to `--output-format stream-json
+--include-partial-messages --verbose` (verified by hand: emits one NDJSON
+line per event, including `content_block_delta` text chunks). Each delta is
+forwarded immediately as an `ask-agent-progress` Tauri event; the trailing
+`result` event's text/session_id stays authoritative for the stored message,
+same fields the old single-blob `json` format exposed. The frontend
+(`AIAssistant.script.ts`'s `sendMessage`) appends an empty assistant
+placeholder the instant a message is sent — `Message.tsx` renders an empty
+assistant bubble as a 3-dot "thinking" indicator — then grows that message's
+text live as deltas arrive. No cancel/stop affordance was added (not asked
+for, and collapsing the window already doesn't interrupt the reply — the
+chat state lives in `AIAssistant.tsx`'s `useAIAssistant()`, which stays
+mounted across collapse/reopen regardless of this change). Verified:
+`cargo check`, `tsc --noEmit`, `npm run build` all clean; `npm run app:build`
+rebuilt and reinstalled to `/Applications/Master's Wheel.app`. Not yet
+confirmed by the user's own click-through (browser automation is off-limits
+for this project).
 
 **Phase 1.5 — Knowledge files (Tier 0), not yet built.**
 Wire a `CoachAgent`'s `knowledgeFiles` into the same call via `--add-dir`
@@ -85,11 +113,13 @@ point where "real logic lands" starts applying.
 
 ## Next
 Try it: open `/Applications/Master's Wheel.app` (freshly rebuilt and
-reinstalled), open the AI Assistant, drag/@mention one agent (e.g. Coach)
-into a chat, and send a message — it should come back with a real,
-persona-flavored reply from the local Claude Code CLI after a second or
-two. Not yet verified by actually clicking through the live UI (browser
-automation is off-limits for this project; the headless CLI round-trip
-itself was verified by hand, and `tsc`/`eslint`/`cargo check` all pass) —
-this needs the user's own click-through to confirm end to end. Then decide
-whether to continue to Phase 1.5 (knowledge files) or Phase 2 (multi-agent).
+reinstalled with the streaming fix), open the AI Assistant, drag/@mention
+one agent (e.g. Coach) into a chat, and send a message — the window should
+stay fully responsive (draggable/collapsible) while a "thinking" dot
+indicator appears immediately, then the reply types itself in live rather
+than appearing all at once. Not yet verified by actually clicking through
+the live UI (browser automation is off-limits for this project; `cargo
+check`/`tsc --noEmit`/`npm run build` all pass and the CLI's streaming
+output shape was verified by hand) — this needs the user's own click-through
+to confirm end to end. Then decide whether to continue to Phase 1.5
+(knowledge files) or Phase 2 (multi-agent).

@@ -30,11 +30,28 @@
 // passes back via `--resume` on every later turn in that same session —
 // cheaper than a cold start and means the CLI's own transcript (not ours)
 // is the source of truth for that agent's memory of the conversation.
+//
+// Streaming: `ask_agent` is `async` and does its actual subprocess work
+// inside `spawn_blocking`, exactly like `transcribe::generate_transcript` —
+// a plain synchronous command here would block Tauri's main thread for the
+// whole multi-second reply (that was the original bug: the app looked
+// frozen/beachballed, not just slow). `--output-format stream-json
+// --include-partial-messages` makes the CLI emit one NDJSON line per event
+// as it generates, instead of one JSON blob at the end; each
+// `content_block_delta` text chunk is forwarded to the frontend immediately
+// as an `ask-agent-progress` event (verified by hand: the CLI's stream
+// includes `stream_event` wrapper objects around Anthropic's own
+// message_start/content_block_delta/message_stop shape). The trailing
+// `result` event is still the authoritative final text + session id — same
+// fields `ask_agent` used to read out of the old single `json` blob — so a
+// dropped/reordered delta can never leave the stored message out of sync
+// with what Claude actually said.
 
 use serde::Serialize;
 use std::env::temp_dir;
-use std::io::Write;
-use std::process::Command;
+use std::io::{BufRead, BufReader, Read, Write};
+use std::process::{Command, Stdio};
+use tauri::{AppHandle, Emitter};
 
 use crate::util::resolve_binary;
 
@@ -62,46 +79,110 @@ pub struct AgentReply {
     pub session_id: String,
 }
 
+#[derive(Serialize, Clone)]
+struct AskAgentProgress {
+    #[serde(rename = "jobId")]
+    job_id: String,
+    delta: String,
+}
+
+fn emit_delta(app: &AppHandle, job_id: &str, delta: &str) {
+    let _ = app.emit("ask-agent-progress", AskAgentProgress { job_id: job_id.to_string(), delta: delta.to_string() });
+}
+
 #[tauri::command]
-pub fn ask_agent(message: String, instructions: String, session_id: Option<String>) -> Result<AgentReply, String> {
-    let binary = resolve_binary("claude");
-    let mut command = Command::new(&binary);
-    command
-        .current_dir(temp_dir())
-        .arg("-p")
-        .arg(&message)
-        .arg("--output-format")
-        .arg("json")
-        .arg("--append-system-prompt")
-        .arg(&instructions)
-        .arg("--permission-mode")
-        .arg("dontAsk");
+pub async fn ask_agent(
+    app: AppHandle,
+    job_id: String,
+    message: String,
+    instructions: String,
+    session_id: Option<String>,
+) -> Result<AgentReply, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<AgentReply, String> {
+        let binary = resolve_binary("claude");
+        let mut command = Command::new(&binary);
+        command
+            .current_dir(temp_dir())
+            .arg("-p")
+            .arg(&message)
+            .arg("--output-format")
+            .arg("stream-json")
+            .arg("--include-partial-messages")
+            .arg("--verbose")
+            .arg("--append-system-prompt")
+            .arg(&instructions)
+            .arg("--permission-mode")
+            .arg("dontAsk")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
 
-    if let Some(id) = session_id.filter(|id| !id.is_empty()) {
-        command.arg("--resume").arg(id);
-    }
+        if let Some(id) = session_id.filter(|id| !id.is_empty()) {
+            command.arg("--resume").arg(id);
+        }
 
-    let output = command
-        .output()
-        .map_err(|e| format!("The Claude Code CLI isn't available ({e}). Make sure `claude` is installed and you're logged in."))?;
+        let mut child = command.spawn().map_err(|e| {
+            format!("The Claude Code CLI isn't available ({e}). Make sure `claude` is installed and you're logged in.")
+        })?;
 
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
-    }
+        // Drain stderr on its own thread while this thread reads stdout line
+        // by line below — reading one pipe to completion while the other
+        // fills up unread is the classic way to deadlock a child process.
+        let stderr_reader = child.stderr.take().map(|mut pipe| {
+            std::thread::spawn(move || {
+                let mut buf = Vec::new();
+                let _ = pipe.read_to_end(&mut buf);
+                buf
+            })
+        });
 
-    let parsed: serde_json::Value =
-        serde_json::from_slice(&output.stdout).map_err(|e| format!("Couldn't read Claude's reply ({e})."))?;
+        let stdout = child.stdout.take().expect("stdout was piped");
+        let mut final_text = String::new();
+        let mut final_session_id = String::new();
+        let mut is_error = false;
 
-    let text = parsed
-        .get("result")
-        .and_then(|value| value.as_str())
-        .unwrap_or_default()
-        .to_string();
-    let new_session_id = parsed
-        .get("session_id")
-        .and_then(|value| value.as_str())
-        .unwrap_or_default()
-        .to_string();
+        for line in BufReader::new(stdout).lines() {
+            let Ok(line) = line else { break };
+            if line.trim().is_empty() {
+                continue;
+            }
+            let Ok(event) = serde_json::from_str::<serde_json::Value>(&line) else {
+                continue;
+            };
+            match event.get("type").and_then(|v| v.as_str()) {
+                Some("stream_event") => {
+                    let inner = &event["event"];
+                    if inner.get("type").and_then(|v| v.as_str()) == Some("content_block_delta") {
+                        if let Some(delta) = inner["delta"]["text"].as_str() {
+                            emit_delta(&app, &job_id, delta);
+                        }
+                    }
+                }
+                Some("result") => {
+                    final_text = event.get("result").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+                    final_session_id = event.get("session_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+                    is_error = event.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false);
+                }
+                _ => {}
+            }
+        }
 
-    Ok(AgentReply { text, session_id: new_session_id })
+        let status = child.wait().map_err(|e| e.to_string())?;
+        let stderr_text = stderr_reader
+            .map(|handle| String::from_utf8_lossy(&handle.join().unwrap_or_default()).trim().to_string())
+            .unwrap_or_default();
+
+        if is_error || !status.success() {
+            return Err(if !stderr_text.is_empty() {
+                stderr_text
+            } else if !final_text.is_empty() {
+                final_text
+            } else {
+                "Claude didn't return a reply.".to_string()
+            });
+        }
+
+        Ok(AgentReply { text: final_text, session_id: final_session_id })
+    })
+    .await
+    .map_err(|e| format!("Internal error talking to Claude ({e})."))?
 }

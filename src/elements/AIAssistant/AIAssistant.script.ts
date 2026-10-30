@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { askAgent } from "@/lib/assistant/askAgent";
+import { askAgent, onAskAgentProgress } from "@/lib/assistant/askAgent";
 import { AGENTS, HISTORY_FIXTURES } from "./children/AIAssistantWindow/AIAssistantWindow.data";
 
 export type AssistantPhase = "closed" | "open" | "closing";
@@ -81,6 +81,19 @@ export function useAIAssistant() {
     );
   }
 
+  // Rewrites one message by id within a specific session (not necessarily
+  // the currently-active one — the user may switch sessions mid-reply) —
+  // used to grow the assistant's placeholder bubble as delta events arrive.
+  function updateMessageInSession(sessionId: string, messageId: string, updater: (message: ChatMessage) => ChatMessage) {
+    setSessions((current) =>
+      current.map((session) =>
+        session.id === sessionId
+          ? { ...session, messages: session.messages.map((message) => (message.id === messageId ? updater(message) : message)) }
+          : session,
+      ),
+    );
+  }
+
   async function sendMessage() {
     const text = composerValue.trim();
     if (!text || isSending) return;
@@ -101,38 +114,41 @@ export function useAIAssistant() {
     // AGENTS-ENGINE update).
     const instructions = activeAgents.length === 1 ? activeAgents[0].instructions : DEFAULT_INSTRUCTIONS;
 
+    // An empty assistant bubble renders as a "thinking" indicator (see
+    // Message.tsx) until the first delta arrives, then grows token-by-token
+    // — this is what replaces the old silent wait + sudden full reply.
+    const replyId = crypto.randomUUID();
+    appendMessageToActive({ id: replyId, role: "assistant", text: "" });
+
+    const jobId = crypto.randomUUID();
+    const unlisten = await onAskAgentProgress((progress) => {
+      if (progress.jobId !== jobId) return;
+      updateMessageInSession(sessionIdAtSend, replyId, (message) => ({ ...message, text: message.text + progress.delta }));
+    });
+
     setIsSending(true);
     try {
-      const reply = await askAgent(text, instructions, session?.claudeSessionId);
+      const reply = await askAgent(jobId, text, instructions, session?.claudeSessionId);
+      // The streamed-in text above is provisional (deltas could in theory
+      // drop or reorder); the CLI's final `result` text is authoritative,
+      // so it always wins here.
+      updateMessageInSession(sessionIdAtSend, replyId, (message) => ({
+        ...message,
+        text: reply.text || "(no reply)",
+      }));
       setSessions((current) =>
         current.map((candidate) =>
-          candidate.id === sessionIdAtSend
-            ? {
-                ...candidate,
-                claudeSessionId: reply.sessionId,
-                messages: [
-                  ...candidate.messages,
-                  { id: crypto.randomUUID(), role: "assistant", text: reply.text || "(no reply)" },
-                ],
-              }
-            : candidate,
+          candidate.id === sessionIdAtSend ? { ...candidate, claudeSessionId: reply.sessionId } : candidate,
         ),
       );
     } catch (error) {
-      setSessions((current) =>
-        current.map((candidate) =>
-          candidate.id === sessionIdAtSend
-            ? {
-                ...candidate,
-                messages: [
-                  ...candidate.messages,
-                  { id: crypto.randomUUID(), role: "system", text: `Couldn't reach Claude: ${error}` },
-                ],
-              }
-            : candidate,
-        ),
-      );
+      updateMessageInSession(sessionIdAtSend, replyId, (message) => ({
+        ...message,
+        role: "system",
+        text: `Couldn't reach Claude: ${error}`,
+      }));
     } finally {
+      unlisten();
       setIsSending(false);
     }
   }
