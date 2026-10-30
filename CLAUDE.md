@@ -5,7 +5,7 @@ and tuned for this project. Regenerate with the `rebuild-claude-md` routine
 when the global modules change. Local additions below the modules are
 preserved across rebuilds.
 
-masters-wheel is a prototype of "Master's Circle": a mastery platform for
+masters-wheel is a prototype of "Master's Wheel": a mastery platform for
 uploading lessons/videos, analyzing performance, and always refocusing on the
 right lesson. Right now it's UI shell only — no backend, no real features.
 Stack: Next.js (App Router) + TypeScript + CSS Modules, deployed to Vercel

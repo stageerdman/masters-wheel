@@ -10,13 +10,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   createRecordFromFile,
+  deleteHeroFile,
+  deleteRecord,
+  heroAbsolutePath,
   heroStreamUrl,
   importTranscriptFile,
   listRecords,
   readDoc,
   readTranscript,
+  revealRecordInFinder,
+  setHeroFile,
   writeDoc,
   writeMeta,
   writeTranscript,
@@ -24,6 +30,15 @@ import {
   type RecordSummary,
 } from "@/lib/records";
 import { parseTranscript, renameSpeaker, serializeTranscript } from "@/lib/transcript";
+import {
+  GENERATE_CANCELLED,
+  cancelGenerateTranscript,
+  onGenerateTranscriptProgress,
+  transcribeTracks,
+  tracksToDialogueEntries,
+  type TrackSelection,
+  type TranscriptGenerationState,
+} from "@/lib/transcript/generate";
 import { type CallState, type VideoRecord } from "./PerformanceReview.data";
 
 const WRITE_DEBOUNCE_MS = 400;
@@ -47,11 +62,24 @@ export function usePerformanceReviewData() {
   const [transcripts, setTranscripts] = useState<Record<string, string | null>>({});
   const [isTranscriptUploadOpen, setIsTranscriptUploadOpen] = useState(false);
   const [transcriptUploadError, setTranscriptUploadError] = useState<string | null>(null);
+  const [isGenerateTranscriptOpen, setIsGenerateTranscriptOpen] = useState(false);
+  const [generateTranscriptSourcePath, setGenerateTranscriptSourcePath] = useState<string | null>(null);
+  const [generateTranscriptRecordId, setGenerateTranscriptRecordId] = useState<string | null>(null);
+  // Keyed by record id, not by job: lets a generation started for one
+  // record keep running (and keep showing progress if you flip back to
+  // it) regardless of which record is currently selected.
+  const [generationByRecord, setGenerationByRecord] = useState<Record<string, TranscriptGenerationState>>({});
+  const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const docTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const metaTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const pendingMeta = useRef<Record<string, Partial<RecordMetaFields>>>({});
+  // Progress events only carry a job id (see src-tauri/src/transcribe.rs);
+  // this maps that back to the record it belongs to so the one global
+  // listener below can route each event to the right slot in
+  // `generationByRecord`.
+  const generationJobRecord = useRef<Record<string, string>>({});
 
   // Initial load. Outside the Tauri shell (e.g. the plain browser tab used
   // for HMR preview) there's no fs bridge at all — just stay empty rather
@@ -125,6 +153,38 @@ export function usePerformanceReviewData() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
+  // One global subscription for every in-flight Generate Transcript job
+  // (the Rust side emits a single event type carrying its job id — see
+  // src/lib/transcript/generate.ts's onGenerateTranscriptProgress) routed
+  // to whichever record owns that job via `generationJobRecord`.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    onGenerateTranscriptProgress((progress) => {
+      const recordId = generationJobRecord.current[progress.jobId];
+      if (!recordId) return;
+      setGenerationByRecord((prev) => ({
+        ...prev,
+        [recordId]: {
+          status: "running",
+          jobId: progress.jobId,
+          stage: progress.stage,
+          trackIndex: progress.trackIndex,
+          trackCount: progress.trackCount,
+          trackName: progress.trackName,
+        },
+      }));
+    }).then((fn) => {
+      if (cancelled) fn();
+      else unlisten = fn;
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
   // The selected record's hero file, as a URL onto the local media server
   // (see src/lib/records' heroStreamUrl) — a synchronous string build, no
   // async resolution needed since it no longer depends on documentDir().
@@ -140,6 +200,7 @@ export function usePerformanceReviewData() {
     date: summary.date,
     closedDate: summary.closedDate,
     title: summary.title,
+    heroFileName: summary.heroFileName,
     transcriptRaw: transcripts[summary.id] ?? null,
     notes: docs[summary.id]?.notes ?? "",
     aiAnalysis: docs[summary.id]?.aiAnalysis ?? "",
@@ -253,6 +314,113 @@ export function usePerformanceReviewData() {
     [selectedId]
   );
 
+  // Opens Generate Transcript with the selected record's hero file's real
+  // absolute path (ffprobe/ffmpeg, run on the Rust side, need a real
+  // filesystem path — see src-tauri/src/transcribe.rs — unlike heroSrc's
+  // HTTP URL onto the media server). Resolves to null when the record has
+  // no hero file yet; the modal surfaces that as its own error state.
+  // Captures the target record id alongside the path so the background job
+  // started from it is never tied to whatever `selectedId` happens to be
+  // later (the modal's own backdrop blocks switching records while it's
+  // open, but this keeps the two from silently drifting apart regardless).
+  const openGenerateTranscript = useCallback(async () => {
+    if (!selectedId) return;
+    const id = selectedId;
+    const summary = summaries.find((item) => item.id === id);
+    const path = summary?.heroFileName ? await heroAbsolutePath(id, summary.heroFileName) : null;
+    setGenerateTranscriptRecordId(id);
+    setGenerateTranscriptSourcePath(path);
+    setIsGenerateTranscriptOpen(true);
+  }, [selectedId, summaries]);
+
+  function closeGenerateTranscript() {
+    setIsGenerateTranscriptOpen(false);
+  }
+
+  // Starts cloud transcription as a background job (never blocks the UI —
+  // most calls here are a single track, i.e. a single blocking upload+
+  // inference call) and tracks its progress under `recordId` regardless of
+  // what's currently selected. On success, applies the result the same way
+  // importTranscript applies an uploaded file: canonical on-disk shape,
+  // immediate UI update, background write. A stop (cancelGenerateTranscript)
+  // clears the record's generation state silently, with no error — only a
+  // real failure surfaces one.
+  const startGenerateTranscript = useCallback((recordId: string, sourcePath: string, selections: TrackSelection[]) => {
+    const jobId = crypto.randomUUID();
+    generationJobRecord.current[jobId] = recordId;
+    setGenerationByRecord((prev) => ({
+      ...prev,
+      [recordId]: {
+        status: "running",
+        jobId,
+        stage: "extracting",
+        trackIndex: 0,
+        trackCount: selections.length,
+        trackName: selections[0]?.name ?? "",
+      },
+    }));
+
+    transcribeTracks(jobId, sourcePath, selections)
+      .then((tracks) => {
+        const canonical = serializeTranscript({
+          meta: [{ key: "generated_at", value: new Date().toISOString() }],
+          entries: tracksToDialogueEntries(tracks),
+        });
+        setTranscripts((prev) => ({ ...prev, [recordId]: canonical }));
+        setGenerationByRecord((prev) => {
+          const next = { ...prev };
+          delete next[recordId];
+          return next;
+        });
+        writeTranscript(recordId, canonical).catch((error) =>
+          console.error("Failed to write generated transcript:", recordId, error)
+        );
+      })
+      .catch((error) => {
+        const message = typeof error === "string" ? error : String(error);
+        setGenerationByRecord((prev) => {
+          if (message === GENERATE_CANCELLED) {
+            const next = { ...prev };
+            delete next[recordId];
+            return next;
+          }
+          return { ...prev, [recordId]: { status: "error", message, sourcePath, selections } };
+        });
+      })
+      .finally(() => {
+        delete generationJobRecord.current[jobId];
+      });
+  }, []);
+
+  const stopGenerateTranscript = useCallback(
+    (recordId: string) => {
+      const state = generationByRecord[recordId];
+      if (state?.status !== "running") return;
+      cancelGenerateTranscript(state.jobId).catch((error) =>
+        console.error("Failed to stop transcript generation:", recordId, error)
+      );
+    },
+    [generationByRecord]
+  );
+
+  const retryGenerateTranscript = useCallback(
+    (recordId: string) => {
+      const state = generationByRecord[recordId];
+      if (state?.status !== "error") return;
+      startGenerateTranscript(recordId, state.sourcePath, state.selections);
+    },
+    [generationByRecord, startGenerateTranscript]
+  );
+
+  function dismissGenerateTranscriptError(recordId: string) {
+    setGenerationByRecord((prev) => {
+      if (prev[recordId]?.status !== "error") return prev;
+      const next = { ...prev };
+      delete next[recordId];
+      return next;
+    });
+  }
+
   // Renames every line spoken by `from` to `to`, in both the UI and the
   // transcript.md source file.
   const renameTranscriptSpeaker = useCallback(
@@ -270,6 +438,90 @@ export function usePerformanceReviewData() {
       );
     },
     [selectedId, transcripts]
+  );
+
+  // Deletes a record entirely (its whole on-disk folder) and drops it from
+  // the list. If it was the selected record, falls back to whichever
+  // record is now first rather than leaving the selection dangling.
+  const removeRecord = useCallback(
+    async (id: string) => {
+      const title = summaries.find((item) => item.id === id)?.title ?? id;
+      const confirmed = await confirm(`Delete "${title}"? This can't be undone.`, {
+        title: "Delete record",
+        kind: "warning",
+      });
+      if (!confirmed) return;
+      try {
+        await deleteRecord(id);
+      } catch (error) {
+        console.error("Failed to delete record:", id, error);
+        return;
+      }
+      const remaining = summaries.filter((item) => item.id !== id);
+      setSummaries(remaining);
+      setSelectedId((current) => (current === id ? remaining[0]?.id ?? null : current));
+    },
+    [summaries]
+  );
+
+  // Deletes just a record's hero video file, leaving the rest of the
+  // record (notes, transcript, meta) untouched so a new video can be
+  // uploaded in its place.
+  const removeHeroMedia = useCallback(
+    async (id: string) => {
+      const summary = summaries.find((item) => item.id === id);
+      if (!summary?.heroFileName) return;
+      const confirmed = await confirm(`Remove the video for "${summary.title}"? This can't be undone.`, {
+        title: "Remove video",
+        kind: "warning",
+      });
+      if (!confirmed) return;
+      try {
+        await deleteHeroFile(id, summary.heroFileName);
+      } catch (error) {
+        console.error("Failed to delete hero file:", id, error);
+        return;
+      }
+      setSummaries((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, heroFileName: null } : item))
+      );
+    },
+    [summaries]
+  );
+
+  const openRecordFolder = useCallback(async (id: string) => {
+    try {
+      await revealRecordInFinder(id);
+    } catch (error) {
+      console.error("Failed to reveal record folder:", id, error);
+    }
+  }, []);
+
+  function openVideoUpload() {
+    setIsVideoUploadOpen(true);
+  }
+
+  function closeVideoUpload() {
+    setIsVideoUploadOpen(false);
+  }
+
+  // Uploads a video as the selected record's hero file — distinct from
+  // addRecordsFromPaths, which creates a whole new record. Only usable
+  // while the selected record has no hero file yet (Hero only shows the
+  // "Upload video" entry point in that state).
+  const uploadHeroVideo = useCallback(
+    async (sourcePath: string) => {
+      if (!selectedId) return;
+      const id = selectedId;
+      try {
+        const heroFileName = await setHeroFile(id, sourcePath);
+        setSummaries((prev) => prev.map((item) => (item.id === id ? { ...item, heroFileName } : item)));
+        setIsVideoUploadOpen(false);
+      } catch (error) {
+        console.error("Failed to upload hero video:", id, error);
+      }
+    },
+    [selectedId]
   );
 
   // Creates one record per given path (dialog selection or drag-drop),
@@ -301,25 +553,41 @@ export function usePerformanceReviewData() {
     updateMetaField,
     toggleReviewed,
     addRecordsFromPaths,
+    removeRecord,
+    removeHeroMedia,
+    openRecordFolder,
     isTranscriptUploadOpen,
     transcriptUploadError,
     openTranscriptUpload,
     closeTranscriptUpload,
     importTranscript,
+    isGenerateTranscriptOpen,
+    generateTranscriptSourcePath,
+    generateTranscriptRecordId,
+    openGenerateTranscript,
+    closeGenerateTranscript,
+    transcriptGeneration: selectedId ? generationByRecord[selectedId] ?? null : null,
+    startGenerateTranscript,
+    stopGenerateTranscript,
+    retryGenerateTranscript,
+    dismissGenerateTranscriptError,
     renameTranscriptSpeaker,
+    isVideoUploadOpen,
+    openVideoUpload,
+    closeVideoUpload,
+    uploadHeroVideo,
   };
 }
 
-// Registers Tauri's native window-level drag-and-drop while the caller is
-// mounted. A sandboxed HTML5 `drop` handler only hands back `File` blobs,
-// not a real filesystem path — `onDragDropEvent` gives the real path we
-// need to copy the file into the record's folder. Also tracks enter/leave
-// so the caller can show a drop-zone highlight while something's hovering.
-// `enabled` lets a caller temporarily disable this listener entirely — the
-// transcript upload modal needs to own window-level drops while it's open
-// instead of having them misread as "add a new video record" (see
-// useTranscriptDrop below, and CLAUDE.md's note on the two drop targets).
-export function useRecordDrop(onFilesDropped: (paths: string[]) => void, enabled: boolean = true) {
+// Shared window-level drag-and-drop primitive. A sandboxed HTML5 `drop`
+// handler only hands back `File` blobs, not a real filesystem path —
+// `onDragDropEvent` gives the real path we need to copy the file into a
+// record's folder. Also tracks enter/leave so the caller can show a
+// drop-zone highlight while something's hovering. `enabled` lets a caller
+// temporarily disable this listener entirely — see useRecordDrop and
+// useSingleFileDrop below, and CLAUDE.md's note on the page's multiple
+// mutually-exclusive drop targets.
+function useWindowDrop(enabled: boolean, onDrop: (paths: string[]) => void) {
   const [isDragActive, setIsDragActive] = useState(false);
 
   useEffect(() => {
@@ -332,7 +600,7 @@ export function useRecordDrop(onFilesDropped: (paths: string[]) => void, enabled
           setIsDragActive(true);
         } else if (event.payload.type === "drop") {
           setIsDragActive(false);
-          onFilesDropped(event.payload.paths);
+          onDrop(event.payload.paths);
         } else if (event.payload.type === "leave") {
           setIsDragActive(false);
         }
@@ -350,50 +618,28 @@ export function useRecordDrop(onFilesDropped: (paths: string[]) => void, enabled
       unlisten?.();
       setIsDragActive(false);
     };
-  }, [onFilesDropped, enabled]);
+  }, [onDrop, enabled]);
 
   return isDragActive;
 }
 
-// Same window-level drag-drop primitive as useRecordDrop, but only active
-// while the transcript upload modal is open, and only ever hands back the
-// first dropped path (a transcript import is always one file). The two
-// hooks are mutually exclusive by construction: PerformanceReview.tsx
-// passes `enabled: !isTranscriptUploadOpen` to useRecordDrop and
-// `enabled: isTranscriptUploadOpen` here, so a drop is never claimed by
-// both at once.
-export function useTranscriptDrop(onFileDropped: (path: string) => void, enabled: boolean) {
-  const [isDragActive, setIsDragActive] = useState(false);
+// Window-level drop that creates a new record from every dropped path.
+export function useRecordDrop(onFilesDropped: (paths: string[]) => void, enabled: boolean = true) {
+  return useWindowDrop(enabled, onFilesDropped);
+}
 
-  useEffect(() => {
-    if (!isTauri() || !enabled) return;
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    getCurrentWebview()
-      .onDragDropEvent((event) => {
-        if (event.payload.type === "enter" || event.payload.type === "over") {
-          setIsDragActive(true);
-        } else if (event.payload.type === "drop") {
-          setIsDragActive(false);
-          if (event.payload.paths[0]) onFileDropped(event.payload.paths[0]);
-        } else if (event.payload.type === "leave") {
-          setIsDragActive(false);
-        }
-      })
-      .then((fn) => {
-        if (cancelled) {
-          fn();
-        } else {
-          unlisten = fn;
-        }
-      })
-      .catch((error) => console.error("Failed to register transcript drag-and-drop listener:", error));
-    return () => {
-      cancelled = true;
-      unlisten?.();
-      setIsDragActive(false);
-    };
-  }, [onFileDropped, enabled]);
-
-  return isDragActive;
+// Window-level drop that only ever hands back the first dropped path — for
+// the transcript and video-upload modals, which each import exactly one
+// file into the already-selected record. All three drop hooks on this page
+// are mutually exclusive by construction: PerformanceReview.tsx enables
+// exactly one at a time depending on which modal (if any) is open, so a
+// drop is never claimed by more than one of them.
+export function useSingleFileDrop(onFileDropped: (path: string) => void, enabled: boolean) {
+  const handleDrop = useCallback(
+    (paths: string[]) => {
+      if (paths[0]) onFileDropped(paths[0]);
+    },
+    [onFileDropped]
+  );
+  return useWindowDrop(enabled, handleDrop);
 }

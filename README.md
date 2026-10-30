@@ -1,4 +1,4 @@
-# Master's Circle (masters-wheel)
+# Master's Wheel (masters-wheel)
 
 Prototype of a mastery platform: upload lessons/videos, analyze performance,
 and always get pointed back to the right lesson to refocus on. Packaged as a

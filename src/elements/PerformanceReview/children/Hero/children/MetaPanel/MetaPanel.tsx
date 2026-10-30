@@ -13,6 +13,7 @@ type MetaPanelProps = {
   description: string;
   date: string;
   closedDate: string | null;
+  isWon: boolean;
   onOfferedAmountChange: (value: number | null) => void;
   onOfferedCurrencyChange: (value: string | null) => void;
   onDescriptionChange: (value: string) => void;
@@ -26,6 +27,7 @@ export function MetaPanel({
   description,
   date,
   closedDate,
+  isWon,
   onOfferedAmountChange,
   onOfferedCurrencyChange,
   onDescriptionChange,
@@ -69,7 +71,8 @@ export function MetaPanel({
                 type="date"
                 className={`${styles.dateInput} ${position.dateInput}`}
                 data-construction
-                value={closedDate ?? ""}
+                value={isWon ? closedDate ?? "" : ""}
+                disabled={!isWon}
                 onChange={(event) => onClosedDateChange(event.target.value === "" ? null : event.target.value)}
               />
             </label>

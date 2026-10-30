@@ -14,7 +14,7 @@ const HEADER_HIDDEN_ROUTES = ["/"];
 export function AppHeader() {
   const { island, brand } = useHeaderActions();
   const pathname = usePathname();
-  const label = brand?.label ?? "Master's Circle";
+  const label = brand?.label ?? "Master's Wheel";
   const showLogo = brand?.showLogo ?? false;
 
   if (HEADER_HIDDEN_ROUTES.includes(pathname)) {
@@ -29,8 +29,8 @@ export function AppHeader() {
             <Image
               src="/masters-wheel-logo.png"
               alt=""
-              width={22}
-              height={28}
+              width={24}
+              height={24}
               className={`${styles.logo} ${position.logo}`}
               data-construction
             />

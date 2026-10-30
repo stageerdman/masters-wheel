@@ -1,0 +1,61 @@
+.backdrop {
+  background: color-mix(in srgb, var(--color-text) 40%, transparent);
+}
+
+.root {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.title {
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-heading);
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  color: var(--color-text);
+}
+
+.dropZone {
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+}
+
+.dropZoneActive {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.dropZoneText {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.orText {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}
+
+.browseButton {
+  background: var(--color-accent);
+  color: var(--color-on-chip);
+  border: none;
+  border-radius: 6px;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.browseButton:hover {
+  opacity: 0.9;
+}

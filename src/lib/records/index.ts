@@ -1,5 +1,5 @@
 // Local records backend — plain TS, no React. Every Performance Review
-// record is a real folder on disk under ~/Documents/Master's Circle/; the
+// record is a real folder on disk under ~/Documents/Master's Wheel/; the
 // folder name IS the record's id (see this update's wiki.md). All disk
 // access goes through Tauri's fs plugin, scoped (see
 // src-tauri/capabilities/records.json) to that one directory.
@@ -11,9 +11,12 @@ import {
   mkdir,
   readDir,
   readTextFile,
+  remove,
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
-const STORAGE_DIR_NAME = "Master's Circle";
+import { documentDir, join } from "@tauri-apps/api/path";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
+const STORAGE_DIR_NAME = "Master's Wheel";
 const BASE_DIR = BaseDirectory.Document;
 
 export type DocKind = "notes" | "analysis";
@@ -110,7 +113,7 @@ async function findHeroFileName(id: string): Promise<string | null> {
   }
 }
 
-// Creates ~/Documents/Master's Circle if it doesn't exist yet. Safe to
+// Creates ~/Documents/Master's Wheel if it doesn't exist yet. Safe to
 // call repeatedly — mkdir with recursive:true is a no-op if it's already
 // there.
 export async function ensureStorageRoot(): Promise<void> {
@@ -265,6 +268,49 @@ export async function createRecordFromFile(sourcePath: string): Promise<RecordSu
   await writeTextFile(metaPath(id), JSON.stringify(meta, null, 2), { baseDir: BASE_DIR });
 
   return { id, heroFileName, ...meta };
+}
+
+// Deletes a record entirely — the whole folder, recursively. Irreversible;
+// the caller is responsible for confirming with the user first.
+export async function deleteRecord(id: string): Promise<void> {
+  await remove(recordDir(id), { baseDir: BASE_DIR, recursive: true });
+}
+
+// Deletes just a record's hero media file, leaving the record (and its
+// notes/transcript/meta) intact so a new video can be uploaded in its
+// place.
+export async function deleteHeroFile(id: string, heroFileName: string): Promise<void> {
+  await remove(`${recordDir(id)}/${heroFileName}`, { baseDir: BASE_DIR });
+}
+
+// Copies a video file in as a record's hero file — same cross-filesystem
+// copy createRecordFromFile uses, but for an existing record that
+// currently has no hero file (after deleteHeroFile, or a record created
+// without one).
+export async function setHeroFile(id: string, sourcePath: string): Promise<string> {
+  const ext = extensionOf(sourcePath);
+  const heroFileName = ext ? `hero.${ext}` : "hero";
+  await copyFile(sourcePath, `${recordDir(id)}/${heroFileName}`, { toPathBaseDir: BASE_DIR });
+  return heroFileName;
+}
+
+// A record's hero file's real absolute path — needed by Generate
+// Transcript, which shells out to ffprobe/ffmpeg (see
+// src-tauri/src/transcribe.rs) and so needs a real filesystem path, unlike
+// heroStreamUrl's HTTP URL onto the media server.
+export async function heroAbsolutePath(id: string, heroFileName: string): Promise<string> {
+  const docDir = await documentDir();
+  return join(docDir, STORAGE_DIR_NAME, id, heroFileName);
+}
+
+// Reveals a record's folder in the OS file explorer (Finder on macOS),
+// selected inside its parent. Needs the real absolute path — unlike the
+// rest of this module, `revealItemInDir` doesn't go through Tauri's fs
+// scope/BaseDirectory system.
+export async function revealRecordInFinder(id: string): Promise<void> {
+  const docDir = await documentDir();
+  const absolutePath = await join(docDir, STORAGE_DIR_NAME, id);
+  await revealItemInDir(absolutePath);
 }
 
 // Hero videos are served by a tiny local HTTP server (see

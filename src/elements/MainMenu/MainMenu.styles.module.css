@@ -1,19 +1,11 @@
+/* The background video is permanently dark art direction, not something
+   that flips with the OS theme — so this subtree pins the core tokens to
+   their dark-mode values (same hexes as globals.css's dark media query)
+   regardless of light/dark preference, keeping chrome readable over it. */
 .root {
+  --color-surface: #0a0a0a;
+  --color-text: #ededed;
+  --color-text-muted: #9ca3af;
+  --color-border: #262626;
   background-color: var(--color-surface);
-  background-image:
-    radial-gradient(
-      circle at 20% 20%,
-      color-mix(in srgb, var(--color-accent) 35%, transparent),
-      transparent 55%
-    ),
-    radial-gradient(
-      circle at 80% 30%,
-      color-mix(in srgb, var(--color-accent) 20%, transparent),
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 50% 100%,
-      color-mix(in srgb, var(--color-text) 12%, transparent),
-      transparent 60%
-    );
 }

@@ -4,6 +4,7 @@ import { SplitRail } from "./children/SplitRail/SplitRail";
 import { TextView } from "@/elements/TextView/TextView";
 import { useSplitRail } from "./Detail.script";
 import type { VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
+import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./Detail.position.module.css";
 import styles from "./Detail.styles.module.css";
 
@@ -16,6 +17,11 @@ type DetailProps = {
   onLessonsChange: (value: string) => void;
   onAiAnalysisChange: (value: string) => void;
   onRequestTranscriptUpload: () => void;
+  onRequestGenerateTranscript: () => void;
+  transcriptGeneration: TranscriptGenerationState | null;
+  onStopGenerateTranscript: () => void;
+  onRetryGenerateTranscript: () => void;
+  onDismissGenerateTranscriptError: () => void;
   onSeekTranscript: (seconds: number) => void;
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
 };
@@ -29,6 +35,11 @@ export function Detail({
   onLessonsChange,
   onAiAnalysisChange,
   onRequestTranscriptUpload,
+  onRequestGenerateTranscript,
+  transcriptGeneration,
+  onStopGenerateTranscript,
+  onRetryGenerateTranscript,
+  onDismissGenerateTranscriptError,
   onSeekTranscript,
   onRenameTranscriptSpeaker,
 }: DetailProps) {
@@ -63,6 +74,11 @@ export function Detail({
             onLessonsChange={onLessonsChange}
             onAiAnalysisChange={onAiAnalysisChange}
             onRequestTranscriptUpload={onRequestTranscriptUpload}
+            onRequestGenerateTranscript={onRequestGenerateTranscript}
+            transcriptGeneration={transcriptGeneration}
+            onStopGenerateTranscript={onStopGenerateTranscript}
+            onRetryGenerateTranscript={onRetryGenerateTranscript}
+            onDismissGenerateTranscriptError={onDismissGenerateTranscriptError}
             onSeekTranscript={onSeekTranscript}
             onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
           />
@@ -85,6 +101,11 @@ export function Detail({
                 onLessonsChange={onLessonsChange}
                 onAiAnalysisChange={onAiAnalysisChange}
                 onRequestTranscriptUpload={onRequestTranscriptUpload}
+                onRequestGenerateTranscript={onRequestGenerateTranscript}
+                transcriptGeneration={transcriptGeneration}
+                onStopGenerateTranscript={onStopGenerateTranscript}
+                onRetryGenerateTranscript={onRetryGenerateTranscript}
+                onDismissGenerateTranscriptError={onDismissGenerateTranscriptError}
                 onSeekTranscript={onSeekTranscript}
                 onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
               />

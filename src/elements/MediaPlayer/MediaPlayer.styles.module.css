@@ -4,22 +4,6 @@
   color: var(--color-text-muted);
 }
 
-.playButton {
-  width: 48px;
-  height: 48px;
-  border-radius: 999px;
-  background: var(--color-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-size-body);
-  color: var(--color-text);
-}
-
-.label {
-  font-size: var(--text-size-label);
-}
-
 .video {
   object-fit: contain;
 }

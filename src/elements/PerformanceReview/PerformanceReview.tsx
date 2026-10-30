@@ -3,8 +3,10 @@
 import { useEffect, useRef } from "react";
 import { useHeaderActions, type HeaderIslandOption } from "@/elements/AppHeader/AppHeader.context";
 import { TranscriptUploadModal } from "@/elements/TranscriptUploadModal/TranscriptUploadModal";
+import { GenerateTranscriptModal } from "@/elements/GenerateTranscriptModal/GenerateTranscriptModal";
+import { VideoUploadModal } from "@/elements/VideoUploadModal/VideoUploadModal";
 import { CALL_STATE_META, CALL_STATE_ORDER, type CallState } from "./PerformanceReview.data";
-import { usePerformanceReviewData, useRecordDrop, useTranscriptDrop } from "./PerformanceReview.script";
+import { usePerformanceReviewData, useRecordDrop, useSingleFileDrop } from "./PerformanceReview.script";
 import { Navigation } from "./children/Navigation/Navigation";
 import { Hero } from "./children/Hero/Hero";
 import { Detail } from "./children/Detail/Detail";
@@ -37,12 +39,29 @@ export function PerformanceReview() {
     updateMetaField,
     toggleReviewed,
     addRecordsFromPaths,
+    removeRecord,
+    removeHeroMedia,
+    openRecordFolder,
     isTranscriptUploadOpen,
     transcriptUploadError,
     openTranscriptUpload,
     closeTranscriptUpload,
     importTranscript,
+    isGenerateTranscriptOpen,
+    generateTranscriptSourcePath,
+    generateTranscriptRecordId,
+    openGenerateTranscript,
+    closeGenerateTranscript,
+    transcriptGeneration,
+    startGenerateTranscript,
+    stopGenerateTranscript,
+    retryGenerateTranscript,
+    dismissGenerateTranscriptError,
     renameTranscriptSpeaker,
+    isVideoUploadOpen,
+    openVideoUpload,
+    closeVideoUpload,
+    uploadHeroVideo,
   } = usePerformanceReviewData();
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -54,11 +73,12 @@ export function PerformanceReview() {
     videoEl.play();
   }
 
-  // Mutually exclusive: the video drop handler is disabled while the
-  // transcript upload modal owns window-level drops, and vice versa — see
-  // PerformanceReview.script.ts.
-  const isDragActive = useRecordDrop(addRecordsFromPaths, !isTranscriptUploadOpen);
-  const isTranscriptDragActive = useTranscriptDrop(importTranscript, isTranscriptUploadOpen);
+  // Mutually exclusive: the "add a new record" drop handler is disabled
+  // while either upload modal owns window-level drops, and vice versa —
+  // see PerformanceReview.script.ts.
+  const isDragActive = useRecordDrop(addRecordsFromPaths, !isTranscriptUploadOpen && !isVideoUploadOpen);
+  const isTranscriptDragActive = useSingleFileDrop(importTranscript, isTranscriptUploadOpen);
+  const isVideoDragActive = useSingleFileDrop(uploadHeroVideo, isVideoUploadOpen);
 
   useEffect(() => {
     setIsland({
@@ -66,10 +86,16 @@ export function PerformanceReview() {
       activeStateId: selected?.state ?? null,
       onStateChange: (id) => {
         updateMetaField("state", id as CallState);
-        // Auto-fill the closed date the moment a call first becomes
-        // closed; never overwrite a date the user already set manually.
-        if (id === "closed" && !selected?.closedDate) {
-          updateMetaField("closedDate", todayIso());
+        if (id === "closed") {
+          // Auto-fill the closed date the moment a call first becomes
+          // closed; never overwrite a date the user already set manually.
+          if (!selected?.closedDate) {
+            updateMetaField("closedDate", todayIso());
+          }
+        } else if (selected?.closedDate) {
+          // Closed date only makes sense for a won call — clear it the
+          // moment the call is no longer closed.
+          updateMetaField("closedDate", null);
         }
       },
       reviewed: selected?.reviewed ?? false,
@@ -91,6 +117,9 @@ export function PerformanceReview() {
         selectedId={selectedId}
         onSelect={setSelectedId}
         onAddRecord={addRecordsFromPaths}
+        onRemoveRecord={removeRecord}
+        onRemoveMedia={removeHeroMedia}
+        onOpenFolder={openRecordFolder}
       />
       {selected ? (
         <>
@@ -111,6 +140,12 @@ export function PerformanceReview() {
             onClosedDateChange={(value) => updateMetaField("closedDate", value)}
             onTitleChange={(value) => updateMetaField("title", value)}
             onRequestTranscriptUpload={openTranscriptUpload}
+            onRequestGenerateTranscript={openGenerateTranscript}
+            transcriptGeneration={transcriptGeneration}
+            onStopGenerateTranscript={() => selectedId && stopGenerateTranscript(selectedId)}
+            onRetryGenerateTranscript={() => selectedId && retryGenerateTranscript(selectedId)}
+            onDismissGenerateTranscriptError={() => selectedId && dismissGenerateTranscriptError(selectedId)}
+            onRequestVideoUpload={openVideoUpload}
             onSeekTranscript={seekTranscript}
             onRenameTranscriptSpeaker={renameTranscriptSpeaker}
           />
@@ -123,6 +158,11 @@ export function PerformanceReview() {
             onLessonsChange={onLessonsChange}
             onAiAnalysisChange={onAiAnalysisChange}
             onRequestTranscriptUpload={openTranscriptUpload}
+            onRequestGenerateTranscript={openGenerateTranscript}
+            transcriptGeneration={transcriptGeneration}
+            onStopGenerateTranscript={() => selectedId && stopGenerateTranscript(selectedId)}
+            onRetryGenerateTranscript={() => selectedId && retryGenerateTranscript(selectedId)}
+            onDismissGenerateTranscriptError={() => selectedId && dismissGenerateTranscriptError(selectedId)}
             onSeekTranscript={seekTranscript}
             onRenameTranscriptSpeaker={renameTranscriptSpeaker}
           />
@@ -147,6 +187,20 @@ export function PerformanceReview() {
         error={transcriptUploadError}
         onFileSelected={importTranscript}
         onClose={closeTranscriptUpload}
+      />
+      <GenerateTranscriptModal
+        isOpen={isGenerateTranscriptOpen}
+        sourcePath={generateTranscriptSourcePath}
+        onStart={(sourcePath, selections) => {
+          if (generateTranscriptRecordId) startGenerateTranscript(generateTranscriptRecordId, sourcePath, selections);
+        }}
+        onClose={closeGenerateTranscript}
+      />
+      <VideoUploadModal
+        isOpen={isVideoUploadOpen}
+        isDragActive={isVideoDragActive}
+        onFileSelected={uploadHeroVideo}
+        onClose={closeVideoUpload}
       />
     </div>
   );

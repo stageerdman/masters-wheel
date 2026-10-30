@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Master's Circle",
+  "productName": "Master's Wheel",
   "version": "0.1.0",
   "identifier": "com.erdman.masterswheel",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Master's Circle",
+        "title": "Master's Wheel",
         "width": 800,
         "height": 600,
         "resizable": true,
@@ -23,7 +23,7 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["$DOCUMENT/Master's Circle/**"]
+        "scope": ["$DOCUMENT/Master's Wheel/**"]
       }
     }
   },

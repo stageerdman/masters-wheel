@@ -5,8 +5,9 @@ import { MediaPlayer } from "@/elements/MediaPlayer/MediaPlayer";
 import { BookmarkRail } from "@/elements/BookmarkRail/BookmarkRail";
 import { TextView } from "@/elements/TextView/TextView";
 import { MetaPanel } from "./children/MetaPanel/MetaPanel";
-import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
+import { usePersistedActiveKind } from "./Hero.script";
 import type { VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
+import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./Hero.position.module.css";
 import styles from "./Hero.styles.module.css";
 
@@ -27,6 +28,12 @@ type HeroProps = {
   onClosedDateChange: (value: string | null) => void;
   onTitleChange: (value: string) => void;
   onRequestTranscriptUpload: () => void;
+  onRequestGenerateTranscript: () => void;
+  transcriptGeneration: TranscriptGenerationState | null;
+  onStopGenerateTranscript: () => void;
+  onRetryGenerateTranscript: () => void;
+  onDismissGenerateTranscriptError: () => void;
+  onRequestVideoUpload: () => void;
   onSeekTranscript: (seconds: number) => void;
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
 };
@@ -48,10 +55,16 @@ export function Hero({
   onClosedDateChange,
   onTitleChange,
   onRequestTranscriptUpload,
+  onRequestGenerateTranscript,
+  transcriptGeneration,
+  onStopGenerateTranscript,
+  onRetryGenerateTranscript,
+  onDismissGenerateTranscriptError,
+  onRequestVideoUpload,
   onSeekTranscript,
   onRenameTranscriptSpeaker,
 }: HeroProps) {
-  const [active, setActive] = useState<ContentKind>("ai");
+  const [active, setActive] = usePersistedActiveKind();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
   // Switching to a different record while mid-edit shouldn't leave the
@@ -97,6 +110,7 @@ export function Hero({
           description={video.description}
           date={video.date}
           closedDate={video.closedDate}
+          isWon={video.state === "closed"}
           onOfferedAmountChange={onOfferedAmountChange}
           onOfferedCurrencyChange={onOfferedCurrencyChange}
           onDescriptionChange={onDescriptionChange}
@@ -105,7 +119,18 @@ export function Hero({
         />
       </div>
       <div className={position.mediaSlot} data-construction>
-        <MediaPlayer ref={videoRef} title={video.title} src={heroSrc} />
+        {heroSrc ? (
+          <MediaPlayer ref={videoRef} title={video.title} src={heroSrc} />
+        ) : (
+          <button
+            type="button"
+            className={`${styles.uploadButton} ${position.uploadButton}`}
+            data-construction
+            onClick={onRequestVideoUpload}
+          >
+            Upload video
+          </button>
+        )}
       </div>
       <div className={position.railSlot} data-construction>
         <BookmarkRail active={active} onSelect={setActive} />
@@ -121,6 +146,11 @@ export function Hero({
           onLessonsChange={onLessonsChange}
           onAiAnalysisChange={onAiAnalysisChange}
           onRequestTranscriptUpload={onRequestTranscriptUpload}
+          onRequestGenerateTranscript={onRequestGenerateTranscript}
+          transcriptGeneration={transcriptGeneration}
+          onStopGenerateTranscript={onStopGenerateTranscript}
+          onRetryGenerateTranscript={onRetryGenerateTranscript}
+          onDismissGenerateTranscriptError={onDismissGenerateTranscriptError}
           onSeekTranscript={onSeekTranscript}
           onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
         />

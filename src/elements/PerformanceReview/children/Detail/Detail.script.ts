@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
 
@@ -9,6 +9,48 @@ type DragInfo = {
   startLinePx: number;
   railHeight: number;
 };
+
+// The split layout (where the line sits, what's pinned below it, which top
+// tab is active) is a UI preference, not per-record data — it persists
+// across reloads the same way AIAssistant's dock presets do (see
+// AIAssistant.windowDock.script.ts), shared across every record rather
+// than reset each time you switch or reopen one.
+const SPLIT_STORAGE_KEY = "performance-review-detail-split";
+
+type PersistedSplit = {
+  linePx: number | null;
+  bottomKind: ContentKind | null;
+  activeTop: ContentKind;
+};
+
+function isContentKind(value: unknown): value is ContentKind {
+  return typeof value === "string" && (ALL_KINDS as string[]).includes(value);
+}
+
+function loadSplitState(): PersistedSplit | null {
+  try {
+    const raw = localStorage.getItem(SPLIT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      linePx: typeof parsed.linePx === "number" ? parsed.linePx : null,
+      bottomKind: isContentKind(parsed.bottomKind) ? parsed.bottomKind : null,
+      activeTop: isContentKind(parsed.activeTop) ? parsed.activeTop : "ai",
+    };
+  } catch {
+    // Storage unavailable or malformed — fall back to the built-in defaults.
+  }
+  return null;
+}
+
+function saveSplitState(state: PersistedSplit) {
+  try {
+    localStorage.setItem(SPLIT_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Storage disabled (e.g. private browsing) — the layout just won't persist.
+  }
+}
 
 // One rail spans the Detail column's full height. The 4 bookmarks are
 // pinned at its top; the line is a second, fully independent piece of
@@ -23,6 +65,30 @@ export function useSplitRail() {
   const [activeTop, setActiveTop] = useState<ContentKind>("ai");
   const [dragOffset, setDragOffset] = useState<{ kind: ContentKind; offsetY: number } | null>(null);
   const dragRef = useRef<DragInfo | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Hydrate the persisted split layout on mount — a one-time read from a
+  // non-reactive external store, not the cascading-update pattern this
+  // rule otherwise guards against.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const saved = loadSplitState();
+    if (saved) {
+      setLinePx(saved.linePx);
+      setBottomKind(saved.bottomKind);
+      setActiveTop(saved.activeTop);
+    }
+    setIsHydrated(true);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Persist whenever the layout changes, gated on hydration having
+  // finished so the initial default state doesn't overwrite a saved
+  // layout before it's had a chance to load.
+  useEffect(() => {
+    if (!isHydrated) return;
+    saveSplitState({ linePx, bottomKind, activeTop });
+  }, [isHydrated, linePx, bottomKind, activeTop]);
 
   const topKinds = ALL_KINDS.filter((kind) => kind !== bottomKind);
   const isSplit = bottomKind !== null;

@@ -1,0 +1,59 @@
+.statusText {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.errorText {
+  color: var(--color-status-failed);
+  font-size: var(--text-size-label);
+}
+
+.progressTrack {
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressFill {
+  background: var(--color-accent);
+  border-radius: 999px;
+  animation: indeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.button {
+  background: var(--color-accent);
+  color: var(--color-on-chip);
+  border: none;
+  border-radius: 6px;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:hover {
+  opacity: 0.9;
+}
+
+.secondaryButton {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}

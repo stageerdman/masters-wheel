@@ -3,22 +3,33 @@ import styles from "./TranscriptEmptyState.styles.module.css";
 
 type TranscriptEmptyStateProps = {
   onUpload: () => void;
+  onGenerate: () => void;
 };
 
-export function TranscriptEmptyState({ onUpload }: TranscriptEmptyStateProps) {
+export function TranscriptEmptyState({ onUpload, onGenerate }: TranscriptEmptyStateProps) {
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
       <p className={`${styles.text} ${position.text}`} data-construction>
         No transcript yet.
       </p>
-      <button
-        type="button"
-        className={`${styles.button} ${position.button}`}
-        data-construction
-        onClick={onUpload}
-      >
-        Upload a transcript
-      </button>
+      <div className={position.actions} data-construction>
+        <button
+          type="button"
+          className={`${styles.button} ${position.button}`}
+          data-construction
+          onClick={onUpload}
+        >
+          Upload a transcript
+        </button>
+        <button
+          type="button"
+          className={`${styles.button} ${position.button}`}
+          data-construction
+          onClick={onGenerate}
+        >
+          Generate a transcript
+        </button>
+      </div>
     </div>
   );
 }

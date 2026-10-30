@@ -5,7 +5,7 @@ visibility: private
 adopted: 2026-10-27
 claude_md_generated: 2026-10-27
 modules: [STRUCTURE, CODING, WORKFLOW, UX]
-secrets: []
+secrets: [ELEVENLABS_API_KEY]
 ---
 
 masters-wheel is a prototype of "Master's Circle" — a mastery platform where
@@ -23,5 +23,7 @@ Reusable elements (e.g. a standardized side-menu button) are imported wherever
 they're needed rather than duplicated.
 
 Status: scaffolded 2026-10-27. `src/elements/Canvas/` is the root element and
-doubles as the reference example of the convention — see CLAUDE.md. No
-backend, auth, storage, or AI integration yet, so `secrets: []` for now.
+doubles as the reference example of the convention — see CLAUDE.md.
+
+Generate Transcript (added later) needs `ELEVENLABS_API_KEY` for cloud
+transcription — the one secret in `.env` so far.

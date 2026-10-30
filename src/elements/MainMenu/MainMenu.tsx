@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BackgroundImage } from "./children/BackgroundImage/BackgroundImage";
 import { NavMenu, type NavMenuEntry } from "./children/NavMenu/NavMenu";
 import { SidePanel } from "./children/SidePanel/SidePanel";
 import position from "./MainMenu.position.module.css";
@@ -33,8 +34,11 @@ export function MainMenu() {
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      <NavMenu items={MENU_ITEMS} onActivate={handleActivate} />
-      <SidePanel content={panelContent} />
+      <BackgroundImage />
+      <div className={position.content} data-construction>
+        <NavMenu items={MENU_ITEMS} onActivate={handleActivate} />
+        <SidePanel content={panelContent} />
+      </div>
     </div>
   );
 }

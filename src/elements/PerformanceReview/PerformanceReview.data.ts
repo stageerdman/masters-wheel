@@ -64,6 +64,10 @@ export type VideoRecord = {
   // Auto-filled the moment state first becomes "closed"; editable after.
   closedDate: string | null;
   title: string;
+  // The record's hero video file name, or null if none has been uploaded
+  // (or it was removed) — drives whether Hero shows the player or an
+  // "Upload video" prompt.
+  heroFileName: string | null;
   // Raw transcript.md contents, or null if none has been imported yet.
   // Parsed on demand by the Transcript element (src/lib/transcript).
   transcriptRaw: string | null;

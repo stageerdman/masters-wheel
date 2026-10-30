@@ -26,3 +26,17 @@
 .titleInput:focus-visible {
   box-shadow: 0 0 0 2px var(--color-accent);
 }
+
+.uploadButton {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  border: none;
+  border-radius: 8px;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.uploadButton:hover {
+  color: var(--color-text);
+}

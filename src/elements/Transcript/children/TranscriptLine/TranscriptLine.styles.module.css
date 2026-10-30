@@ -26,4 +26,5 @@
 .text {
   color: var(--color-text);
   font-size: var(--text-size-body);
+  overflow-wrap: anywhere;
 }

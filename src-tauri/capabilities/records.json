@@ -1,33 +1,39 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "records",
-  "description": "Local records backend: fs + dialog access scoped to the Master's Circle storage root only.",
+  "description": "Local records backend: fs + dialog access scoped to the Master's Wheel storage root only.",
   "windows": ["main"],
   "permissions": [
     "dialog:allow-open",
+    "dialog:allow-message",
+    "opener:allow-reveal-item-in-dir",
     {
       "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "$DOCUMENT/Master's Circle" }, { "path": "$DOCUMENT/Master's Circle/**" }]
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     },
     {
       "identifier": "fs:allow-read-dir",
-      "allow": [{ "path": "$DOCUMENT/Master's Circle" }, { "path": "$DOCUMENT/Master's Circle/**" }]
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     },
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": [{ "path": "$DOCUMENT/Master's Circle" }, { "path": "$DOCUMENT/Master's Circle/**" }]
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     },
     {
       "identifier": "fs:allow-write-text-file",
-      "allow": [{ "path": "$DOCUMENT/Master's Circle" }, { "path": "$DOCUMENT/Master's Circle/**" }]
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     },
     {
       "identifier": "fs:allow-exists",
-      "allow": [{ "path": "$DOCUMENT/Master's Circle" }, { "path": "$DOCUMENT/Master's Circle/**" }]
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     },
     {
       "identifier": "fs:allow-copy-file",
-      "allow": [{ "path": "$DOCUMENT/Master's Circle" }, { "path": "$DOCUMENT/Master's Circle/**" }]
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     }
   ]
 }

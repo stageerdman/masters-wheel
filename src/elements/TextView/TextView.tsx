@@ -1,6 +1,7 @@
 import { Transcript } from "@/elements/Transcript/Transcript";
 import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
 import type { VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
+import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./TextView.position.module.css";
 import styles from "./TextView.styles.module.css";
 
@@ -14,6 +15,11 @@ type TextViewProps = {
   onLessonsChange: (value: string) => void;
   onAiAnalysisChange: (value: string) => void;
   onRequestTranscriptUpload: () => void;
+  onRequestGenerateTranscript: () => void;
+  transcriptGeneration: TranscriptGenerationState | null;
+  onStopGenerateTranscript: () => void;
+  onRetryGenerateTranscript: () => void;
+  onDismissGenerateTranscriptError: () => void;
   onSeekTranscript: (seconds: number) => void;
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
 };
@@ -29,6 +35,11 @@ export function TextView({
   onLessonsChange,
   onAiAnalysisChange,
   onRequestTranscriptUpload,
+  onRequestGenerateTranscript,
+  transcriptGeneration,
+  onStopGenerateTranscript,
+  onRetryGenerateTranscript,
+  onDismissGenerateTranscriptError,
   onSeekTranscript,
   onRenameTranscriptSpeaker,
 }: TextViewProps) {
@@ -48,7 +59,12 @@ export function TextView({
     return (
       <Transcript
         rawText={video.transcriptRaw}
+        generation={transcriptGeneration}
         onRequestUpload={onRequestTranscriptUpload}
+        onRequestGenerate={onRequestGenerateTranscript}
+        onStopGenerate={onStopGenerateTranscript}
+        onRetryGenerate={onRetryGenerateTranscript}
+        onDismissGenerateError={onDismissGenerateTranscriptError}
         onSeek={onSeekTranscript}
         onRenameSpeaker={onRenameTranscriptSpeaker}
       />

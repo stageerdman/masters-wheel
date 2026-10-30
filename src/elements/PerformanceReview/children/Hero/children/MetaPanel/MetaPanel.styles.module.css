@@ -39,6 +39,11 @@
   box-shadow: 0 0 0 2px var(--color-accent);
 }
 
+.dateInput:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
 .amountInput {
   background: var(--color-surface);
   color: var(--color-text);

@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { formatTimestamp, parseTranscript, speakersOf } from "@/lib/transcript";
+import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import { TranscriptLine } from "./children/TranscriptLine/TranscriptLine";
 import { TranscriptEmptyState } from "./children/TranscriptEmptyState/TranscriptEmptyState";
+import { TranscriptGenerating } from "./children/TranscriptGenerating/TranscriptGenerating";
 import { SpeakerContextMenu } from "./children/SpeakerContextMenu/SpeakerContextMenu";
 import position from "./Transcript.position.module.css";
 import styles from "./Transcript.styles.module.css";
@@ -20,7 +22,12 @@ type SpeakerMenuState = { x: number; y: number; speaker: string };
 
 type TranscriptProps = {
   rawText: string | null;
+  generation: TranscriptGenerationState | null;
   onRequestUpload: () => void;
+  onRequestGenerate: () => void;
+  onStopGenerate: () => void;
+  onRetryGenerate: () => void;
+  onDismissGenerateError: () => void;
   onSeek: (seconds: number) => void;
   onRenameSpeaker: (from: string, to: string) => void;
 };
@@ -29,8 +36,20 @@ type TranscriptProps = {
 // seek the video there, right-click a line to rename its speaker (renames
 // every line by that speaker, in both the UI and transcript.md — see
 // PerformanceReview.script.ts's renameTranscriptSpeaker). No transcript yet
-// (or an unrecognized file) falls back to the upload prompt.
-export function Transcript({ rawText, onRequestUpload, onSeek, onRenameSpeaker }: TranscriptProps) {
+// falls back to the upload/generate prompt — unless a Generate Transcript
+// job is running (or just failed) for this record, in which case that
+// takes over the same slot instead (see TranscriptGenerating).
+export function Transcript({
+  rawText,
+  generation,
+  onRequestUpload,
+  onRequestGenerate,
+  onStopGenerate,
+  onRetryGenerate,
+  onDismissGenerateError,
+  onSeek,
+  onRenameSpeaker,
+}: TranscriptProps) {
   const [menu, setMenu] = useState<SpeakerMenuState | null>(null);
 
   const parsed = useMemo(() => (rawText ? parseTranscript(rawText) : null), [rawText]);
@@ -39,7 +58,16 @@ export function Transcript({ rawText, onRequestUpload, onSeek, onRenameSpeaker }
   if (!parsed) {
     return (
       <div className={`${styles.root} ${position.root}`} data-construction>
-        <TranscriptEmptyState onUpload={onRequestUpload} />
+        {generation ? (
+          <TranscriptGenerating
+            state={generation}
+            onStop={onStopGenerate}
+            onRetry={onRetryGenerate}
+            onDismiss={onDismissGenerateError}
+          />
+        ) : (
+          <TranscriptEmptyState onUpload={onRequestUpload} onGenerate={onRequestGenerate} />
+        )}
       </div>
     );
   }
