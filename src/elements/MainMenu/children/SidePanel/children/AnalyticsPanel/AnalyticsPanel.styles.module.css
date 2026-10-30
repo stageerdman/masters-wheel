@@ -3,19 +3,3 @@
   font-size: var(--text-size-heading);
   font-weight: 600;
 }
-
-.stat {
-  background: var(--color-border);
-  border-radius: 0.5rem;
-}
-
-.statValue {
-  color: var(--color-text);
-  font-size: var(--text-size-heading);
-  font-weight: 600;
-}
-
-.statLabel {
-  color: var(--color-text-muted);
-  font-size: var(--text-size-micro);
-}

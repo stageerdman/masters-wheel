@@ -83,9 +83,18 @@ between the two lists. Each page gets its own section as pages get added.
       item shows an arrow marker
 - [x] Performance Review activation navigates to `/performance-review`;
       Agents activation navigates to `/agents`
-- [x] Analytics activation toggles a fake `AnalyticsPanel` (static numbers)
-      in/out of the right panel with a pop-in/pop-out animation — doesn't
-      navigate; activating it again while open closes it
+- [x] Analytics activation toggles `AnalyticsPanel` in/out of the right
+      panel (now the whole right side of the screen, not a narrow column)
+      with a pop-in/pop-out animation — doesn't navigate; activating it
+      again while open closes it
+- [x] Statistics are now a standardized, reusable system instead of one
+      hardcoded panel: `src/lib/statistics` is a registry of statistics
+      (id → label + fake `compute()`), `StatTile` is the standalone
+      single-stat widget (minimal 1x1 footprint), and `StatGrid` places a
+      list of tiles in a Control Center–style grid where each slot can
+      span more than 1x1 if a future widget needs the room. `AnalyticsPanel`
+      is just `StatGrid` wired to 4 statistics — adding a new stat anywhere
+      in the app means adding one registry entry + one slot, not a new panel
 - [x] Training / Chat with AI: listed, selectable, inert (no behavior
       dictated yet)
 - [x] `NavMenu` items aren't text-selectable (they're controls, not
@@ -97,7 +106,11 @@ between the two lists. Each page gets its own section as pages get added.
 
 ### To build (real functionality — not started)
 - [ ] Training and Chat with AI behavior (not dictated yet)
-- [ ] Real analytics data (currently static fake numbers)
+- [ ] Real data behind each statistic's `compute()` (currently static fake
+      numbers)
+- [ ] Multiple spaces in `StatGrid` (swipe/page between widget screens);
+      live edit mode (drag to add/remove/resize/reorder widgets) — see
+      `updates/2026-10-30 ANALYTICS - OPEN`
 
 ## Performance Review page
 
@@ -142,8 +155,9 @@ between the two lists. Each page gets its own section as pages get added.
       `127.0.0.1:47821`) rather than Tauri's `asset://` protocol/
       `convertFileSrc` — that protocol buffers an entire file into memory
       for any request without a Range header, which made the longest
-      recordings in this library (~1.5GB+) fail to load at all. The old
-      static placeholder only shows if a record has no hero file.
+      recordings in this library (~1.5GB+) fail to load at all. If a
+      record has no hero file, Hero shows an "Upload video" button
+      instead of the player (see the upload entry below).
 - [x] AI analysis and Notes are both real, editable `.md` files on disk
       (debounced writes), not in-memory fakes
 - [x] Title, meeting date, closed date, state, offered amount/currency,
@@ -168,6 +182,17 @@ between the two lists. Each page gets its own section as pages get added.
       Lines are color-coded per speaker, clicking a line seeks + plays the
       real video, right-click renames a speaker everywhere (UI and the
       source file).
+- [x] Right-clicking a record in Navigation opens a context menu: "Open
+      folder in Finder" (reveals the record's real on-disk folder),
+      "Remove video" (shown only if a hero file exists — deletes just
+      `hero.<ext>`, leaving notes/transcript/meta intact so a new video
+      can be uploaded in its place), and "Remove record" (deletes the
+      whole folder). Both deletions ask for native confirmation first —
+      neither is undoable. When a record has no hero file, Hero's media
+      slot shows an "Upload video" button instead of the player; it opens
+      a dedicated drag & drop popup (same shape as the transcript upload
+      modal, its own mutually-exclusive window-drop target) to set that
+      record's hero file.
 
 ### To build (real functionality — not started)
 - [ ] Real transcription generation
