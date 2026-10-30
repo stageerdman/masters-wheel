@@ -318,3 +318,233 @@ harness).
    passes no `--allowedTools` at all, so a reply is pure text generation.
    `--mcp-config`/`--allowedTools` are verified-viable flags, not yet
    wired into `assistant.rs`.
+
+## Phase 1.5 research: making a 50+ page knowledge/character document actually *stick*
+
+Second research pass, prompted by a more specific ask: not just "let the
+agent see its knowledge files" (Tier 0 above), but "the agent must reliably
+act as the character the document describes, and follow both its
+instructions and its knowledge content no matter what the user asks" —
+i.e. persona *fidelity*, not just knowledge *availability*. Findings below
+are from Anthropic's own docs, published research (dated), and direct
+inspection of what `assistant.rs` already does.
+
+### Instruction-following over long/complex prompts — what's actually measured
+
+- **Document placement is the single best-evidenced lever.** Anthropic's
+  own prompting guide states plainly: for 20k+ token inputs, put long
+  documents *above* the query/instructions, not below — "queries at the
+  end can improve response quality by up to 30 percent in tests,
+  especially with complex, multidocument inputs."
+  (platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices,
+  current docs, checked 2026-10-30)
+- **"Lost in the middle" is real and specifically hits instructions,**
+  not just facts: accuracy drops sharply for anything placed in the
+  middle of a long context, because instruction-tuned models are heavily
+  conditioned to treat the start and end of the input as authoritative.
+  One measurement found identical instructions placed at different
+  structural positions swung compliance from 26% to 65% depending purely
+  on placement. (arxiv.org/pdf/2510.10276, 2026; summarized via Atlan/
+  getmaxim.ai explainers, 2025) **Mitigation with actual evidence behind
+  it: put a critical instruction at the very start of the prompt *and*
+  repeat it at the very end** — not once in the middle of a wall of text.
+- **"Context Rot" (Chroma, July 2025):** tested 18 frontier models
+  including Claude 4 — every one degrades as input length grows, and the
+  degradation starts well before the context window is actually full (a
+  200K-token model can visibly degrade by 50K tokens). This is the
+  concrete argument against just concatenating all 50 pages into one
+  giant `--append-system-prompt` string and hoping scale doesn't matter —
+  it does, even for a model that technically "fits" the whole document.
+  (trychroma.com/research/context-rot, 2025-07-14)
+- **Generic persona framing ("you are a senior X with 20 years of
+  experience") measurably does *not* improve task quality** — a cited
+  test across 162 personas / ~2,500 prompts found no measurable lift over
+  direct instructions, because the model doesn't treat role-flavor text
+  as an actionable constraint. Anthropic's own recommended replacement is
+  concrete: say where the relevant context lives, define what "done"
+  looks like, and ask for a self-check before finishing.
+  (mindstudio.ai/blog/claude-code-prompting-mistakes-personas, citing
+  Anthropic guidance; 2026) **This is evidence against persona-as-vibe,
+  not against this project's use case** — this project doesn't want
+  "sound like an expert," it wants "answer only using these specific
+  facts, in this specific voice, from this specific document," which is a
+  content/grounding constraint, not a flavor adjective, so the finding
+  doesn't contradict the goal — it's a reason to lean on the document's
+  actual content and explicit rules rather than a one-line role
+  description.
+- **XML-tag structuring still measurably helps** once a prompt mixes
+  several *kinds* of content (persona identity, behavioral rules,
+  reference knowledge, the live conversation) — wrap each kind in its own
+  tag (`<identity>`, `<rules>`, `<knowledge>`) so the model doesn't have
+  to guess where one kind ends and another begins. Same source as above.
+
+### Persona/character-fidelity research specifically
+
+- **RoleLLM / RoleBench** (arxiv 2310.00746) — the main benchmark/dataset
+  for *eliciting and scoring* character role-play, measuring speaking-style
+  imitation, factual role-knowledge retention, and response accuracy
+  separately. Useful as a mental checklist (voice vs. facts vs.
+  correctness are three different failure modes, not one) even without
+  adopting the benchmark itself.
+- **"Enhancing Persona Consistency for LLMs' Role-Playing" (ACL
+  Findings 2025)** — the mechanism that measurably improved consistency
+  was a *self-questioning pass*: before answering, the model generates and
+  checks against a short chain of persona-relevant questions ("would this
+  character actually say this?") rather than relying on the system prompt
+  alone. This is a training-time method in the paper, but the *idea*
+  (cheap self-check step before finalizing a reply) ports directly to a
+  prompting-only setup — it's the same shape as Anthropic's own
+  "self-check before completion" advice above, just aimed at character
+  fidelity instead of task completion.
+- **RoleMRC (arxiv 2502.11387)** — benchmarks role-play *and*
+  instruction-following together, finding models that nail the voice
+  often still miss fine-grained behavioral rules buried in a long
+  persona spec. Reinforces: voice consistency and rule-following are
+  separate things to verify, passing one doesn't mean the other passed.
+- **No training-time fix is usable here anyway** — this project has no
+  model weights to touch, only prompts/flags to the CLI, so the
+  actionable takeaway from all of the above is purely about *prompt
+  structure and the self-check pattern*, not fine-tuning.
+
+### CLI-specific mechanics (verified against this repo's actual code, not just docs)
+
+- **`assistant.rs` already re-sends the full persona instructions on
+  *every* turn**, not just the first — `ask_agent`'s `--append-system-prompt`
+  argument is built from `instructions` on every call regardless of
+  whether `--resume` is also passed. This already matches the "repeat
+  the critical instruction, don't rely on it surviving once in history"
+  mitigation above, with zero changes needed — a real, confirmed-in-code
+  finding, not speculation.
+- **`--append-system-prompt` only appends; it doesn't replace** Claude
+  Code's own base system prompt, and per Claude Code's own docs it's
+  added at the very end of the assembled prompt. Appending a full 50-page
+  document this way means that document physically sits *after*
+  everything else in the system prompt, every single turn — the opposite
+  of Anthropic's own "put long documents first, instructions/query last"
+  guidance above. For a short persona paragraph this doesn't matter; for
+  a 50-page knowledge dump it's working against the single best-evidenced
+  mitigation this research turned up.
+- **A better mechanism already exists in this exact codebase's own
+  isolation trick, generalized**: `assistant.rs` already runs the
+  subprocess with `current_dir` set away from this repo specifically so
+  Claude Code's own cwd-walk-up CLAUDE.md discovery *doesn't* pick up
+  masters-wheel's conventions. The same mechanism run in reverse is the
+  fix for knowledge grounding: give **each agent its own per-agent
+  directory** (e.g. an app-data path like
+  `~/Library/Application Support/Master's Wheel/agents/<agentId>/`)
+  containing that agent's own `CLAUDE.md` (short — core identity, voice,
+  non-negotiable rules, repeated once near the top and once at the
+  bottom, per the placement research above) plus its real knowledge files
+  alongside it. Running the subprocess with `current_dir` set to *that*
+  directory instead of a neutral temp dir means Claude Code's own
+  CLAUDE.md discovery picks up the persona automatically — no
+  `--append-system-prompt` wall-of-text needed at all — and the model's
+  own Read/Grep/Glob tools can open the knowledge files on demand,
+  instead of a human-designed retrieval step deciding what's relevant.
+  This is "Tier 0 done properly": the full knowledge is genuinely
+  available (nothing pre-filtered out), but it's *lazily* read via the
+  model's own agentic loop rather than force-fed into every turn's token
+  budget regardless of relevance — directly answering open decision #2
+  below in favor of the `--add-dir`-shaped approach, generalized to
+  "becomes cwd" rather than merely an additional allowed directory.
+  **Caveat, not yet hand-verified**: this requires actually granting
+  `Read`/`Grep`/`Glob` via `--allowedTools` (Phase 1 currently grants
+  *no* tools at all via `--permission-mode dontAsk` with nothing
+  allow-listed) — needs the same kind of hand-verification this update's
+  Phase 1 research already did for `--resume`/`--bare` before relying on
+  it.
+- **This also surfaces a real gap, not a prompting question**: `Agents`'
+  `KnowledgeFile` type (`Agents.data.ts`) is still pure fixture metadata
+  (`id`/`name`/`size`/`type`) — there is no code path today that writes
+  an uploaded file's actual bytes to disk anywhere. The per-agent-directory
+  design above needs that storage layer to exist before `--add-dir`/cwd
+  tricks have anything real to point at; it's a prerequisite, not an
+  alternative to this research.
+
+### Open-source / prior-art survey (persona agents + RAG), for context
+
+Surveyed as requested, even though this project's own constraints (Tauri
+app, no server, the engine is a CLI subprocess) rule most of these out as
+things to actually adopt:
+
+- **`awesome-llm-role-playing-with-persona`** (github.com/neph0s) — curated
+  reading list of persona/role-play research; good index, not software to
+  run.
+- **SimsChat** (github.com/Bernard-Yang/SimsChat, paper arxiv 2406.17962) —
+  research code for a persona-driven role-play agent framework; academic
+  reference implementation, not a maintained product.
+- **"open-character-ai"-style projects** — several open-source
+  Character.AI clones exist on GitHub (chat with preset or custom
+  personas); relevant as prior art for UI/persona-switching patterns, not
+  for this app's architecture, since they're all full client-server
+  products with their own hosted inference, which is exactly what this
+  app deliberately isn't.
+- **LlamaIndex / LangChain / Haystack** — the standard general-purpose RAG
+  frameworks; explicitly **not** a good fit here even if Tier 2 is ever
+  built, because they're Python/Node libraries and this app has no
+  Node/Python process to host them in (same constraint that already ruled
+  out the Claude Agent SDK and Vercel AI SDK in the first research pass).
+  Worth knowing about only as naming/reference for *what a chunk+embed+
+  retrieve pipeline looks like*, not as a dependency.
+- **GraphRAG** (Microsoft) — entity/relationship-graph-based retrieval for
+  very large, interconnected corpora; solves a problem this app doesn't
+  have (a handful of files per agent, not a sprawling interlinked corpus)
+  — explicitly the wrong tier for this project's scale.
+- **For a future in-process Tier 1/2, if an agent's corpus ever actually
+  outgrows Tier 0** (not scheduled — see original Tier escalation
+  criteria above), the Rust-embeddable options worth knowing about:
+  - **tantivy** (crates.io/crates/tantivy) — BM25 full-text search,
+    embedded as a library (same shape as Lucene but in-process, no
+    separate search server) — the natural Tier 1 choice if keyword search
+    is ever needed.
+  - **sqlite-vec** — vector KNN search as a SQLite extension; combines
+    with SQLite's FTS5 for hybrid keyword+vector search in one file-backed
+    DB, matching this project's existing on-disk-JSON-not-a-hosted-DB
+    precedent.
+  - **fastembed-rs** (github.com/Anush008/fastembed-rs) — generates
+    embeddings locally in Rust, no cloud call — the piece that would be
+    needed to produce vectors for sqlite-vec without reintroducing a
+    network dependency.
+  - All three are actively maintained as of this research pass; none are
+    needed yet.
+
+### Recommendations for Phase 1.5, ranked by evidence strength
+
+1. **Strong evidence, do this**: move from "one `--append-system-prompt`
+   blob containing everything" to **per-agent directory as cwd**
+   (CLAUDE.md for identity/rules + real knowledge files alongside),
+   letting Claude Code's own file tools read knowledge on demand. Keep
+   `--append-system-prompt` for the short behavioral persona only, not the
+   knowledge dump.
+2. **Strong evidence, do this**: inside that per-agent `CLAUDE.md`, put
+   the single most important rule (e.g. "only answer from the attached
+   knowledge; stay in character as X no matter what the user asks") both
+   near the top *and* repeated verbatim at the very bottom — don't bury a
+   one-time statement of it in the middle of a long document.
+3. **Strong evidence, do this**: if any knowledge content must still be
+   inlined (e.g. a short fact sheet too small to bother with file
+   access), place it *before* the behavioral instructions/query, never
+   after — matches both Anthropic's documented guidance and avoids how
+   `--append-system-prompt` already places appended text at the very end
+   by default.
+4. **Moderate evidence, worth trying**: a lightweight self-check instruction
+   ("before answering, check: does this stay in character, and is
+   everything stated actually supported by the attached knowledge files?")
+   — directly modeled on the self-questioning techniques in the ACL 2025
+   persona-consistency paper and Anthropic's own "self-check before
+   completion" guidance, but unverified in this specific CLI setup; cheap
+   to test by hand the same way `--resume`/`--bare` were verified in
+   Phase 1.
+5. **Explicitly not warranted by the evidence**: generic "you are an
+   expert in X" persona framing as a substitute for concrete rules — the
+   162-persona study found no measurable benefit from flavor text alone.
+   Character identity in this project should be expressed as *rules and
+   facts* (what the character knows, what it will/won't say, how it
+   talks), not as a role-title adjective.
+6. **Not evidenced either way, genuinely open**: whether an agent should
+   be explicitly told it has knowledge files available and to check them
+   before answering (increasing the odds it actually reads them via
+   Read/Grep rather than guessing), versus trusting Claude Code's own
+   agentic judgment to notice files present in its cwd unprompted — needs
+   hand-testing once Phase 1.5 is actually built, same as everything else
+   in this update marked "unverified."

@@ -70,11 +70,22 @@ rebuilt and reinstalled to `/Applications/Master's Wheel.app`. Not yet
 confirmed by the user's own click-through (browser automation is off-limits
 for this project).
 
-**Phase 1.5 — Knowledge files (Tier 0), not yet built.**
-Wire a `CoachAgent`'s `knowledgeFiles` into the same call via `--add-dir`
-(let Claude's own Read/Grep/Glob tools read them directly, per the CLI
-research — not yet hand-verified end-to-end). Resolves open decision #2/#3
-in `wiki.md`.
+**Phase 1.5 — Knowledge files + persona fidelity (Tier 0, done properly), not yet built.**
+Second research pass landed a concrete design (see `wiki.md`'s "Phase 1.5
+research" section): a per-agent directory (e.g.
+`~/Library/Application Support/Master's Wheel/agents/<agentId>/`) holding
+a short `CLAUDE.md` (core identity/voice/non-negotiable rules, critical
+rule repeated at top *and* bottom per the "lost in the middle" research)
+plus the agent's real knowledge files alongside it, with the subprocess's
+`current_dir` pointed at that directory instead of a neutral temp dir —
+letting Claude Code's own CLAUDE.md discovery and Read/Grep/Glob tools do
+the grounding, instead of stuffing all 50 pages into one
+`--append-system-prompt` blob (which the research found works against
+Anthropic's own documented long-context placement guidance). Needs:
+`Read`/`Grep`/`Glob` granted via `--allowedTools` (Phase 1 currently grants
+none), and a real file-upload-to-disk path for `Agents`' `KnowledgeFile`
+type (currently pure fixture metadata with no stored bytes). Resolves open
+decision #2/#3 below in favor of the cwd-as-knowledge-directory approach.
 
 **Phase 2 — Multi-agent, one thread.**
 Extend to `activeAgentIds`/@mentions: parallel calls per mentioned agent
