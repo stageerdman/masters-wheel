@@ -1,5 +1,21 @@
-/* No visual identity of its own — a Space is purely a page boundary, every
-   StatWidget inside its Grid carries the actual glass-box look. */
+/* No background/border of its own — every StatWidget inside its Grid
+   carries the actual glass-box look. What this element does own: hiding
+   the native scrollbar, and a fade mask at the top/bottom edges so
+   widgets dissolve away as they scroll past the boundary instead of
+   being sliced by a hard clip — it should feel like content leaving the
+   frame, not hitting an invisible wall. */
 .root {
   background: transparent;
+  scrollbar-width: none;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 1.5rem,
+    black calc(100% - 1.5rem),
+    transparent
+  );
+}
+
+.root::-webkit-scrollbar {
+  display: none;
 }

@@ -105,9 +105,11 @@ between the two lists. Each page gets its own section as pages get added.
       content component — `SingleStat` is the first one, centering one
       value + label dead in the middle. Future widget types (a chart,
       etc.) join as siblings under `StatWidget/children/`
-- [x] `StatSpace` scrolls and never visibly ends: it reserves empty row
-      tracks below the real widgets and grows the row count by 3 every
-      time the user scrolls within 3 rows of the bottom
+- [x] `StatGrid` keeps a bounded 8-cell buffer of empty slots beyond the
+      real widgets (grows only when a real widget actually eats into that
+      buffer, not from scroll position); `StatSpace` is just the scroll
+      viewport, with a hidden scrollbar and a soft fade at the top/bottom
+      edges instead of a hard clip
 - [x] Training / Chat with AI: listed, selectable, inert (no behavior
       dictated yet)
 - [x] `NavMenu` items aren't text-selectable (they're controls, not

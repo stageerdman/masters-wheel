@@ -63,16 +63,24 @@ pick between multiple children — there's only one — that dispatch gets
 built when a second widget type is actually dictated, same reasoning as
 deferring multiple Spaces below.
 
-## Space grows downward: explicit row tracks + scroll-triggered growth
-`StatGrid` no longer auto-sizes its rows (`grid-auto-rows`) — it reserves
-an explicit number of row tracks (`grid-template-rows: repeat(var(
---stat-row-count), 6rem)`), most of which are empty. `StatSpace` owns that
-count as state, starting at 6 rows, and is the thing that actually scrolls
-(`overflow-y: auto`). On every scroll event it measures the *real* rendered
-row height off the DOM (`scrollHeight / rowCount`) rather than duplicating
-the `6rem` from CSS as a JS constant, and once the remaining scroll
-distance drops under 3 of those rows, it adds 3 more. Net effect: the
-bottom of the grid is never reachable — exactly "infinite downward."
+## Row count is a function of content, not of scroll position
+First pass grew the row count on every scroll event once within 3 rows of
+the bottom. That's broken by construction: growing the bottom moves "near
+the bottom" further away, so continuing to scroll always re-triggers it —
+genuinely infinite, endlessly-regenerating blank space, correctly called
+out as "stupid." Corrected version: `StatGrid` computes its own row count
+directly as `ceil((occupied cells + 8) / columns)` — a pure function of
+the real widgets (`slots`) and the grid's actual column count (measured
+off the live DOM via `ResizeObserver` + `getComputedStyle`, since
+`auto-fill` columns depend on container width). No scroll listener, no
+incremental growth loop, nothing to re-trigger. It only grows when a real
+widget is actually added and the 8-cell buffer gets eaten into — not from
+scrolling past it. `StatSpace` dropped back to being a dumb scroll
+viewport (no state, no `onScroll`): it just hosts whatever height
+`StatGrid` decides it needs, with the native scrollbar hidden
+(`scrollbar-width: none` + `::-webkit-scrollbar { display: none }`) and a
+`mask-image` fade at the top/bottom edges so widgets dissolve away as they
+scroll past the boundary instead of being hard-clipped by it.
 
 ## Statistics compute real data, async, gated on `isTauri()`
 `compute()` is `() => Promise<string>`, not a sync fake string. Each

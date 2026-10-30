@@ -39,9 +39,12 @@ side of the screen to give the grid real room.
 - [x] `StatWidget` is now a shell around a `children/` content component;
       the first content type is `SingleStat` (one value + label, centered
       dead-middle of the box) — see `wiki.md` for naming reasoning.
-- [x] `StatSpace` is infinite downward: reserves empty row tracks below
-      the real widgets and grows the row count by 3 whenever the user
-      scrolls within 3 rows of the bottom, so the grid never visibly ends.
+- [x] `StatGrid` always keeps an 8-cell buffer of empty slots beyond the
+      real widgets, computed from actual content + measured column count
+      — not scroll position, which regenerated forever (see `wiki.md`).
+      `StatSpace` is just the scroll viewport: hidden scrollbar, a
+      top/bottom fade mask so widgets dissolve at the edge instead of
+      being hard-clipped.
 
 ### Phase 2 — multiple spaces (not started)
 Deferred until a second space is actually dictated, per "elements get

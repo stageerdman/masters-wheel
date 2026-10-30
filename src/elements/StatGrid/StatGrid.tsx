@@ -4,7 +4,7 @@
 // of Slots (StatSlot — a position + size), and each Slot holds one Widget
 // (StatWidget — the thing that actually renders a statistic's visuals).
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { getStatistic } from "@/lib/statistics";
 import { StatWidget } from "@/elements/StatWidget/StatWidget";
 import position from "./StatGrid.position.module.css";
@@ -21,18 +21,42 @@ export type StatSlot = {
 
 type StatGridProps = {
   slots: StatSlot[];
-  // Total row tracks to reserve — including empty ones below the actual
-  // widgets. StatSpace grows this as the user scrolls near the bottom;
-  // the grid itself just renders however many rows it's told to.
-  rowCount: number;
 };
 
 // Each slot's widget pops in individually rather than the whole grid
 // arriving as one block — a short per-index stagger, not a JS animation.
 const STAGGER_MS = 40;
 
-export function StatGrid({ slots, rowCount }: StatGridProps) {
+// Always keep this many empty cells in reserve beyond the real widgets —
+// enough room to place a few more without the grid visibly running out.
+// Bounded, not scroll-triggered: row count is a pure function of how many
+// cells are actually occupied, not of how far the user has scrolled, so it
+// can never grow without a real widget being added to justify it.
+const FREE_CELL_BUFFER = 8;
+
+function occupiedCells(slots: StatSlot[]): number {
+  return slots.reduce((total, slot) => total + (slot.cols ?? 1) * (slot.rows ?? 1), 0);
+}
+
+export function StatGrid({ slots }: StatGridProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [columns, setColumns] = useState(1);
   const [values, setValues] = useState<Record<string, string>>({});
+
+  // Column count comes from the live, resolved CSS grid (auto-fill means
+  // it depends on container width) rather than being guessed in JS.
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const measure = () => {
+      const tracks = getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean);
+      setColumns(tracks.length || 1);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,8 +73,11 @@ export function StatGrid({ slots, rowCount }: StatGridProps) {
     };
   }, [slots]);
 
+  const rowCount = Math.max(1, Math.ceil((occupiedCells(slots) + FREE_CELL_BUFFER) / columns));
+
   return (
     <div
+      ref={rootRef}
       className={`${styles.root} ${position.root}`}
       data-construction
       style={{ "--stat-row-count": rowCount } as CSSProperties}
