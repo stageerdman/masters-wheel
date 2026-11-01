@@ -17,16 +17,25 @@
 // instead sidesteps the whole problem: cwd-walk-up never reaches this repo's
 // CLAUDE.md, auth keeps working normally, and nothing else Claude Code
 // would normally offer (the user's own global config/memory) is disabled.
-// The persona's instructions are injected per-call via `--append-system-prompt`
-// (appends to Claude Code's own base system prompt rather than replacing it,
-// so baseline safety/tool framing stays intact). Knowledge grounding (see
-// knowledge/mod.rs) happens entirely on the Rust side before this string is
-// built — relevant chunks from the agent's own indexed knowledge files are
-// woven in ahead of the persona instructions, so the CLI itself never needs
-// file access to "know" anything. No `--allowedTools` are granted — this
-// slice is reply-only, no tool calling (that's a later increment, see the
-// update's wiki.md), so `--permission-mode dontAsk` with an empty allowlist
-// means nothing beyond plain text generation can happen even if asked.
+// The persona's instructions are injected per-call via `--system-prompt`,
+// which *replaces* Claude Code's own default system prompt rather than
+// appending to it (`--append-system-prompt`, used originally, left Claude
+// Code's own "you are Claude Code" base prompt in place alongside the
+// persona — a contradiction the model would resolve by breaking character
+// and literally self-identifying as Claude Code when asked a direct "what
+// are you" question; confirmed by hand, see this update's wiki.md for the
+// repro). A full system-prompt replacement does give up whatever baseline
+// tool-use framing Claude Code's default prompt provided — fine for now
+// since this slice grants zero tools anyway (see below); revisit if/when
+// tool/MCP calling lands and needs that framing back. Knowledge grounding
+// (see knowledge/mod.rs) happens entirely on the Rust side before this
+// string is built — relevant chunks from the agent's own indexed knowledge
+// files are woven in ahead of the persona instructions, so the CLI itself
+// never needs file access to "know" anything. No `--allowedTools` are
+// granted — this slice is reply-only, no tool calling (that's a later
+// increment, see the update's wiki.md), so `--permission-mode dontAsk`
+// with an empty allowlist means nothing beyond plain text generation can
+// happen even if asked.
 //
 // Session continuity: the first call for a chat session has no session id;
 // claude returns one in its JSON result, which the frontend stores and
@@ -139,7 +148,7 @@ pub async fn ask_agent(
             .arg("stream-json")
             .arg("--include-partial-messages")
             .arg("--verbose")
-            .arg("--append-system-prompt")
+            .arg("--system-prompt")
             .arg(&system_prompt)
             .arg("--permission-mode")
             .arg("dontAsk")

@@ -56,10 +56,29 @@ block itself is conditional. Both `assistant.rs` fallback paths
 an empty chunk list instead of using bare `instructions.clone()`, so
 there is no remaining code path that sends an agent's persona unwrapped.
 
+## Follow-up — replace the base system prompt instead of appending to it
+The `<persona>`-wrapper fix above manages the contradiction between
+Claude Code's base "you are Claude Code" system prompt and the persona
+sitting next to it via explicit framing. A cleaner fix removes the
+contradiction instead: `claude --system-prompt <prompt>` (vs.
+`--append-system-prompt`) *replaces* Claude Code's default system prompt
+entirely. Re-tested the same repro with this flag instead — answers
+fully in character, didn't even need the "stay in character" line to do
+it, since there's no contradicting identity left to lose to.
+
+Trade-off, why Phase 1 chose append originally: a full replacement also
+drops Claude Code's own baseline tool-use framing and dynamic context
+(cwd/env/git status) sections. Both irrelevant today — this slice grants
+zero tools (`--permission-mode dontAsk`, nothing allow-listed) and the
+dynamic context was already being sidestepped by running from a neutral
+temp dir. Switched `assistant.rs` to `--system-prompt`. **Revisit when
+Phase 3 (tool/MCP calling) lands** — a custom persona that also needs to
+call tools may need some of that dropped framing reconstructed by hand,
+or may just work fine; not tested yet since no agent calls tools today.
+
 ## Open question
-Whether the "stay fully in character" framing holds up under more
-adversarial or repeated identity probing than a single "what can you
-do" — not tested beyond the one repro. If a persona break resurfaces
-after this fix, suspect the CORE_RULE wording itself needs to be
-stronger (e.g. an explicit few-shot example of correctly deflecting an
-identity question) rather than the wrapper being missing again.
+Whether the "stay fully in character" framing (kept in the wrapper even
+though `--system-prompt` no longer strictly needs it, as a defensive
+second layer) holds up under more adversarial or repeated identity
+probing than a single "what can you do" — not tested beyond the two
+repros above.
