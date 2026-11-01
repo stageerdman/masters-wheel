@@ -116,12 +116,17 @@ pub async fn ask_agent(
         // A retrieval failure (e.g. the embedding model hasn't finished
         // loading) shouldn't block a reply — it just falls back to
         // persona-only, same as an agent with no knowledge files at all.
+        // Every path still goes through build_augmented_system_prompt
+        // (never a bare `instructions.clone()`) — the persona wrapper it
+        // applies isn't optional cosmetic framing, it's what keeps Claude
+        // Code from breaking character and self-identifying instead of
+        // the persona (see this update's wiki.md for the repro).
         let system_prompt = match &agent_id {
             Some(id) => match knowledge::commands::retrieve_for_agent(&app, id, &message, RETRIEVAL_TOP_K) {
                 Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks),
-                Err(_) => instructions.clone(),
+                Err(_) => knowledge::prompt::build_augmented_system_prompt(&instructions, &[]),
             },
-            None => instructions.clone(),
+            None => knowledge::prompt::build_augmented_system_prompt(&instructions, &[]),
         };
 
         let binary = resolve_binary("claude");

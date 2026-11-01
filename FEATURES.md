@@ -31,6 +31,16 @@ between the two lists. Each page gets its own section as pages get added.
       relevant to each message are retrieved and woven into that turn's
       system prompt — bounded context cost no matter how large the
       underlying knowledge base is.
+- [x] Persona-break fix: every agent's system prompt is now unconditionally
+      wrapped in `<persona>` tags + an explicit "stay fully in character,
+      never say you are Claude Code" rule, not just agents with knowledge
+      files. An unwrapped raw persona (the previous behavior for an agent
+      with zero knowledge files, or any agent on a knowledge-retrieval
+      error) reads to Claude Code as a contradicting foreign instructions
+      block next to its own base system prompt — confirmed by hand it
+      would explicitly disregard the persona and self-identify as Claude
+      Code, especially when asked directly what it is/can do. See
+      `updates/2026-11-01 MULTI-AGENT-CHAT - OPEN/wiki.md`.
 - [x] No default/generic assistant persona. Sending requires exactly one
       real agent active in the chat (dragged in, clicked, or @mentioned);
       0 or 2+ active agents blocks sending with an inline system message
