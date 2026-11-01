@@ -1,4 +1,3 @@
-import type { DragEvent } from "react";
 import type { Agent } from "@/elements/AIAssistant/AIAssistant.script";
 import { AgentAvatar } from "@/elements/AgentAvatar/AgentAvatar";
 import { agentDescription } from "@/lib/agents";
@@ -11,20 +10,8 @@ type AgentRosterItemProps = {
 };
 
 export function AgentRosterItem({ agent, onSelect }: AgentRosterItemProps) {
-  function handleDragStart(event: DragEvent<HTMLButtonElement>) {
-    event.dataTransfer.setData("text/plain", agent.id);
-    event.dataTransfer.effectAllowed = "copy";
-  }
-
   return (
-    <button
-      type="button"
-      className={`${styles.root} ${position.root}`}
-      data-construction
-      onClick={onSelect}
-      draggable
-      onDragStart={handleDragStart}
-    >
+    <button type="button" className={`${styles.root} ${position.root}`} data-construction onClick={onSelect}>
       <AgentAvatar agent={agent} size={24} />
       <span className={`${position.text}`} data-construction>
         <span className={styles.name} data-construction>

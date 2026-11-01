@@ -91,11 +91,11 @@ between the two lists. Each page gets its own section as pages get added.
       the chat column all dropped their opaque fill so it shows through
       consistently.
 - [x] Every place an agent appears in the chat (`AgentRosterItem`,
-      `ActiveAgentChip`, `AgentPicker`, `AgentStrip`, `HistoryListItem`)
-      renders its real uploaded photo via the shared `AgentAvatar`
-      element, falling back to the initial-letter badge only when no
-      photo was uploaded; a blank `description` falls back to "No
-      description yet." instead of an empty line
+      `AgentPicker`, `AgentStrip`, `HistoryListItem`, the `@mention`
+      picker in `Composer`) renders its real uploaded photo via the
+      shared `AgentAvatar` element, falling back to the initial-letter
+      badge only when no photo was uploaded; a blank `description` falls
+      back to "No description yet." instead of an empty line
       (`src/lib/agents/description.ts`).
 
 ### Built (UI shell only — no real functionality behind it)
@@ -136,18 +136,20 @@ between the two lists. Each page gets its own section as pages get added.
       area instead of splitting (phone-drawer behavior) — closing it is
       the only way back to the chat at that size.
 - [x] `HistoryList` switches between past sessions; `AgentStrip` lets you
-      click an agent to immediately open a dedicated chat with them
-      (creating it on first click, reusing it after), or drag one onto
-      the chat to add it alongside — shows an `ActiveAgentChip` + a muted
-      system line, no fake agent reply
-- [x] Typing `@` in the composer opens a picker filtered by what you type
-      (click or Arrow keys + Enter/Tab to pick, Escape to dismiss);
-      selecting an agent inserts `@AgentName` in the message. Sending a
-      message with a mention renders it as a styled accent tag in the
-      chat (like tagging a user in a normal chat app) and brings that
-      agent into the conversation the same way dragging their roster
-      card does
-
+      click an agent to immediately open your one dedicated chat with
+      them, creating it on first click and reusing it after. No
+      drag-and-drop — dropped as confusing, UI-only clutter (it added an
+      agent to a persistent, separately-tracked "active" roster that
+      didn't actually reflect who'd said anything).
+- [x] Typing `@` in the composer opens a picker (with real agent photos)
+      filtered by what you type (click or Arrow keys + Enter/Tab to pick,
+      Escape to dismiss); selecting an agent inserts `@AgentName` in the
+      message, rendered as a styled accent tag once sent. Mentioning
+      someone only affects who replies to that one message (see below) —
+      it no longer adds a persistent chip/"added to the conversation"
+      notice to the chat (dropped for the same reason as drag-and-drop
+      above: the signal worth keeping is who's actually *replied*, which
+      now lives in `HistoryList` instead — see `resolveRespondedAgents`).
 - [x] Mention-addressed multi-agent replies: a message with no @mention
       gets a reply from the one agent the chat is dedicated to
       (`session.agentId`); @mentioning one or more agents overrides that
@@ -167,6 +169,21 @@ between the two lists. Each page gets its own section as pages get added.
       `src/lib/agents`), loaded back into `HistoryList` on next open.
       Draft ("pick someone") sessions stay ephemeral/in-memory only, never
       written to disk.
+- [x] `HistoryListItem` shows the real photo of every distinct agent
+      that has actually replied in that chat (`resolveRespondedAgents`,
+      computed from message authorship), not just the chat's dedicated
+      agent — a thread where you brought in someone else via `@mention`
+      shows that here.
+- [x] Right-clicking a chat in history also shows a real context-usage
+      gauge (`ContextUsageGauge`, in `ContextMenu`'s new optional header
+      slot): a 0–100 bar (green → amber → red, reusing the existing
+      status colors as a fill ramp — see its own comment for why that's
+      not a new 6th color) plus a compact token count ("400k"), for
+      whichever agent in that chat is closest to filling its context
+      window. Powered by real numbers from the CLI's own `usage`/
+      `modelUsage` report on every reply (`assistant.rs`'s
+      `extract_context_usage`), persisted per-agent
+      (`ChatSession.contextUsage`) alongside `claudeSessionIds`.
 
 ### To build (real functionality — not started)
 - [ ] Tool/MCP calling (e.g. Notion) — no tool access is granted to a

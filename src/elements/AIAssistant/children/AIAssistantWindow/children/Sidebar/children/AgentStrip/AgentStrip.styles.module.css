@@ -7,15 +7,11 @@
   background: none;
   border: none;
   color: var(--color-text);
-  cursor: grab;
+  cursor: pointer;
 }
 
 .item:hover {
   background: color-mix(in srgb, var(--color-border) 50%, transparent);
-}
-
-.item:active {
-  cursor: grabbing;
 }
 
 .name {

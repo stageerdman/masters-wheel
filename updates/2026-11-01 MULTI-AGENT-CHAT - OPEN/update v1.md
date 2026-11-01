@@ -98,10 +98,74 @@ persistence). Not yet confirmed live.
   or replaying one agent's session as another's.
 - Draft sessions stay ephemeral/in-memory only, never written to disk.
 
+## Follow-up pass — real-app bugs and feedback after trying it live
+Four things dictated after the user's own click-through:
+
+1. **"New chat" kept reopening the last chat with that agent instead of
+   starting a fresh one.** `AgentPicker` (shown for a draft session) and
+   `AgentStrip` (sidebar quick-access) shared one `onSelectAgent` handler
+   that always reused an existing dedicated session for that agent —
+   correct for AgentStrip ("jump to my chat with X"), wrong for
+   AgentPicker ("start a *new* chat, happen to want X"). Split into two:
+   `startChatWithAgent` (AgentPicker) always converts the current draft
+   into a new session rather than searching for an existing one;
+   `selectAgent` (AgentStrip) keeps the old reuse-if-exists behavior.
+
+2. **Right-clicking a chat to delete it showed the menu *behind* the AI
+   Assistant window**, unclickable. `AIAssistant.position.module.css`
+   sets `z-index: 2147483000` ("the highest z-index in the app");
+   `ContextMenu` only set `1000`. It already portaled correctly to
+   `document.body` (fixed in CHAT-UX's own follow-up pass), but a portal
+   only escapes the DOM tree, not the z-index stacking order — bumped to
+   `2147483001`.
+
+3. **The mentioned-agent "added to the conversation" chip was dropped
+   entirely**, along with drag-and-drop (dragging an agent from the
+   sidebar onto a chat to add them). Both fed the same
+   `activeAgentIds`/`ActiveAgentChip` mechanism, which the user found
+   confusing: it tracked who'd been *tagged or dragged in*, not who'd
+   actually replied, and @mentioning the chat's own dedicated agent would
+   add a redundant chip for someone already being talked to. Decided via
+   explicit question: keep @mention's actual effect (who replies to that
+   one message — the substantive part), drop the persistent roster/chip
+   side effect entirely (the part that was "just visual," per the user's
+   own framing). `ChatSession.activeAgentIds` is gone from the data model;
+   `resolveActiveAgents` split into `resolveDedicatedAgent` (one, for "who
+   am I talking to") and `resolveRespondedAgents` (every agent that's
+   *actually* replied, computed from message authorship) — the latter is
+   what `HistoryListItem` now shows instead of the chip row. The
+   `@mention` picker itself (`Composer`) now renders real `AgentAvatar`
+   photos instead of a plain initial badge — a separate small ask bundled
+   into the same pass since it touched the same picker.
+
+4. **Context/token usage tracking.** The CLI's `result` event already
+   reports real `usage`/`modelUsage` data per call (verified by hand
+   during the persona-break investigation above) — `assistant.rs`'s new
+   `extract_context_usage` sums `input_tokens + cache_creation_input_tokens
+   + cache_read_input_tokens + output_tokens` (together, the full prompt
+   a `--resume`'d call was built from — exactly "how full this session is
+   about to be on the next turn") against `modelUsage.<model>.contextWindow`.
+   Stored per-agent as `ChatSession.contextUsage`, alongside
+   `claudeSessionIds`. Surfaced in history's right-click menu (`ContextMenu`
+   gained an optional `header` slot for this) via a new `ContextUsageGauge`
+   element: a 0–100 bar plus a `formatTokenCount` label ("400k"), for
+   whichever agent in that chat is closest to filling its window — picked
+   by `summarizeContextUsage`. The bar's green→amber→red fill reuses the
+   app's existing `--color-status-closed/postponed/failed` as a
+   `color-mix` ramp rather than declaring new colors (see the element's
+   own comment) — CLAUDE.md's category-palette carve-out exists for
+   exactly this kind of case-but it's a *reuse* of the existing
+   good/warning/bad vocabulary, not a new category.
+
+Verified: `tsc --noEmit`, `npm run lint`, `npm run build`, `cargo check`
+all clean; rebuilt and reinstalled to `/Applications/Master's Wheel.app`.
+
 ## Next
-User click-through in the rebuilt app: mention one agent in a dedicated
-chat (only it should reply), mention two at once (both should reply,
-each under their own avatar), send a plain message with no mention in a
-dedicated chat (the dedicated agent should still reply same as before),
-then quit and reopen the app to confirm history and each agent's
-continuity survived.
+User click-through in the rebuilt app: right-click a chat (menu should
+render on top, with a real or "No context yet" gauge above Delete);
+start "New chat" with an agent you already have a chat with (should be
+a genuinely blank second conversation); @mention an agent in a dedicated
+chat and confirm no chip/notice appears, but History shows both agents'
+photos once each has replied; open the `@` picker and confirm real
+photos render instead of initials; send enough turns to one agent to see
+the context gauge's percentage actually move.

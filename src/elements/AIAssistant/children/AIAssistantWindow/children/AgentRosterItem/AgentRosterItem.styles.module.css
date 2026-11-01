@@ -4,15 +4,11 @@
   border: none;
   color: var(--color-text);
   text-align: left;
-  cursor: grab;
+  cursor: pointer;
 }
 
 .root:hover {
   background: color-mix(in srgb, var(--color-border) 50%, transparent);
-}
-
-.root:active {
-  cursor: grabbing;
 }
 
 .name {

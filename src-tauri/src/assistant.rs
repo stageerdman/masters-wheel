@@ -90,6 +90,39 @@ pub struct AgentReply {
     pub text: String,
     #[serde(rename = "sessionId")]
     pub session_id: String,
+    // How full this agent's resumed CLI session is as of this reply — see
+    // extract_context_usage below for where these come from. 0/0 means
+    // the result event didn't carry usage data (an older CLI version);
+    // the frontend treats a zero window as "no data" rather than "full".
+    #[serde(rename = "contextTokens")]
+    pub context_tokens: u64,
+    #[serde(rename = "contextWindow")]
+    pub context_window: u64,
+}
+
+// `--resume` means every call's `usage` already reflects the *entire*
+// conversation so far, not just this one turn — `input_tokens` +
+// `cache_read_input_tokens` + `cache_creation_input_tokens` together are
+// the full prompt this turn was built from (the cache fields are just
+// Anthropic's own prompt-cache split of that same prompt, not separate
+// content), and `output_tokens` is this turn's reply, which becomes part
+// of the prompt on the *next* turn. Summing all four is what the next
+// call will actually start from — the right number for "how full is this
+// context right now." `contextWindow` comes from `modelUsage.<model>`;
+// there's normally exactly one model per call, so the first entry is
+// taken rather than picking a specific key by name.
+fn extract_context_usage(event: &serde_json::Value) -> (u64, u64) {
+    let usage = &event["usage"];
+    let tokens = usage["input_tokens"].as_u64().unwrap_or(0)
+        + usage["cache_creation_input_tokens"].as_u64().unwrap_or(0)
+        + usage["cache_read_input_tokens"].as_u64().unwrap_or(0)
+        + usage["output_tokens"].as_u64().unwrap_or(0);
+    let window = event["modelUsage"]
+        .as_object()
+        .and_then(|models| models.values().next())
+        .and_then(|model| model["contextWindow"].as_u64())
+        .unwrap_or(0);
+    (tokens, window)
 }
 
 #[derive(Serialize, Clone)]
@@ -178,6 +211,8 @@ pub async fn ask_agent(
         let mut final_text = String::new();
         let mut final_session_id = String::new();
         let mut is_error = false;
+        let mut final_context_tokens = 0u64;
+        let mut final_context_window = 0u64;
 
         for line in BufReader::new(stdout).lines() {
             let Ok(line) = line else { break };
@@ -200,6 +235,9 @@ pub async fn ask_agent(
                     final_text = event.get("result").and_then(|v| v.as_str()).unwrap_or_default().to_string();
                     final_session_id = event.get("session_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
                     is_error = event.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let (tokens, window) = extract_context_usage(&event);
+                    final_context_tokens = tokens;
+                    final_context_window = window;
                 }
                 _ => {}
             }
@@ -220,7 +258,12 @@ pub async fn ask_agent(
             });
         }
 
-        Ok(AgentReply { text: final_text, session_id: final_session_id })
+        Ok(AgentReply {
+            text: final_text,
+            session_id: final_session_id,
+            context_tokens: final_context_tokens,
+            context_window: final_context_window,
+        })
     })
     .await
     .map_err(|e| format!("Internal error talking to Claude ({e})."))?

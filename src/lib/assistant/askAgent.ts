@@ -6,7 +6,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-export type AgentReply = { text: string; sessionId: string };
+// contextTokens/contextWindow describe how full the agent's resumed CLI
+// session is as of this reply (0/0 if the CLI's result event didn't carry
+// usage data) — see assistant.rs's extract_context_usage for how they're
+// derived from a --resume'd call's own usage report.
+export type AgentReply = { text: string; sessionId: string; contextTokens: number; contextWindow: number };
 
 export async function askAgent(
   jobId: string,

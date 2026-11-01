@@ -17,8 +17,8 @@ function makeNewSession(id: string = NEW_SESSION_ID): ChatSession {
     createdAt: now,
     updatedAt: now,
     messages: [],
-    activeAgentIds: [],
     claudeSessionIds: {},
+    contextUsage: {},
     isDraft: true,
   };
 }
@@ -49,28 +49,38 @@ export function findMentionedAgents(text: string, agents: Agent[]): Agent[] {
   return agents.filter((agent) => new RegExp(`@${escapeRegExp(agent.name)}\\b`).test(text));
 }
 
-// Every agent actually active in a session right now — the dedicated
-// "Chat with X" session marker (session.agentId) and the @mention/drag
-// roster (session.activeAgentIds) are two different ways an agent ends up
-// in a chat. Exported: used to resolve a session's avatar in
-// HistoryListItem and the "who am I talking to" profile shown in
-// MessageList/Message.
-export function resolveActiveAgents(session: ChatSession | undefined, agents: Agent[]): Agent[] {
+// The agent this chat is dedicated to, if any — exported for
+// HistoryListItem/MessageList's "who am I talking to" display.
+export function resolveDedicatedAgent(session: ChatSession | undefined, agents: Agent[]): Agent | undefined {
+  if (!session) return undefined;
+  return agents.find((agent) => agent.id === session.agentId);
+}
+
+// Every distinct agent that has actually replied in a session —
+// HistoryListItem's real "who's in this conversation" signal, computed
+// from message authorship rather than any separately-tracked roster.
+export function resolveRespondedAgents(session: ChatSession | undefined, agents: Agent[]): Agent[] {
   if (!session) return [];
-  return agents.filter((agent) => agent.id === session.agentId || session.activeAgentIds.includes(agent.id));
+  const seen = new Set<string>();
+  const responders: Agent[] = [];
+  for (const message of session.messages) {
+    if (message.role !== "assistant" || !message.agentId || seen.has(message.agentId)) continue;
+    const agent = agents.find((candidate) => candidate.id === message.agentId);
+    if (!agent) continue;
+    seen.add(agent.id);
+    responders.push(agent);
+  }
+  return responders;
 }
 
 // Who replies to a given message: whoever it @mentions, else the single
-// agent this chat is dedicated to, else — only for a chat that's neither
-// dedicated nor unambiguous (e.g. 2+ agents dragged in, nobody tagged) —
-// nobody, so sending blocks instead of guessing who should answer.
+// agent this chat is dedicated to, else nobody — sending blocks rather
+// than guessing who should answer.
 function resolveResponders(session: ChatSession, text: string, agents: Agent[]): Agent[] {
   const mentioned = findMentionedAgents(text, agents);
   if (mentioned.length > 0) return mentioned;
-  const dedicated = agents.find((agent) => agent.id === session.agentId);
-  if (dedicated) return [dedicated];
-  const active = resolveActiveAgents(session, agents);
-  return active.length === 1 ? active : [];
+  const dedicated = resolveDedicatedAgent(session, agents);
+  return dedicated ? [dedicated] : [];
 }
 
 // Agents ordered by how recently they were chatted with — the order
@@ -217,11 +227,21 @@ export function useAIAssistant() {
   }
 
   // The one save that matters for a reply: final text + this agent's own
-  // resumed CLI session id, in the same write.
-  function finalizeAgentReply(sessionId: string, messageId: string, agentId: string, text: string, claudeSessionId: string) {
+  // resumed CLI session id + how full that session's context is now, all
+  // in the same write.
+  function finalizeAgentReply(
+    sessionId: string,
+    messageId: string,
+    agentId: string,
+    text: string,
+    claudeSessionId: string,
+    contextTokens: number,
+    contextWindow: number,
+  ) {
     updateAndPersistSession(sessionId, (session) => ({
       ...session,
       claudeSessionIds: { ...session.claudeSessionIds, [agentId]: claudeSessionId },
+      contextUsage: { ...session.contextUsage, [agentId]: { tokens: contextTokens, window: contextWindow } },
       messages: session.messages.map((message) => (message.id === messageId ? { ...message, text } : message)),
     }));
   }
@@ -262,7 +282,15 @@ export function useAIAssistant() {
       // The streamed-in text above is provisional (deltas could in theory
       // drop or reorder); the CLI's final `result` text is authoritative,
       // so it always wins here.
-      finalizeAgentReply(sessionId, replyId, agent.id, reply.text || "(no reply)", reply.sessionId);
+      finalizeAgentReply(
+        sessionId,
+        replyId,
+        agent.id,
+        reply.text || "(no reply)",
+        reply.sessionId,
+        reply.contextTokens,
+        reply.contextWindow,
+      );
     } catch (error) {
       failAgentReply(sessionId, replyId, error);
     } finally {
@@ -280,14 +308,10 @@ export function useAIAssistant() {
 
     const responders = resolveResponders(session, text, agents);
     if (responders.length === 0) {
-      const active = resolveActiveAgents(session, agents);
       appendMessageToSession(sessionIdAtSend, {
         id: crypto.randomUUID(),
         role: "system",
-        text:
-          active.length === 0
-            ? "Add an agent to this chat first — drag one in from the roster, click one, or type @ to mention one."
-            : "More than one agent is in this chat — tag who you're talking to with @.",
+        text: "Add an agent to this chat first — click one from the sidebar, or type @ to mention one.",
         createdAt: new Date().toISOString(),
       });
       return;
@@ -296,7 +320,6 @@ export function useAIAssistant() {
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", text, createdAt: new Date().toISOString() };
     appendMessageToSession(sessionIdAtSend, userMessage);
     setComposerValue("");
-    for (const agent of responders) addAgentToSession(sessionIdAtSend, agent.id);
 
     const transcriptSoFar = [...session.messages, userMessage];
     setIsSending(true);
@@ -307,8 +330,8 @@ export function useAIAssistant() {
     }
   }
 
-  // Selecting an agent (vs. dragging one into the current chat) switches
-  // to a dedicated session with that agent, creating it on first select.
+  // Picking an agent from the sidebar strip switches to the one dedicated
+  // session with that agent, creating it on first pick.
   function selectAgent(agentId: string) {
     const existing = sessions.find((session) => session.agentId === agentId);
     if (existing) {
@@ -325,8 +348,8 @@ export function useAIAssistant() {
       createdAt: now,
       updatedAt: now,
       messages: [],
-      activeAgentIds: [],
       claudeSessionIds: {},
+      contextUsage: {},
       agentId,
     };
     setSessions((current) => [session, ...current]);
@@ -378,33 +401,6 @@ export function useAIAssistant() {
     });
   }
 
-  function addAgentToSession(sessionId: string, agentId: string) {
-    const agent = agents.find((candidate) => candidate.id === agentId);
-    if (!agent) return;
-    updateAndPersistSession(sessionId, (session) => {
-      if (session.activeAgentIds.includes(agentId) || session.agentId === agentId) return session;
-      return {
-        ...session,
-        activeAgentIds: [...session.activeAgentIds, agentId],
-        messages: [
-          ...session.messages,
-          { id: crypto.randomUUID(), role: "system", text: `${agent.name} added to the conversation`, createdAt: new Date().toISOString() },
-        ],
-      };
-    });
-  }
-
-  function addAgentToActiveChat(agentId: string) {
-    addAgentToSession(activeSessionId, agentId);
-  }
-
-  function removeAgentFromActiveChat(agentId: string) {
-    updateAndPersistSession(activeSessionId, (session) => ({
-      ...session,
-      activeAgentIds: session.activeAgentIds.filter((id) => id !== agentId),
-    }));
-  }
-
   return {
     phase,
     open,
@@ -423,7 +419,5 @@ export function useAIAssistant() {
     agents,
     selectAgent,
     startChatWithAgent,
-    addAgentToActiveChat,
-    removeAgentFromActiveChat,
   };
 }

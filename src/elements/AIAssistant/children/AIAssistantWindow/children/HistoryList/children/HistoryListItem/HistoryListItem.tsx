@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.script";
-import { resolveActiveAgents } from "@/elements/AIAssistant/AIAssistant.script";
+import { resolveRespondedAgents } from "@/elements/AIAssistant/AIAssistant.script";
 import { AgentAvatar } from "@/elements/AgentAvatar/AgentAvatar";
 import { ContextMenu, type ContextMenuItem } from "@/elements/ContextMenu/ContextMenu";
+import { ContextUsageGauge } from "@/elements/ContextUsageGauge/ContextUsageGauge";
+import { summarizeContextUsage } from "@/lib/chat";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import position from "./HistoryListItem.position.module.css";
 import styles from "./HistoryListItem.styles.module.css";
@@ -19,7 +21,11 @@ type HistoryListItemProps = {
 
 export function HistoryListItem({ session, active, onSelect, onDelete, agents }: HistoryListItemProps) {
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
-  const primaryAgent = resolveActiveAgents(session, agents)[0];
+  // Who's actually in this conversation — every distinct agent that has
+  // replied, not just the chat's dedicated one — so a thread where you
+  // @mentioned someone else in too shows that here, in history, instead
+  // of a persistent chip in the live chat view (dropped — see AIAssistant.script.ts).
+  const respondedAgents = resolveRespondedAgents(session, agents);
 
   function handleContextMenu(event: React.MouseEvent) {
     event.preventDefault();
@@ -51,11 +57,19 @@ export function HistoryListItem({ session, active, onSelect, onDelete, agents }:
           <span className={styles.date} data-construction>
             {formatRelativeTime(session.updatedAt)}
           </span>
-          {primaryAgent && <AgentAvatar agent={primaryAgent} size={14} />}
+          {respondedAgents.map((agent) => (
+            <AgentAvatar key={agent.id} agent={agent} size={14} />
+          ))}
         </span>
       </button>
       {menuPosition && (
-        <ContextMenu x={menuPosition.x} y={menuPosition.y} items={menuItems} onClose={() => setMenuPosition(null)} />
+        <ContextMenu
+          x={menuPosition.x}
+          y={menuPosition.y}
+          items={menuItems}
+          onClose={() => setMenuPosition(null)}
+          header={<ContextUsageGauge usage={summarizeContextUsage(session)} />}
+        />
       )}
     </>
   );

@@ -2,14 +2,13 @@
 
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.script";
-import { isDraftSession, resolveActiveAgents } from "@/elements/AIAssistant/AIAssistant.script";
+import { isDraftSession, resolveDedicatedAgent } from "@/elements/AIAssistant/AIAssistant.script";
 import type { DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
-import { ActiveAgentChip } from "./children/ActiveAgentChip/ActiveAgentChip";
 import { AgentPicker } from "./children/AgentPicker/AgentPicker";
 import { Composer } from "./children/Composer/Composer";
 import { MessageList } from "./children/MessageList/MessageList";
 import { Sidebar } from "./children/Sidebar/Sidebar";
-import { useChatDropTarget, useWindowEnterTransition, useWindowGeometry } from "./AIAssistantWindow.script";
+import { useWindowEnterTransition, useWindowGeometry } from "./AIAssistantWindow.script";
 import position from "./AIAssistantWindow.position.module.css";
 import styles from "./AIAssistantWindow.styles.module.css";
 
@@ -41,8 +40,6 @@ type AIAssistantWindowProps = {
   agentsByRecency: Agent[];
   onSelectAgent: (id: string) => void;
   onPickAgentForNewChat: (id: string) => void;
-  onDropAgentIntoChat: (id: string) => void;
-  onRemoveAgentFromChat: (id: string) => void;
 };
 
 const DOCK_CLASS: Record<DockState, string> = {
@@ -78,8 +75,6 @@ export function AIAssistantWindow({
   agentsByRecency,
   onSelectAgent,
   onPickAgentForNewChat,
-  onDropAgentIntoChat,
-  onRemoveAgentFromChat,
 }: AIAssistantWindowProps) {
   const hasEntered = useWindowEnterTransition();
   const { showCollapsedGeometry, style } = useWindowGeometry({
@@ -89,7 +84,6 @@ export function AIAssistantWindow({
     manualSize,
     activeOverride,
   });
-  const { isDragOver, onDragOver, onDragLeave, onDrop } = useChatDropTarget(onDropAgentIntoChat);
 
   function handleTransitionEnd(event: React.TransitionEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
@@ -102,11 +96,10 @@ export function AIAssistantWindow({
   const draggingClass = dragOffset ? position.dragging : "";
   const resizingClass = isResizing ? position.resizing : "";
 
-  const activeAgents = agents.filter((agent) => activeSession.activeAgentIds.includes(agent.id));
-  // Whoever this session is actually with — the dedicated agentId agent,
-  // else the first dragged/mentioned-in one. MessageList/Message use this
-  // for the "who am I talking to" profile and per-message avatar.
-  const respondingAgent = resolveActiveAgents(activeSession, agents)[0];
+  // Whoever this session is dedicated to — MessageList/Message use this
+  // for the "who am I talking to" empty-state profile and as the avatar
+  // fallback for any assistant message that doesn't carry its own agentId.
+  const respondingAgent = resolveDedicatedAgent(activeSession, agents);
 
   return (
     <div
@@ -177,23 +170,13 @@ export function AIAssistantWindow({
             onSelectAgent={onSelectAgent}
           />
           <div
-            className={`${styles.chatColumn} ${position.chatColumn} ${isDragOver ? styles.dragOver : ""} ${isSideMenuOpen ? position.chatColumnSidebarOpen : ""}`}
+            className={`${styles.chatColumn} ${position.chatColumn} ${isSideMenuOpen ? position.chatColumnSidebarOpen : ""}`}
             data-construction
-            onDragOver={onDragOver}
-            onDragLeave={onDragLeave}
-            onDrop={onDrop}
           >
             {isDraftSession(activeSession) ? (
               <AgentPicker agents={agents} onSelectAgent={onPickAgentForNewChat} />
             ) : (
               <>
-                {activeAgents.length > 0 && (
-                  <div className={`${styles.chipRow} ${position.chipRow}`} data-construction>
-                    {activeAgents.map((agent) => (
-                      <ActiveAgentChip key={agent.id} agent={agent} onRemove={() => onRemoveAgentFromChat(agent.id)} />
-                    ))}
-                  </div>
-                )}
                 <MessageList
                   messages={activeSession.messages}
                   density={density}

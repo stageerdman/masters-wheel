@@ -176,13 +176,6 @@
   }
 }
 
-.chipRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-  padding: 0.5rem 0.75rem 0;
-}
-
 /* Near-full-bleed left dock below 640px (see AIAssistant.position.module.css)
    stretches between top and bottom instead of a fixed `--dock-left-h` —
    deliberately not computed from `vh` at all, for the same reason the

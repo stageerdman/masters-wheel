@@ -11,19 +11,28 @@ export type ChatMessage = {
   createdAt: string;
 };
 
+/** How full one agent's resumed CLI session is, as of its latest reply —
+ * see assistant.rs's extract_context_usage for where these numbers come
+ * from. */
+export type ContextUsage = { tokens: number; window: number };
+
 export type ChatSession = {
   id: string;
   title: string;
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];
-  activeAgentIds: string[];
   agentId?: string;
   /** One resumed Claude Code CLI session per agent that has ever replied
    * in this chat — never a single session shared across agents, so one
    * agent's replies are never fed back into another agent's own native
    * conversation history. See dispatch.ts's buildAgentTurnInput. */
   claudeSessionIds: Record<string, string>;
+  /** Per-agent context usage, keyed the same way as claudeSessionIds —
+   * updated alongside it on every finalized reply. See
+   * contextUsage.ts's summarizeContextUsage for turning this into one
+   * number for the whole chat. */
+  contextUsage: Record<string, ContextUsage>;
   /** Set only by makeNewSession in AIAssistant.script.ts — see
    * isDraftSession there. Never persisted (see storage.ts). */
   isDraft?: boolean;

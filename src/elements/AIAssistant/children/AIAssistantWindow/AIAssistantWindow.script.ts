@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { CSSProperties, DragEvent } from "react";
+import type { CSSProperties } from "react";
 import type { PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
 
 // Drives the mount-in transition: render first at the "entering" (shrunk,
@@ -86,28 +86,4 @@ export function useWindowGeometry({ isClosing, hasEntered, dragOffset, manualSiz
     showCollapsedGeometry,
     style: Object.keys(style).length > 0 ? style : undefined,
   };
-}
-
-// The chat column's drag-and-drop target state for dropping an agent
-// (e.g. from AgentStrip) into the active conversation.
-export function useChatDropTarget(onDropAgentIntoChat: (agentId: string) => void) {
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  function onDragOver(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setIsDragOver(true);
-  }
-
-  function onDragLeave() {
-    setIsDragOver(false);
-  }
-
-  function onDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setIsDragOver(false);
-    const agentId = event.dataTransfer.getData("text/plain");
-    if (agentId) onDropAgentIntoChat(agentId);
-  }
-
-  return { isDragOver, onDragOver, onDragLeave, onDrop };
 }

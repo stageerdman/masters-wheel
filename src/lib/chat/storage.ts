@@ -42,11 +42,14 @@ function parseSession(id: string, text: string): ChatSession | null {
     createdAt: typeof candidate.createdAt === "string" ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : now,
     messages: candidate.messages,
-    activeAgentIds: Array.isArray(candidate.activeAgentIds) ? candidate.activeAgentIds : [],
     agentId: typeof candidate.agentId === "string" ? candidate.agentId : undefined,
     claudeSessionIds:
       candidate.claudeSessionIds && typeof candidate.claudeSessionIds === "object"
         ? (candidate.claudeSessionIds as Record<string, string>)
+        : {},
+    contextUsage:
+      candidate.contextUsage && typeof candidate.contextUsage === "object"
+        ? (candidate.contextUsage as ChatSession["contextUsage"])
         : {},
   };
 }

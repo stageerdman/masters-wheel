@@ -27,8 +27,6 @@ export function AIAssistant() {
     agents,
     selectAgent,
     startChatWithAgent,
-    addAgentToActiveChat,
-    removeAgentFromActiveChat,
   } = useAIAssistant();
   const {
     windowRef,
@@ -90,8 +88,6 @@ export function AIAssistant() {
           agentsByRecency={agentsByRecency}
           onSelectAgent={handleSelectAgent}
           onPickAgentForNewChat={startChatWithAgent}
-          onDropAgentIntoChat={addAgentToActiveChat}
-          onRemoveAgentFromChat={removeAgentFromActiveChat}
         />
       )}
     </div>
