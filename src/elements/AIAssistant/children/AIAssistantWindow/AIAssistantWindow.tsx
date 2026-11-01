@@ -40,6 +40,7 @@ type AIAssistantWindowProps = {
   agents: Agent[];
   agentsByRecency: Agent[];
   onSelectAgent: (id: string) => void;
+  onPickAgentForNewChat: (id: string) => void;
   onDropAgentIntoChat: (id: string) => void;
   onRemoveAgentFromChat: (id: string) => void;
 };
@@ -76,6 +77,7 @@ export function AIAssistantWindow({
   agents,
   agentsByRecency,
   onSelectAgent,
+  onPickAgentForNewChat,
   onDropAgentIntoChat,
   onRemoveAgentFromChat,
 }: AIAssistantWindowProps) {
@@ -182,7 +184,7 @@ export function AIAssistantWindow({
             onDrop={onDrop}
           >
             {isDraftSession(activeSession) ? (
-              <AgentPicker agents={agents} onSelectAgent={onSelectAgent} />
+              <AgentPicker agents={agents} onSelectAgent={onPickAgentForNewChat} />
             ) : (
               <>
                 {activeAgents.length > 0 && (

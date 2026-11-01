@@ -334,6 +334,30 @@ export function useAIAssistant() {
     void saveSession(session);
   }
 
+  // AgentPicker's handler, always called with the active session being
+  // the current draft (it only renders for one — see isDraftSession).
+  // Deliberately distinct from selectAgent: starting a *new* chat with an
+  // agent should always create another independent conversation with
+  // them, even if you already have one or more past chats with that same
+  // agent — reusing an existing one here was the bug where "New chat" +
+  // picking an agent you'd talked to before just reopened the old chat
+  // instead of starting a fresh one. Converts the draft in place (keeps
+  // its id) rather than creating a separate session and abandoning the
+  // draft as an orphan.
+  function startChatWithAgent(agentId: string) {
+    const agent = agents.find((candidate) => candidate.id === agentId);
+    if (!agent) return;
+    const draftId = activeSessionId;
+    setSessions((current) => {
+      const draft = current.find((session) => session.id === draftId);
+      if (!draft) return current;
+      const now = new Date().toISOString();
+      const session: ChatSession = { ...draft, title: `Chat with ${agent.name}`, agentId, updatedAt: now, isDraft: false };
+      void saveSession(session);
+      return current.map((candidate) => (candidate.id === draftId ? session : candidate));
+    });
+  }
+
   // Right-click "Delete chat" in HistoryList. If the deleted session was
   // the active one, falls back to whatever is now first — the most
   // recently used remaining chat — or a fresh draft if none are left.
@@ -398,6 +422,7 @@ export function useAIAssistant() {
     isSending,
     agents,
     selectAgent,
+    startChatWithAgent,
     addAgentToActiveChat,
     removeAgentFromActiveChat,
   };

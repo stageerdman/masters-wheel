@@ -26,6 +26,7 @@ export function AIAssistant() {
     isSending,
     agents,
     selectAgent,
+    startChatWithAgent,
     addAgentToActiveChat,
     removeAgentFromActiveChat,
   } = useAIAssistant();
@@ -88,6 +89,7 @@ export function AIAssistant() {
           agents={agents}
           agentsByRecency={agentsByRecency}
           onSelectAgent={handleSelectAgent}
+          onPickAgentForNewChat={startChatWithAgent}
           onDropAgentIntoChat={addAgentToActiveChat}
           onRemoveAgentFromChat={removeAgentFromActiveChat}
         />
