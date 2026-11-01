@@ -185,6 +185,19 @@ pub async fn ask_agent(
             .arg(&system_prompt)
             .arg("--permission-mode")
             .arg("dontAsk")
+            // No tool definitions are sent to the model at all — found by
+            // hand while investigating context-usage numbers: even with
+            // zero tools allow-listed (--permission-mode dontAsk above
+            // already blocks any tool *use*), the CLI still declares every
+            // registered skill/MCP tool's schema on every call by default,
+            // which alone was costing ~20k+ tokens per reply regardless of
+            // conversation size — confirmed by a minimal repro (a 2-token
+            // message dropped from ~21.8k tokens to 344 with this flag).
+            // Pure waste for this reply-only slice, which was never going
+            // to call a tool anyway; revisit if/when tool/MCP calling
+            // actually lands (see this update's wiki.md).
+            .arg("--tools")
+            .arg("")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 

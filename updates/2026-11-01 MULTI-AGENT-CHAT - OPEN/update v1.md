@@ -160,6 +160,36 @@ Four things dictated after the user's own click-through:
 Verified: `tsc --noEmit`, `npm run lint`, `npm run build`, `cargo check`
 all clean; rebuilt and reinstalled to `/Applications/Master's Wheel.app`.
 
+### Correction — the numbers weren't wrong, but a huge fixed cost was
+User's own click-through flagged real-looking weirdness: a first reply
+showed ~24k tokens, a second message to the same agent barely moved, and
+adding a second agent (who has knowledge files) jumped the displayed
+number to ~26k instead of looking like an accumulating total. Investigated
+by reproducing against the raw CLI directly: a maximally trivial
+`--system-prompt` ("You are Bob, reply only with: I am Bob.") plus a
+2-token message still reported `input:2 + cache_creation:8596 +
+cache_read:13039 + output:139 ≈ 21.8k tokens` — almost exactly the
+observed Eli Wilde number, for content with no real persona/conversation
+weight at all. That's a fixed floor the CLI adds to *every* call
+regardless of content — tool/skill schema definitions (this install has
+several skills/MCP servers registered) sent on every request even though
+`--permission-mode dontAsk` with no `--allowedTools` already meant none
+of them could ever actually be used. This explained both symptoms: the
+floor swamps a short conversation's real growth (hence "barely moves"),
+and a second agent's first-ever reply independently hits roughly the
+same floor plus its own knowledge overhead (hence landing in a similar
+but unrelated ballpark, not a running total — each agent's context is
+a fully separate pool by this update's own design, see above).
+
+Fixed, not just explained: added `--tools ""` to the CLI invocation,
+which stops it from declaring any tool schemas at all. Re-tested the
+identical minimal repro: same reply, `344` total tokens instead of
+`21.8k` — a ~98% cut, with zero functional loss since no tool calling
+was ever possible in this reply-only slice anyway. Verified against the
+actual streaming flag set this app uses (`--output-format stream-json
+--include-partial-messages --verbose`), not just the simpler one-shot
+`json` format — streams and resolves identically.
+
 ## Next
 User click-through in the rebuilt app: right-click a chat (menu should
 render on top, with a real or "No context yet" gauge above Delete);
