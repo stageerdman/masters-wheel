@@ -1,6 +1,12 @@
 .root {
   position: fixed;
-  z-index: 1000;
+  /* Higher than AIAssistant.position.module.css's 2147483000 ("the
+     highest z-index in the app") — a context menu is a momentary
+     topmost overlay by definition, including when it's triggered from
+     inside the AI Assistant's own history list (where it previously
+     rendered correctly portaled to document.body, but still visually
+     behind the assistant window because of this gap). */
+  z-index: 2147483001;
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
@@ -11,4 +17,9 @@
 .item {
   width: 100%;
   padding: 0.5rem 0.75rem;
+}
+
+.header {
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.125rem;
 }

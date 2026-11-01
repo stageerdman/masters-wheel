@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import position from "./ContextMenu.position.module.css";
@@ -17,6 +18,10 @@ type ContextMenuProps = {
   y: number;
   items: ContextMenuItem[];
   onClose: () => void;
+  /** Optional non-interactive content shown above the action items —
+   * e.g. HistoryListItem's context-usage gauge. Most callers (this
+   * element's only other user, PerformanceReview) omit it entirely. */
+  header?: ReactNode;
 };
 
 // Keeps the menu's cursor-anchored position fully on-screen — without
@@ -28,7 +33,7 @@ const VIEWPORT_MARGIN = 8;
 // coordinates (then clamped to the viewport once its real size is known).
 // Closes itself on an outside click or Escape — the caller only owns
 // *whether* it's open, *where* it was triggered, and what its items do.
-export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
+export function ContextMenu({ x, y, items, onClose, header }: ContextMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y });
 
@@ -75,6 +80,11 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       style={{ left: pos.x, top: pos.y }}
       role="menu"
     >
+      {header && (
+        <div className={`${styles.header} ${position.header}`} data-construction>
+          {header}
+        </div>
+      )}
       {items.map((item) => (
         <button
           key={item.id}
