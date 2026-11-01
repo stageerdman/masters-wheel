@@ -1,29 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { askAgent, onAskAgentProgress } from "@/lib/assistant/askAgent";
 import { listAgents, type Agent } from "@/lib/agents";
-import { HISTORY_FIXTURES } from "./children/AIAssistantWindow/AIAssistantWindow.data";
+import { buildAgentTurnInput, listSessions, saveSession, deleteSessionFile } from "@/lib/chat";
+import type { ChatMessage, ChatMessageRole, ChatSession } from "@/lib/chat";
 
 export type AssistantPhase = "closed" | "open" | "closing";
-export type ChatMessageRole = "user" | "assistant" | "system";
-export type ChatMessage = { id: string; role: ChatMessageRole; text: string };
-export type ChatSession = {
-  id: string;
-  title: string;
-  relativeDate: string;
-  messages: ChatMessage[];
-  activeAgentIds: string[];
-  agentId?: string;
-  claudeSessionId?: string;
-  /** Set only by makeNewSession — see isDraftSession. */
-  isDraft?: boolean;
-};
-
-export type { Agent };
+export type { ChatMessage, ChatMessageRole, ChatSession, Agent };
 
 const NEW_SESSION_ID = "current";
 
 function makeNewSession(id: string = NEW_SESSION_ID): ChatSession {
-  return { id, title: "New chat", relativeDate: "Now", messages: [], activeAgentIds: [], isDraft: true };
+  const now = new Date().toISOString();
+  return {
+    id,
+    title: "New chat",
+    createdAt: now,
+    updatedAt: now,
+    messages: [],
+    activeAgentIds: [],
+    claudeSessionIds: {},
+    isDraft: true,
+  };
 }
 
 // A freshly-opened chat with nobody picked yet and nothing said yet —
@@ -31,9 +28,9 @@ function makeNewSession(id: string = NEW_SESSION_ID): ChatSession {
 // one of these, and HistoryList hides it (it isn't a real past
 // conversation, just the current "pick someone" prompt). Deliberately an
 // explicit flag rather than inferring "no agent + no messages" from
-// shape — a real, legitimately-empty session (e.g. a fixture with no
-// messages yet) would otherwise be indistinguishable from an actual
-// draft and vanish from history too.
+// shape — a real, legitimately-empty session would otherwise be
+// indistinguishable from an actual draft and vanish from history too.
+// Draft sessions are also never written to disk — see src/lib/chat/storage.ts.
 export function isDraftSession(session: ChatSession): boolean {
   return session.isDraft === true;
 }
@@ -44,9 +41,10 @@ function escapeRegExp(value: string) {
 
 // Which agents a message text @mentions — matches "@" + an agent's exact
 // name at a word boundary (so "@Coachella" doesn't match "Coach"). Used
-// both to auto-add mentioned agents when a message is sent, and (with
-// its own copy in Message.script.ts, which needs segment positions
-// rather than a plain list) to render the mention as a styled tag.
+// both to resolve who replies to a message (see resolveResponders below)
+// and (with its own copy in Message.script.ts, which needs segment
+// positions rather than a plain list) to render the mention as a styled
+// tag.
 export function findMentionedAgents(text: string, agents: Agent[]): Agent[] {
   return agents.filter((agent) => new RegExp(`@${escapeRegExp(agent.name)}\\b`).test(text));
 }
@@ -54,12 +52,25 @@ export function findMentionedAgents(text: string, agents: Agent[]): Agent[] {
 // Every agent actually active in a session right now — the dedicated
 // "Chat with X" session marker (session.agentId) and the @mention/drag
 // roster (session.activeAgentIds) are two different ways an agent ends up
-// in a chat, but for "who should reply" purposes they're the same thing.
-// Exported: also used to resolve a session's avatar in HistoryListItem and
-// the "who am I talking to" profile shown in MessageList/Message.
+// in a chat. Exported: used to resolve a session's avatar in
+// HistoryListItem and the "who am I talking to" profile shown in
+// MessageList/Message.
 export function resolveActiveAgents(session: ChatSession | undefined, agents: Agent[]): Agent[] {
   if (!session) return [];
   return agents.filter((agent) => agent.id === session.agentId || session.activeAgentIds.includes(agent.id));
+}
+
+// Who replies to a given message: whoever it @mentions, else the single
+// agent this chat is dedicated to, else — only for a chat that's neither
+// dedicated nor unambiguous (e.g. 2+ agents dragged in, nobody tagged) —
+// nobody, so sending blocks instead of guessing who should answer.
+function resolveResponders(session: ChatSession, text: string, agents: Agent[]): Agent[] {
+  const mentioned = findMentionedAgents(text, agents);
+  if (mentioned.length > 0) return mentioned;
+  const dedicated = agents.find((agent) => agent.id === session.agentId);
+  if (dedicated) return [dedicated];
+  const active = resolveActiveAgents(session, agents);
+  return active.length === 1 ? active : [];
 }
 
 // Agents ordered by how recently they were chatted with — the order
@@ -91,7 +102,8 @@ export function orderAgentsByRecency(agents: Agent[], sessions: ChatSession[]): 
 export function useAIAssistant() {
   const [phase, setPhase] = useState<AssistantPhase>("closed");
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [sessions, setSessions] = useState<ChatSession[]>([makeNewSession(), ...HISTORY_FIXTURES]);
+  const [sessions, setSessions] = useState<ChatSession[]>([makeNewSession()]);
+  const sessionsLoadStarted = useRef(false);
   const [activeSessionId, setActiveSessionId] = useState(NEW_SESSION_ID);
   const [composerValue, setComposerValue] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -104,6 +116,24 @@ export function useAIAssistant() {
   useEffect(() => {
     if (phase !== "open") return;
     listAgents().then(setAgents);
+  }, [phase]);
+
+  // Loads every real past conversation from disk the first time the
+  // window opens — the in-memory draft from useState above is just a
+  // placeholder until this resolves, so there's never a render with no
+  // active session at all.
+  useEffect(() => {
+    if (phase !== "open" || sessionsLoadStarted.current) return;
+    sessionsLoadStarted.current = true;
+    listSessions().then((loaded) => {
+      const ordered = [...loaded].sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      );
+      setSessions((current) => {
+        const draft = current.find(isDraftSession) ?? makeNewSession(crypto.randomUUID());
+        return [draft, ...ordered];
+      });
+    });
   }, [phase]);
 
   function open() {
@@ -155,17 +185,27 @@ export function useAIAssistant() {
     setActiveSessionId(session.id);
   }
 
-  function appendMessageToActive(message: ChatMessage) {
-    setSessions((current) =>
-      current.map((session) =>
-        session.id === activeSessionId ? { ...session, messages: [...session.messages, message] } : session,
-      ),
-    );
+  // Applies `updater` to one session (stamping updatedAt) and persists it
+  // unless it's a draft — the one place every real mutation below funnels
+  // through, so "change a session" and "save it" can never drift apart.
+  function updateAndPersistSession(id: string, updater: (session: ChatSession) => ChatSession) {
+    setSessions((current) => {
+      const next = current.map((session) =>
+        session.id === id ? updater({ ...session, updatedAt: new Date().toISOString() }) : session,
+      );
+      const updated = next.find((session) => session.id === id);
+      if (updated && !isDraftSession(updated)) void saveSession(updated);
+      return next;
+    });
   }
 
-  // Rewrites one message by id within a specific session (not necessarily
-  // the currently-active one — the user may switch sessions mid-reply) —
-  // used to grow the assistant's placeholder bubble as delta events arrive.
+  function appendMessageToSession(sessionId: string, message: ChatMessage) {
+    updateAndPersistSession(sessionId, (session) => ({ ...session, messages: [...session.messages, message] }));
+  }
+
+  // Grows one message's text in place as streamed deltas arrive —
+  // deliberately not persisted on every call (that would be a disk write
+  // per token); see finalizeAgentReply for the one save that matters.
   function updateMessageInSession(sessionId: string, messageId: string, updater: (message: ChatMessage) => ChatMessage) {
     setSessions((current) =>
       current.map((session) =>
@@ -176,77 +216,93 @@ export function useAIAssistant() {
     );
   }
 
+  // The one save that matters for a reply: final text + this agent's own
+  // resumed CLI session id, in the same write.
+  function finalizeAgentReply(sessionId: string, messageId: string, agentId: string, text: string, claudeSessionId: string) {
+    updateAndPersistSession(sessionId, (session) => ({
+      ...session,
+      claudeSessionIds: { ...session.claudeSessionIds, [agentId]: claudeSessionId },
+      messages: session.messages.map((message) => (message.id === messageId ? { ...message, text } : message)),
+    }));
+  }
+
+  function failAgentReply(sessionId: string, messageId: string, error: unknown) {
+    updateAndPersistSession(sessionId, (session) => ({
+      ...session,
+      messages: session.messages.map((message) =>
+        message.id === messageId ? { ...message, role: "system", text: `Couldn't reach Claude: ${error}` } : message,
+      ),
+    }));
+  }
+
+  // Dispatches one agent's reply to the message just sent — its own
+  // placeholder bubble, its own streamed jobId, its own resumed CLI
+  // session. Multiple responders to one message each get their own call
+  // to this, run concurrently (see sendMessage) — nobody waits on anybody
+  // else's reply within the same turn.
+  async function dispatchAgentReply(sessionId: string, agent: Agent, session: ChatSession, transcript: ChatMessage[]) {
+    const input = buildAgentTurnInput(session, agent, agents, transcript);
+    const replyId = crypto.randomUUID();
+    appendMessageToSession(sessionId, {
+      id: replyId,
+      role: "assistant",
+      agentId: agent.id,
+      text: "",
+      createdAt: new Date().toISOString(),
+    });
+
+    const jobId = crypto.randomUUID();
+    const unlisten = await onAskAgentProgress((progress) => {
+      if (progress.jobId !== jobId) return;
+      updateMessageInSession(sessionId, replyId, (message) => ({ ...message, text: message.text + progress.delta }));
+    });
+
+    try {
+      const reply = await askAgent(jobId, input, agent.instructions, agent.id, session.claudeSessionIds[agent.id]);
+      // The streamed-in text above is provisional (deltas could in theory
+      // drop or reorder); the CLI's final `result` text is authoritative,
+      // so it always wins here.
+      finalizeAgentReply(sessionId, replyId, agent.id, reply.text || "(no reply)", reply.sessionId);
+    } catch (error) {
+      failAgentReply(sessionId, replyId, error);
+    } finally {
+      unlisten();
+    }
+  }
+
   async function sendMessage() {
     const text = composerValue.trim();
     if (!text || isSending) return;
     const sessionIdAtSend = activeSessionId;
     const session = sessions.find((candidate) => candidate.id === sessionIdAtSend);
+    if (!session) return;
     bringSessionToFront(sessionIdAtSend);
 
-    const alreadyActive = resolveActiveAgents(session, agents);
-    const mentioned = findMentionedAgents(text, agents);
-    const resolvedActive = [...alreadyActive, ...mentioned.filter((agent) => !alreadyActive.some((a) => a.id === agent.id))];
-
-    // There is no default/generic assistant in this app — a message only
-    // ever gets a real reply once exactly one real agent is active in
-    // this chat (drag one in, click one, or @mention one). Multiple
-    // agents replying together is a later increment (see this update's
-    // wiki.md) — for now, more than one active agent blocks sending
-    // rather than silently picking one or falling back to a generic voice.
-    if (resolvedActive.length !== 1) {
-      appendMessageToActive({
+    const responders = resolveResponders(session, text, agents);
+    if (responders.length === 0) {
+      const active = resolveActiveAgents(session, agents);
+      appendMessageToSession(sessionIdAtSend, {
         id: crypto.randomUUID(),
         role: "system",
         text:
-          resolvedActive.length === 0
+          active.length === 0
             ? "Add an agent to this chat first — drag one in from the roster, click one, or type @ to mention one."
-            : "Only one agent can reply at a time right now — remove one before sending.",
+            : "More than one agent is in this chat — tag who you're talking to with @.",
+        createdAt: new Date().toISOString(),
       });
       return;
     }
-    const activeAgent = resolvedActive[0];
 
-    appendMessageToActive({ id: crypto.randomUUID(), role: "user", text });
+    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", text, createdAt: new Date().toISOString() };
+    appendMessageToSession(sessionIdAtSend, userMessage);
     setComposerValue("");
-    for (const agent of mentioned) {
-      addAgentToActiveChat(agent.id);
-    }
+    for (const agent of responders) addAgentToSession(sessionIdAtSend, agent.id);
 
-    // An empty assistant bubble renders as a "thinking" indicator (see
-    // Message.tsx) until the first delta arrives, then grows token-by-token
-    // — this is what replaces the old silent wait + sudden full reply.
-    const replyId = crypto.randomUUID();
-    appendMessageToActive({ id: replyId, role: "assistant", text: "" });
-
-    const jobId = crypto.randomUUID();
-    const unlisten = await onAskAgentProgress((progress) => {
-      if (progress.jobId !== jobId) return;
-      updateMessageInSession(sessionIdAtSend, replyId, (message) => ({ ...message, text: message.text + progress.delta }));
-    });
-
+    const transcriptSoFar = [...session.messages, userMessage];
     setIsSending(true);
     try {
-      const reply = await askAgent(jobId, text, activeAgent.instructions, activeAgent.id, session?.claudeSessionId);
-      // The streamed-in text above is provisional (deltas could in theory
-      // drop or reorder); the CLI's final `result` text is authoritative,
-      // so it always wins here.
-      updateMessageInSession(sessionIdAtSend, replyId, (message) => ({
-        ...message,
-        text: reply.text || "(no reply)",
-      }));
-      setSessions((current) =>
-        current.map((candidate) =>
-          candidate.id === sessionIdAtSend ? { ...candidate, claudeSessionId: reply.sessionId } : candidate,
-        ),
-      );
-    } catch (error) {
-      updateMessageInSession(sessionIdAtSend, replyId, (message) => ({
-        ...message,
-        role: "system",
-        text: `Couldn't reach Claude: ${error}`,
-      }));
+      await Promise.all(responders.map((agent) => dispatchAgentReply(sessionIdAtSend, agent, session, transcriptSoFar)));
     } finally {
-      unlisten();
       setIsSending(false);
     }
   }
@@ -262,22 +318,27 @@ export function useAIAssistant() {
     }
     const agent = agents.find((candidate) => candidate.id === agentId);
     if (!agent) return;
+    const now = new Date().toISOString();
     const session: ChatSession = {
       id: crypto.randomUUID(),
       title: `Chat with ${agent.name}`,
-      relativeDate: "Now",
+      createdAt: now,
+      updatedAt: now,
       messages: [],
       activeAgentIds: [],
+      claudeSessionIds: {},
       agentId,
     };
     setSessions((current) => [session, ...current]);
     setActiveSessionId(session.id);
+    void saveSession(session);
   }
 
   // Right-click "Delete chat" in HistoryList. If the deleted session was
   // the active one, falls back to whatever is now first — the most
   // recently used remaining chat — or a fresh draft if none are left.
   function deleteSession(id: string) {
+    void deleteSessionFile(id);
     setSessions((current) => {
       const next = current.filter((session) => session.id !== id);
       if (activeSessionId === id) {
@@ -293,32 +354,31 @@ export function useAIAssistant() {
     });
   }
 
-  function addAgentToActiveChat(agentId: string) {
+  function addAgentToSession(sessionId: string, agentId: string) {
     const agent = agents.find((candidate) => candidate.id === agentId);
     if (!agent) return;
-    setSessions((current) =>
-      current.map((session) => {
-        if (session.id !== activeSessionId || session.activeAgentIds.includes(agentId)) return session;
-        return {
-          ...session,
-          activeAgentIds: [...session.activeAgentIds, agentId],
-          messages: [
-            ...session.messages,
-            { id: crypto.randomUUID(), role: "system", text: `${agent.name} added to the conversation` },
-          ],
-        };
-      }),
-    );
+    updateAndPersistSession(sessionId, (session) => {
+      if (session.activeAgentIds.includes(agentId) || session.agentId === agentId) return session;
+      return {
+        ...session,
+        activeAgentIds: [...session.activeAgentIds, agentId],
+        messages: [
+          ...session.messages,
+          { id: crypto.randomUUID(), role: "system", text: `${agent.name} added to the conversation`, createdAt: new Date().toISOString() },
+        ],
+      };
+    });
+  }
+
+  function addAgentToActiveChat(agentId: string) {
+    addAgentToSession(activeSessionId, agentId);
   }
 
   function removeAgentFromActiveChat(agentId: string) {
-    setSessions((current) =>
-      current.map((session) =>
-        session.id === activeSessionId
-          ? { ...session, activeAgentIds: session.activeAgentIds.filter((id) => id !== agentId) }
-          : session,
-      ),
-    );
+    updateAndPersistSession(activeSessionId, (session) => ({
+      ...session,
+      activeAgentIds: session.activeAgentIds.filter((id) => id !== agentId),
+    }));
   }
 
   return {

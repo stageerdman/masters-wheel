@@ -1,5 +1,5 @@
 import type { AgentVersion } from "@/elements/Agents/Agents.data";
-import { formatRelativeTime } from "../../VersionHistoryPanel.script";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import position from "./VersionRow.position.module.css";
 import styles from "./VersionRow.styles.module.css";
 

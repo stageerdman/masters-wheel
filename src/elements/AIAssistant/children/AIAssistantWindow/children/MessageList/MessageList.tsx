@@ -32,15 +32,16 @@ export function MessageList({ messages, density, agents, respondingAgent }: Mess
           </p>
         )
       ) : (
-        messages.map((message) => (
-          <Message
-            key={message.id}
-            message={message}
-            density={density}
-            agents={agents}
-            respondingAgent={respondingAgent}
-          />
-        ))
+        messages.map((message) => {
+          // Every assistant message now carries who actually said it
+          // (see AIAssistant.script.ts's dispatchAgentReply) — a thread
+          // with 2+ replying agents shows each reply under its real
+          // author instead of one session-wide identity. Falls back to
+          // the session's single resolved agent for messages saved
+          // before this existed.
+          const author = message.agentId ? agents.find((agent) => agent.id === message.agentId) : respondingAgent;
+          return <Message key={message.id} message={message} density={density} agents={agents} respondingAgent={author} />;
+        })
       )}
     </div>
   );

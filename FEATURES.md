@@ -136,13 +136,29 @@ between the two lists. Each page gets its own section as pages get added.
       agent into the conversation the same way dragging their roster
       card does
 
+- [x] Mention-addressed multi-agent replies: a message with no @mention
+      gets a reply from the one agent the chat is dedicated to
+      (`session.agentId`); @mentioning one or more agents overrides that
+      for just that message — exactly the mentioned agents reply, each
+      dispatched in parallel (no turn-taking, no moderator) and each
+      under their own avatar (`message.agentId`). Each agent keeps its
+      own private resumed Claude Code CLI session even inside a shared
+      thread (`ChatSession.claudeSessionIds`, keyed by agent) — one
+      agent's replies are never fed into another's native session;
+      cross-agent awareness instead comes from injecting a speaker-
+      labeled transcript delta (everything since that agent's own last
+      reply) into its turn's input. See
+      `updates/2026-11-01 MULTI-AGENT-CHAT - OPEN`.
+- [x] Chat sessions and their messages persist across reloads —
+      `src/lib/chat` writes one real file per real conversation under
+      the app's own data directory (same on-disk-JSON precedent as
+      `src/lib/agents`), loaded back into `HistoryList` on next open.
+      Draft ("pick someone") sessions stay ephemeral/in-memory only, never
+      written to disk.
+
 ### To build (real functionality — not started)
-- [ ] Multi-agent replies in one thread (2+ active agents currently
-      blocks sending rather than dispatching to all of them)
 - [ ] Tool/MCP calling (e.g. Notion) — no tool access is granted to a
       reply yet
-- [ ] Persisting chat sessions across reloads (dock placement can now
-      persist via Option-place; sessions/messages still reset)
 - [ ] Keyboard-only path to cycle dock states / toggle the side menu
       (currently pointer-only)
 

@@ -5,6 +5,7 @@ import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.scri
 import { resolveActiveAgents } from "@/elements/AIAssistant/AIAssistant.script";
 import { AgentAvatar } from "@/elements/AgentAvatar/AgentAvatar";
 import { ContextMenu, type ContextMenuItem } from "@/elements/ContextMenu/ContextMenu";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import position from "./HistoryListItem.position.module.css";
 import styles from "./HistoryListItem.styles.module.css";
 
@@ -48,7 +49,7 @@ export function HistoryListItem({ session, active, onSelect, onDelete, agents }:
         </span>
         <span className={`${position.meta}`} data-construction>
           <span className={styles.date} data-construction>
-            {session.relativeDate}
+            {formatRelativeTime(session.updatedAt)}
           </span>
           {primaryAgent && <AgentAvatar agent={primaryAgent} size={14} />}
         </span>

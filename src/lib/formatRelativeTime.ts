@@ -1,4 +1,6 @@
-export function formatRelativeTime(iso: string) {
+// Shared "x ago" formatting for any persisted timestamp — version
+// history, chat history, anywhere a relative recency label is shown.
+export function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.round(diffMs / 60000);
   if (minutes < 1) return "Just now";
