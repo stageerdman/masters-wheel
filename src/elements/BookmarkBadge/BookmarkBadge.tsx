@@ -2,13 +2,14 @@ import type { PointerEvent } from "react";
 import position from "./BookmarkBadge.position.module.css";
 import styles from "./BookmarkBadge.styles.module.css";
 
-export type ContentKind = "ai" | "transcript" | "notes" | "lessons";
+export type ContentKind = "ai" | "transcript" | "notes" | "lessons" | "scorecard";
 
 export const BOOKMARK_META: Record<ContentKind, { label: string; color: string }> = {
   ai: { label: "AI", color: "var(--color-bookmark-ai)" },
   transcript: { label: "TR", color: "var(--color-bookmark-transcript)" },
   notes: { label: "NT", color: "var(--color-bookmark-notes)" },
   lessons: { label: "CL", color: "var(--color-bookmark-lessons)" },
+  scorecard: { label: "SC", color: "var(--color-bookmark-scorecard)" },
 };
 
 type BookmarkBadgeProps = {

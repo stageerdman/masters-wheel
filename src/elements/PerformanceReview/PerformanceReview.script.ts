@@ -20,16 +20,21 @@ import {
   importTranscriptFile,
   listRecords,
   readDoc,
+  readScorecard,
   readTranscript,
   revealRecordInFinder,
   setHeroFile,
   writeDoc,
   writeMeta,
+  writeScorecard,
   writeTranscript,
   type RecordMetaFields,
   type RecordSummary,
 } from "@/lib/records";
 import { parseTranscript, renameSpeaker, serializeTranscript } from "@/lib/transcript";
+import { generateFakeScorecard } from "@/lib/scorecard/generate";
+import type { Scorecard } from "@/lib/scorecard";
+import { setActiveRecord } from "@/lib/mcp/activeRecord";
 import {
   GENERATE_CANCELLED,
   cancelGenerateTranscript,
@@ -60,6 +65,11 @@ export function usePerformanceReviewData() {
   const [docs, setDocs] = useState<Record<string, DocPair>>({});
   const [lessons, setLessons] = useState<Record<string, string>>({});
   const [transcripts, setTranscripts] = useState<Record<string, string | null>>({});
+  const [scorecards, setScorecards] = useState<Record<string, Scorecard | null>>({});
+  // Fake generation (see this update's wiki.md) only needs a flag per
+  // record, not the rich job-tracking transcript generation has — there's
+  // no real background process to report progress on.
+  const [scorecardGenerating, setScorecardGenerating] = useState<Record<string, boolean>>({});
   const [isTranscriptUploadOpen, setIsTranscriptUploadOpen] = useState(false);
   const [transcriptUploadError, setTranscriptUploadError] = useState<string | null>(null);
   const [isGenerateTranscriptOpen, setIsGenerateTranscriptOpen] = useState(false);
@@ -132,6 +142,23 @@ export function usePerformanceReviewData() {
     };
   }, [selectedId, transcripts]);
 
+  // Lazily load the selected record's scorecard.json, once, caching the
+  // result (including the null "not generated yet" case) the same way the
+  // transcript is cached above.
+  useEffect(() => {
+    if (!selectedId || !isTauri() || selectedId in scorecards) return;
+    let cancelled = false;
+    readScorecard(selectedId)
+      .then((loaded) => {
+        if (cancelled) return;
+        setScorecards((prev) => ({ ...prev, [selectedId]: loaded }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, scorecards]);
+
   // Tracks how many times each record has been opened — fires once per
   // actual selection change (including the initial auto-selection on
   // load), not on every render. `summaries` is read fresh from the
@@ -151,6 +178,17 @@ export function usePerformanceReviewData() {
       scheduleMetaWrite(selectedId, { openCount: nextCount });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  // Tells the AI Assistant (a sibling, mounted globally in layout.tsx —
+  // see src/lib/mcp/activeRecord.ts) which record is currently open here,
+  // so its chat can show a "suggested" tag that tracks page navigation.
+  // Cleared on unmount (leaving Performance Review entirely), not just on
+  // every selectedId change, so the suggested tag doesn't linger once
+  // there's no Performance Review page open to suggest.
+  useEffect(() => {
+    setActiveRecord(selectedId);
+    return () => setActiveRecord(null);
   }, [selectedId]);
 
   // One global subscription for every in-flight Generate Transcript job
@@ -210,6 +248,7 @@ export function usePerformanceReviewData() {
     description: summary.description,
     reviewed: summary.reviewed,
     openCount: summary.openCount,
+    scorecard: scorecards[summary.id] ?? null,
   }));
 
   const selected = videos.find((video) => video.id === selectedId) ?? null;
@@ -440,6 +479,26 @@ export function usePerformanceReviewData() {
     [selectedId, transcripts]
   );
 
+  // Fabricates a scorecard after a short fake "thinking" delay (no real AI
+  // call this round — see this update's wiki.md) and persists it to
+  // scorecard.json, same write-then-keep-in-state shape as
+  // startGenerateTranscript's success path above.
+  const GENERATE_SCORECARD_DELAY_MS = 1200;
+
+  const generateScorecard = useCallback((id: string) => {
+    setScorecardGenerating((prev) => ({ ...prev, [id]: true }));
+    setTimeout(() => {
+      const fresh = generateFakeScorecard();
+      setScorecards((prev) => ({ ...prev, [id]: fresh }));
+      setScorecardGenerating((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      writeScorecard(id, fresh).catch((error) => console.error("Failed to write scorecard:", id, error));
+    }, GENERATE_SCORECARD_DELAY_MS);
+  }, []);
+
   // Deletes a record entirely (its whole on-disk folder) and drops it from
   // the list. If it was the selected record, falls back to whichever
   // record is now first rather than leaving the selection dangling.
@@ -572,6 +631,10 @@ export function usePerformanceReviewData() {
     retryGenerateTranscript,
     dismissGenerateTranscriptError,
     renameTranscriptSpeaker,
+    isGeneratingScorecard: selectedId ? (scorecardGenerating[selectedId] ?? false) : false,
+    onGenerateScorecard: () => {
+      if (selectedId) generateScorecard(selectedId);
+    },
     isVideoUploadOpen,
     openVideoUpload,
     closeVideoUpload,

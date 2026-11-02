@@ -17,9 +17,17 @@ export async function askAgent(
   message: string,
   instructions: string,
   agentId: string,
-  sessionId?: string,
+  sessionId: string | undefined,
+  chatSessionId: string,
 ): Promise<AgentReply> {
-  return invoke<AgentReply>("ask_agent", { jobId, message, instructions, agentId, sessionId: sessionId ?? null });
+  return invoke<AgentReply>("ask_agent", {
+    jobId,
+    message,
+    instructions,
+    agentId,
+    sessionId: sessionId ?? null,
+    chatSessionId,
+  });
 }
 
 export type AskAgentProgress = { jobId: string; delta: string };

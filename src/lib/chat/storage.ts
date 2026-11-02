@@ -51,6 +51,10 @@ function parseSession(id: string, text: string): ChatSession | null {
       candidate.contextUsage && typeof candidate.contextUsage === "object"
         ? (candidate.contextUsage as ChatSession["contextUsage"])
         : {},
+    tags: Array.isArray(candidate.tags) ? (candidate.tags as ChatSession["tags"]) : [],
+    alwaysAllowedRecordIds: Array.isArray(candidate.alwaysAllowedRecordIds)
+      ? (candidate.alwaysAllowedRecordIds as string[])
+      : [],
   };
 }
 

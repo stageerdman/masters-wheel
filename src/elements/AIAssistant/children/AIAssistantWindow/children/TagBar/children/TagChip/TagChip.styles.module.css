@@ -1,0 +1,41 @@
+.root {
+  border-radius: 4px;
+  font-size: var(--text-size-micro);
+  color: var(--color-text);
+}
+
+/* Not yet used by the AI — colorless and dashed on purpose, so it reads
+   as a hint rather than a commitment. */
+.suggested {
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* The AI has actually read this record — solid and accent-tinted so it
+   visibly outranks a merely-suggested tag. */
+.active {
+  border: 1px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.icon {
+  color: var(--icon-color);
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--text-size-micro);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.root:hover .removeButton {
+  opacity: 1;
+}
+
+.removeButton:hover {
+  color: var(--color-text);
+}

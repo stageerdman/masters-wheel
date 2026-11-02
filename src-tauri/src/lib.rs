@@ -2,6 +2,7 @@ mod assistant;
 mod avatar;
 mod knowledge;
 mod media_server;
+pub mod mcp;
 mod transcribe;
 mod util;
 
@@ -48,7 +49,9 @@ pub fn run() {
       assistant::debug_log,
       knowledge::commands::ingest_knowledge_file,
       knowledge::commands::remove_knowledge_file,
-      avatar::read_image_as_data_url
+      avatar::read_image_as_data_url,
+      mcp::bridge::sync_mcp_tags,
+      mcp::bridge::respond_to_mcp_permission
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -61,6 +64,7 @@ pub fn run() {
       if let Ok(documents) = app.path().document_dir() {
         media_server::spawn(documents.join("Master's Wheel"));
       }
+      app.manage(mcp::bridge::spawn(app.handle().clone()));
       Ok(())
     })
     .run(tauri::generate_context!())

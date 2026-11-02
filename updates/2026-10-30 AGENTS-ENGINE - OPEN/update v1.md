@@ -134,11 +134,15 @@ Extend to `activeAgentIds`/@mentions: parallel calls per mentioned agent
 against the shared, speaker-labeled transcript, as scoped in `wiki.md`.
 No moderator/selector.
 
-**Phase 3 — Tool/MCP calling.**
-Add the MCP Connector path for one real external capability (Notion is
-the dictated example) plus the custom-tool hand-rolled loop for one
-app-local capability, to prove both paths work from wherever the engine
-ended up living.
+**Phase 3 — Tool/MCP calling. Split into its own update.**
+Scope grew past one phase once the user dictated a concrete first
+capability (Performance Review visibility) with its own tag/permission
+UX — moved to
+`updates/2026-11-01 MCP-TOOLS - OPEN/update v1.md`, same split already
+done for `CHAT-UX` and `MULTI-AGENT-CHAT`. Superseded here: the engine
+being the local Claude Code CLI (not the Anthropic Messages API) means
+the real path is the CLI's own native `--mcp-config`/`--allowedTools`,
+not the Anthropic-API-specific "MCP Connector" sketched below.
 
 **Phase 4 — Revisit knowledge tier.**
 Only if a real agent's knowledge set outgrows Tier-0 stuffing: add Tier-1

@@ -145,13 +145,38 @@ const RETRIEVAL_TOP_K: usize = 8;
 #[tauri::command]
 pub async fn ask_agent(
     app: AppHandle,
+    bridge: tauri::State<'_, crate::mcp::bridge::Bridge>,
     job_id: String,
     message: String,
     instructions: String,
     agent_id: Option<String>,
     session_id: Option<String>,
+    // The ChatSession id (distinct from `session_id` above, which is the
+    // per-agent *Claude CLI* resume session) — threaded into the
+    // generated --mcp-config's env so mcp/permission.rs knows which
+    // chat's tags/always-allowed list to check. See mcp/bridge.rs.
+    chat_session_id: String,
 ) -> Result<AgentReply, String> {
+    // Cloned out of the State wrapper (cheap — Bridge is just an Arc)
+    // before moving into spawn_blocking: tauri::State's own lifetime
+    // isn't 'static, so it can't be moved into the blocking closure
+    // directly the way `app` can.
+    let bridge = (*bridge).clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<AgentReply, String> {
+        // What's actually tagged for this chat right now, title-resolved
+        // for the model to read — see knowledge/prompt.rs's
+        // build_tagged_context for why this has to be spelled out
+        // explicitly rather than trusted to be "visible" from the tag
+        // just existing in the UI.
+        let tagged_records: Vec<(String, String)> = bridge
+            .tags_for_session(&chat_session_id)
+            .into_iter()
+            .map(|(record_id, _kind)| {
+                let title = crate::mcp::tools::get_performance_review::title_for(&record_id);
+                (record_id, title)
+            })
+            .collect();
+
         // Knowledge grounding: if this agent has any indexed knowledge
         // files, pull the chunks most relevant to this message and weave
         // them into the system prompt ahead of the persona instructions.
@@ -165,11 +190,40 @@ pub async fn ask_agent(
         // the persona (see this update's wiki.md for the repro).
         let system_prompt = match &agent_id {
             Some(id) => match knowledge::commands::retrieve_for_agent(&app, id, &message, RETRIEVAL_TOP_K) {
-                Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks),
-                Err(_) => knowledge::prompt::build_augmented_system_prompt(&instructions, &[]),
+                Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks, &tagged_records),
+                Err(_) => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records),
             },
-            None => knowledge::prompt::build_augmented_system_prompt(&instructions, &[]),
+            None => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records),
         };
+
+        // --mcp-config points the CLI at this app's own MCP server (a
+        // re-exec of this same binary — see mcp/server.rs); --strict-mcp-config
+        // means *only* that server's tools are even considered, so no other
+        // registered skill/MCP source gets its schema declared on this
+        // call. --allowedTools then grants exactly the tools this app
+        // actually wires, nothing implicit.
+        //
+        // --tools "" is still required *in addition* to all of the above —
+        // found by hand as a real regression, not a theoretical one:
+        // --mcp-config/--allowedTools control MCP tools and permissions,
+        // but say nothing about the CLI's own built-in tool set (Bash,
+        // Edit, Read, Task, ToolSearch, …), which --tools alone controls
+        // ("Specify the list of available tools from the built-in set" —
+        // `claude -p --help`). Dropping --tools "" when this file first
+        // added --mcp-config silently reintroduced the exact ~20k+
+        // tokens/reply of built-in-tool schema bloat the prior `--tools ""`
+        // fix (commit 5f325a4) already eliminated once — confirmed by a
+        // live user report of a 127k-token reply, then reproduced by hand
+        // (a trivial "hi" call: ~30k total input tokens without this flag
+        // vs. ~10k with it) and fixed here. Verified this doesn't break
+        // MCP tool calling: the model still calls get_performance_review
+        // correctly with --tools "" present — if anything it's faster,
+        // since the tool schema is then declared directly instead of
+        // needing a separate discovery round-trip first. See this
+        // update's wiki.md for the full repro.
+        let mcp_config_path =
+            crate::mcp::config::write_config_file(&chat_session_id, agent_id.as_deref().unwrap_or(""))
+                .map_err(|e| format!("Couldn't prepare MCP tools: {e}"))?;
 
         let binary = resolve_binary("claude");
         let mut command = Command::new(&binary);
@@ -185,17 +239,11 @@ pub async fn ask_agent(
             .arg(&system_prompt)
             .arg("--permission-mode")
             .arg("dontAsk")
-            // No tool definitions are sent to the model at all — found by
-            // hand while investigating context-usage numbers: even with
-            // zero tools allow-listed (--permission-mode dontAsk above
-            // already blocks any tool *use*), the CLI still declares every
-            // registered skill/MCP tool's schema on every call by default,
-            // which alone was costing ~20k+ tokens per reply regardless of
-            // conversation size — confirmed by a minimal repro (a 2-token
-            // message dropped from ~21.8k tokens to 344 with this flag).
-            // Pure waste for this reply-only slice, which was never going
-            // to call a tool anyway; revisit if/when tool/MCP calling
-            // actually lands (see this update's wiki.md).
+            .arg("--mcp-config")
+            .arg(&mcp_config_path)
+            .arg("--strict-mcp-config")
+            .arg("--allowedTools")
+            .arg(crate::mcp::config::ALLOWED_TOOLS.join(","))
             .arg("--tools")
             .arg("")
             .stdout(Stdio::piped())

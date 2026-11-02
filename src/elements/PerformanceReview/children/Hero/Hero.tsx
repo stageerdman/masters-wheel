@@ -36,6 +36,8 @@ type HeroProps = {
   onRequestVideoUpload: () => void;
   onSeekTranscript: (seconds: number) => void;
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
+  isGeneratingScorecard: boolean;
+  onGenerateScorecard: () => void;
 };
 
 export function Hero({
@@ -63,6 +65,8 @@ export function Hero({
   onRequestVideoUpload,
   onSeekTranscript,
   onRenameTranscriptSpeaker,
+  isGeneratingScorecard,
+  onGenerateScorecard,
 }: HeroProps) {
   const [active, setActive] = usePersistedActiveKind();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -153,6 +157,8 @@ export function Hero({
           onDismissGenerateTranscriptError={onDismissGenerateTranscriptError}
           onSeekTranscript={onSeekTranscript}
           onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
+          isGeneratingScorecard={isGeneratingScorecard}
+          onGenerateScorecard={onGenerateScorecard}
         />
       </div>
     </section>

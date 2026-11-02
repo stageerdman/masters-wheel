@@ -185,9 +185,34 @@ between the two lists. Each page gets its own section as pages get added.
       `extract_context_usage`), persisted per-agent
       (`ChatSession.contextUsage`) alongside `claudeSessionIds`.
 
+### Built — MCP tool calling (Performance Review visibility)
+- [x] Every reply is now generated with two real MCP tools granted
+      (`--mcp-config`/`--strict-mcp-config`/`--allowedTools`, pointing
+      at this app's own re-exec'd binary — see
+      `src-tauri/src/mcp/server.rs`): `list_performance_reviews`
+      (metadata only — id/date/status/description, always available,
+      never gated) and `get_performance_review` (real notes/transcript/
+      analysis content, gated).
+- [x] A visible tag chip bar between the window header and the chat
+      (`TagBar`/`TagChip`) — "suggested" (dashed, muted) follows
+      whichever Performance Review record is currently open
+      (`src/lib/mcp/activeRecord.ts`); "active" (solid, accent) means
+      the AI has actually read that record. Both removable via a
+      hover-revealed ×. Scoped to one chat session — switching chats
+      starts with none, switching back restores them.
+- [x] Reading an untagged, un-always-allowed record triggers an inline
+      permission card (`PermissionRequest`) with Decline / Allow /
+      Always Allow, backed by a local bridge
+      (`src-tauri/src/mcp/bridge.rs`) that actually blocks the tool call
+      until the user answers (or 180s elapses, auto-declining). Resolved
+      cards collapse to one line ("You declined/allowed/always allow…").
+- [x] Reading a suggested-tagged record promotes it to active
+      automatically, no prompt.
+
 ### To build (real functionality — not started)
-- [ ] Tool/MCP calling (e.g. Notion) — no tool access is granted to a
-      reply yet
+- [ ] More MCP tools beyond Performance Review (e.g. Agents, Notion) —
+      the per-tool pattern in `src-tauri/src/mcp/tools/` is in place,
+      nothing else wired yet
 - [ ] Keyboard-only path to cycle dock states / toggle the side menu
       (currently pointer-only)
 
@@ -279,6 +304,16 @@ between the two lists. Each page gets its own section as pages get added.
       combobox), 200-char description
 - [x] Detail: draggable bookmark rail, reorderable, splits into two
       independent text panes when a bookmark crosses the line
+- [x] Scorecard (5th bookmark, "SC"): 11 fixed criteria (Frame Setting
+      through Resolving Limitation), each rated Skipped/Poor/Good/Great/
+      Outstanding with a color-coded pill (Outstanding gets an animated
+      gradient/glow) and a hover tooltip explaining both the criterion and
+      the rating level. Empty state is just a "Generate Scorecard" button;
+      a document button next to the title opens a modal with the AI's full
+      reasoning per item and a clickable timestamp that seeks the real
+      video. An improvement-suggestion line sits below the rows. "Generate"
+      fabricates a fake result (no real AI call this round — see
+      `updates/2026-11-02 SCORECARD - OPEN/wiki.md`), not random/no-op.
 - [x] Header: 3-area layout (logo / dynamic island / reserved), dynamic
       island shows the active record's state (clickable, changes it; each
       option's hover tooltip explains what that status means; an empty,
@@ -292,7 +327,9 @@ between the two lists. Each page gets its own section as pages get added.
       structured fields (title, meeting date, closed date, state, offered
       amount/currency, description); `user_notes.md`/`ai_analysis.md` are
       created lazily — only once the user actually types something
-      non-empty
+      non-empty; `scorecard.json` is written once a scorecard has been
+      generated (the generation itself is still fake this round — see
+      "To build" below)
 - [x] Adding a record: click the always-last "Add record" row (native file
       dialog) or drag a file anywhere onto the page (Tauri's native
       window-level drag-drop, not a sandboxed HTML5 drop, with a visible
@@ -347,6 +384,9 @@ between the two lists. Each page gets its own section as pages get added.
 - [ ] Real AI analysis generation (the slot is now a real, editable file —
       something still has to actually write useful content into it; the
       header's AI button is still a no-op placeholder)
+- [ ] Real Scorecard generation (currently fabricates a fixed fake result
+      — `src/lib/scorecard/generate.ts` — rather than actually analyzing
+      the transcript)
 - [ ] AI-assisted core lesson extraction; Core Lessons persistence (still
       in-memory only this round — deliberately deferred)
 - [ ] Attachments UI (the `attachments/` folder convention is decided, no

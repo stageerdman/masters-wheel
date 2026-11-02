@@ -58,6 +58,8 @@ export function PerformanceReview() {
     retryGenerateTranscript,
     dismissGenerateTranscriptError,
     renameTranscriptSpeaker,
+    isGeneratingScorecard,
+    onGenerateScorecard,
     isVideoUploadOpen,
     openVideoUpload,
     closeVideoUpload,
@@ -148,6 +150,8 @@ export function PerformanceReview() {
             onRequestVideoUpload={openVideoUpload}
             onSeekTranscript={seekTranscript}
             onRenameTranscriptSpeaker={renameTranscriptSpeaker}
+            isGeneratingScorecard={isGeneratingScorecard}
+            onGenerateScorecard={onGenerateScorecard}
           />
           <Detail
             video={selected}
@@ -165,6 +169,8 @@ export function PerformanceReview() {
             onDismissGenerateTranscriptError={() => selectedId && dismissGenerateTranscriptError(selectedId)}
             onSeekTranscript={seekTranscript}
             onRenameTranscriptSpeaker={renameTranscriptSpeaker}
+            isGeneratingScorecard={isGeneratingScorecard}
+            onGenerateScorecard={onGenerateScorecard}
           />
         </>
       ) : (

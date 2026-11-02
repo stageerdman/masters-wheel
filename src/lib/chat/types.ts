@@ -1,3 +1,5 @@
+import type { PermissionRequestPayload, PerformanceReviewTag } from "@/lib/mcp/types";
+
 export type ChatMessageRole = "user" | "assistant" | "system";
 
 export type ChatMessage = {
@@ -9,6 +11,10 @@ export type ChatMessage = {
    * reply in the same session (see dispatch.ts). */
   agentId?: string;
   createdAt: string;
+  /** Set only for a permission-request card (see src/lib/mcp/types.ts) —
+   * MessageList renders PermissionRequest instead of Message for one of
+   * these. Absent on every ordinary message. */
+  permissionRequest?: PermissionRequestPayload;
 };
 
 /** How full one agent's resumed CLI session is, as of its latest reply —
@@ -36,4 +42,14 @@ export type ChatSession = {
   /** Set only by makeNewSession in AIAssistant.script.ts — see
    * isDraftSession there. Never persisted (see storage.ts). */
   isDraft?: boolean;
+  /** Which Performance Review records are in scope for this chat right
+   * now — "suggested" follows page navigation, "active" sticks once the
+   * AI has actually read that record. Scoped to this one session only,
+   * by explicit user choice — switching chats starts with none. See
+   * src/lib/mcp/types.ts and AIAssistant.script.ts's tag management. */
+  tags: PerformanceReviewTag[];
+  /** Record ids the user picked "Always Allow" for in this chat — never
+   * rendered as their own chips (see TagBar), just silently skips the
+   * permission prompt for that record for the rest of this session. */
+  alwaysAllowedRecordIds: string[];
 };

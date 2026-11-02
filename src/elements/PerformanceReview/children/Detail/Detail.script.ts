@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
 
-const ALL_KINDS: ContentKind[] = ["ai", "transcript", "notes", "lessons"];
+const ALL_KINDS: ContentKind[] = ["ai", "transcript", "notes", "lessons", "scorecard"];
 
 type DragInfo = {
   startY: number;

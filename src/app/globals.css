@@ -25,8 +25,20 @@
   --color-bookmark-transcript: #2563eb;
   --color-bookmark-notes: #d97706;
   --color-bookmark-lessons: #0d9488;
+  --color-bookmark-scorecard: #be185d;
   --color-on-chip: #ffffff;
   --color-action-training-ground: #ea580c;
+
+  /* Scorecard rating levels — each value *is* the visual identity of that
+     rating (Skipped/Poor/Good/Great/Outstanding), same reasoning as the
+     status/bookmark colors above. Outstanding's "legendary" glow/shimmer
+     (ScorecardRow.styles.module.css) is built entirely from color-mix() on
+     --color-rating-outstanding, not a separate hardcoded hue. */
+  --color-rating-skipped: #9ca3af;
+  --color-rating-poor: #dc2626;
+  --color-rating-good: #ca8a04;
+  --color-rating-great: #16a34a;
+  --color-rating-outstanding: #9333ea;
 
   /* Speaker identity in a transcript — each value distinguishes one
      diarized voice from the others, same reasoning as the status/bookmark

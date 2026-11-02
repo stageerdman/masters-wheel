@@ -1,7 +1,9 @@
 import type { Agent, ChatMessage } from "@/elements/AIAssistant/AIAssistant.script";
 import { AgentAvatar } from "@/elements/AgentAvatar/AgentAvatar";
 import { agentDescription } from "@/lib/agents";
+import type { PermissionDecision } from "@/lib/mcp/types";
 import { Message } from "./children/Message/Message";
+import { PermissionRequest } from "./children/PermissionRequest/PermissionRequest";
 import position from "./MessageList.position.module.css";
 import styles from "./MessageList.styles.module.css";
 
@@ -10,9 +12,10 @@ type MessageListProps = {
   density: "compact" | "comfortable";
   agents: Agent[];
   respondingAgent: Agent | undefined;
+  onRespondToPermission: (messageId: string, decision: PermissionDecision) => void;
 };
 
-export function MessageList({ messages, density, agents, respondingAgent }: MessageListProps) {
+export function MessageList({ messages, density, agents, respondingAgent, onRespondToPermission }: MessageListProps) {
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
       {messages.length === 0 ? (
@@ -40,6 +43,16 @@ export function MessageList({ messages, density, agents, respondingAgent }: Mess
           // the session's single resolved agent for messages saved
           // before this existed.
           const author = message.agentId ? agents.find((agent) => agent.id === message.agentId) : respondingAgent;
+          if (message.permissionRequest) {
+            return (
+              <PermissionRequest
+                key={message.id}
+                request={message.permissionRequest}
+                agent={author}
+                onRespond={(decision) => onRespondToPermission(message.id, decision)}
+              />
+            );
+          }
           return <Message key={message.id} message={message} density={density} agents={agents} respondingAgent={author} />;
         })
       )}

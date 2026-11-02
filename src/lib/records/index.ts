@@ -16,6 +16,7 @@ import {
 } from "@tauri-apps/plugin-fs";
 import { documentDir, join } from "@tauri-apps/api/path";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { SCORECARD_CRITERIA_ORDER, type Scorecard, type ScorecardItem } from "@/lib/scorecard";
 const STORAGE_DIR_NAME = "Master's Wheel";
 const BASE_DIR = BaseDirectory.Document;
 
@@ -64,6 +65,55 @@ const TRANSCRIPT_FILE_NAME = "transcript.md";
 
 function transcriptPath(id: string) {
   return `${recordDir(id)}/${TRANSCRIPT_FILE_NAME}`;
+}
+
+const SCORECARD_FILE_NAME = "scorecard.json";
+
+function scorecardPath(id: string) {
+  return `${recordDir(id)}/${SCORECARD_FILE_NAME}`;
+}
+
+// Same "missing or corrupt is just absent, not a crash" tolerance as
+// parseMeta above.
+function parseScorecard(text: string): Scorecard | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as Partial<Scorecard>;
+  if (typeof candidate.generatedAt !== "string" || !Array.isArray(candidate.items)) return null;
+
+  const items: ScorecardItem[] = [];
+  for (const entry of candidate.items) {
+    if (!entry || typeof entry !== "object") continue;
+    const item = entry as Partial<ScorecardItem>;
+    if (
+      typeof item.criterion !== "string" ||
+      !SCORECARD_CRITERIA_ORDER.includes(item.criterion) ||
+      typeof item.rating !== "number" ||
+      item.rating < 0 ||
+      item.rating > 4 ||
+      typeof item.reasoning !== "string"
+    ) {
+      continue;
+    }
+    items.push({
+      criterion: item.criterion,
+      rating: item.rating as ScorecardItem["rating"],
+      reasoning: item.reasoning,
+      timestampSeconds: typeof item.timestampSeconds === "number" ? item.timestampSeconds : null,
+    });
+  }
+  if (items.length !== SCORECARD_CRITERIA_ORDER.length) return null;
+
+  return {
+    generatedAt: candidate.generatedAt,
+    items,
+    improvementSuggestion: typeof candidate.improvementSuggestion === "string" ? candidate.improvementSuggestion : "",
+  };
 }
 
 function emptyMeta(title: string): RecordMetaFields {
@@ -191,6 +241,23 @@ export async function readTranscript(id: string): Promise<string | null> {
 // after import, or after a speaker rename).
 export async function writeTranscript(id: string, text: string): Promise<void> {
   await writeTextFile(transcriptPath(id), text, { baseDir: BASE_DIR });
+}
+
+// Reads a record's scorecard.json. Returns null if none has been
+// generated yet (or the file is corrupt) — same lazy-and-tolerant pattern
+// as readTranscript.
+export async function readScorecard(id: string): Promise<Scorecard | null> {
+  try {
+    const text = await readTextFile(scorecardPath(id), { baseDir: BASE_DIR });
+    return parseScorecard(text);
+  } catch {
+    return null;
+  }
+}
+
+// Overwrites scorecard.json with a freshly generated scorecard.
+export async function writeScorecard(id: string, scorecard: Scorecard): Promise<void> {
+  await writeTextFile(scorecardPath(id), JSON.stringify(scorecard, null, 2), { baseDir: BASE_DIR });
 }
 
 // Copies an arbitrary transcript file in as transcript.md — same

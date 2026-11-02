@@ -4,10 +4,13 @@ import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.script";
 import { isDraftSession, resolveDedicatedAgent } from "@/elements/AIAssistant/AIAssistant.script";
 import type { DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
+import type { RecordSummary } from "@/lib/records";
+import type { PerformanceReviewTag, PermissionDecision } from "@/lib/mcp/types";
 import { AgentPicker } from "./children/AgentPicker/AgentPicker";
 import { Composer } from "./children/Composer/Composer";
 import { MessageList } from "./children/MessageList/MessageList";
 import { Sidebar } from "./children/Sidebar/Sidebar";
+import { TagBar } from "./children/TagBar/TagBar";
 import { useWindowEnterTransition, useWindowGeometry } from "./AIAssistantWindow.script";
 import position from "./AIAssistantWindow.position.module.css";
 import styles from "./AIAssistantWindow.styles.module.css";
@@ -40,6 +43,10 @@ type AIAssistantWindowProps = {
   agentsByRecency: Agent[];
   onSelectAgent: (id: string) => void;
   onPickAgentForNewChat: (id: string) => void;
+  recordSummaries: RecordSummary[];
+  visibleTags: PerformanceReviewTag[];
+  onRemoveTag: (recordId: string) => void;
+  onRespondToPermission: (messageId: string, decision: PermissionDecision) => void;
 };
 
 const DOCK_CLASS: Record<DockState, string> = {
@@ -75,6 +82,10 @@ export function AIAssistantWindow({
   agentsByRecency,
   onSelectAgent,
   onPickAgentForNewChat,
+  recordSummaries,
+  visibleTags,
+  onRemoveTag,
+  onRespondToPermission,
 }: AIAssistantWindowProps) {
   const hasEntered = useWindowEnterTransition();
   const { showCollapsedGeometry, style } = useWindowGeometry({
@@ -177,11 +188,13 @@ export function AIAssistantWindow({
               <AgentPicker agents={agents} onSelectAgent={onPickAgentForNewChat} />
             ) : (
               <>
+                <TagBar tags={visibleTags} records={recordSummaries} onRemove={onRemoveTag} />
                 <MessageList
                   messages={activeSession.messages}
                   density={density}
                   agents={agents}
                   respondingAgent={respondingAgent}
+                  onRespondToPermission={onRespondToPermission}
                 />
                 <Composer
                   value={composerValue}

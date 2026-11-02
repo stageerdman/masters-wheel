@@ -1,0 +1,9 @@
+.root {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.label {
+  color: var(--color-text);
+  font-size: var(--text-size-label);
+  cursor: default;
+}

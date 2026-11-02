@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
 
-const VALID_KINDS: ContentKind[] = ["ai", "transcript", "notes", "lessons"];
+const VALID_KINDS: ContentKind[] = ["ai", "transcript", "notes", "lessons", "scorecard"];
 
 // Which bookmark tab the Hero's text view shows is a UI preference, not
 // per-record data — it persists across reloads (same pattern as Detail's

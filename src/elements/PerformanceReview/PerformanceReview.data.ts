@@ -3,6 +3,8 @@
 // src/lib/records — see PerformanceReview.tsx and PerformanceReview.script.ts.
 // The old fake fixture (FAKE_VIDEOS / mainText) has been removed.
 
+import type { Scorecard } from "@/lib/scorecard";
+
 export type CallState = "closed" | "training" | "postponed" | "failed" | "notQualified";
 
 export const CALL_STATE_ORDER: CallState[] = [
@@ -82,4 +84,6 @@ export type VideoRecord = {
   reviewed: boolean;
   // How many times this record has been opened — tracked for later use.
   openCount: number;
+  // null until "Generate Scorecard" has been run at least once.
+  scorecard: Scorecard | null;
 };

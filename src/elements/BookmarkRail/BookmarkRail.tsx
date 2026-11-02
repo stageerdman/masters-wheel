@@ -2,7 +2,7 @@ import { BookmarkBadge, type ContentKind } from "@/elements/BookmarkBadge/Bookma
 import position from "./BookmarkRail.position.module.css";
 import styles from "./BookmarkRail.styles.module.css";
 
-const ORDER: ContentKind[] = ["ai", "transcript", "notes", "lessons"];
+const ORDER: ContentKind[] = ["ai", "transcript", "notes", "lessons", "scorecard"];
 
 type BookmarkRailProps = {
   active: ContentKind;

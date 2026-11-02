@@ -27,6 +27,10 @@ export function AIAssistant() {
     agents,
     selectAgent,
     startChatWithAgent,
+    removeTag,
+    visibleTags,
+    recordSummaries,
+    respondToPermission,
   } = useAIAssistant();
   const {
     windowRef,
@@ -88,6 +92,10 @@ export function AIAssistant() {
           agentsByRecency={agentsByRecency}
           onSelectAgent={handleSelectAgent}
           onPickAgentForNewChat={startChatWithAgent}
+          recordSummaries={recordSummaries}
+          visibleTags={visibleTags}
+          onRemoveTag={removeTag}
+          onRespondToPermission={respondToPermission}
         />
       )}
     </div>

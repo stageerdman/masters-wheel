@@ -1,4 +1,5 @@
 import { Transcript } from "@/elements/Transcript/Transcript";
+import { Scorecard } from "@/elements/Scorecard/Scorecard";
 import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
 import type { VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
@@ -22,6 +23,8 @@ type TextViewProps = {
   onDismissGenerateTranscriptError: () => void;
   onSeekTranscript: (seconds: number) => void;
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
+  isGeneratingScorecard: boolean;
+  onGenerateScorecard: () => void;
 };
 
 // Renders whichever text type is active.
@@ -42,6 +45,8 @@ export function TextView({
   onDismissGenerateTranscriptError,
   onSeekTranscript,
   onRenameTranscriptSpeaker,
+  isGeneratingScorecard,
+  onGenerateScorecard,
 }: TextViewProps) {
   if (kind === "ai") {
     return (
@@ -79,6 +84,17 @@ export function TextView({
         value={notes}
         onChange={(event) => onNotesChange(event.target.value)}
         placeholder="Notes"
+      />
+    );
+  }
+
+  if (kind === "scorecard") {
+    return (
+      <Scorecard
+        scorecard={video.scorecard}
+        isGenerating={isGeneratingScorecard}
+        onGenerate={onGenerateScorecard}
+        onSeek={onSeekTranscript}
       />
     );
   }

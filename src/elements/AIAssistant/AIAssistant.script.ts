@@ -3,6 +3,11 @@ import { askAgent, onAskAgentProgress } from "@/lib/assistant/askAgent";
 import { listAgents, type Agent } from "@/lib/agents";
 import { buildAgentTurnInput, listSessions, saveSession, deleteSessionFile } from "@/lib/chat";
 import type { ChatMessage, ChatMessageRole, ChatSession } from "@/lib/chat";
+import { listRecords, type RecordSummary } from "@/lib/records";
+import { useActiveRecord } from "@/lib/mcp/activeRecord";
+import { onMcpPermissionRequest, onMcpTagUsed, respondToMcpPermission, syncMcpTags } from "@/lib/mcp/bridge";
+import { promoteTag, removeTag as removeTagFromList, withSuggestedTag } from "@/lib/mcp/tags";
+import type { PerformanceReviewTag, PermissionDecision, PermissionRequestStatus } from "@/lib/mcp/types";
 
 export type AssistantPhase = "closed" | "open" | "closing";
 export type { ChatMessage, ChatMessageRole, ChatSession, Agent };
@@ -20,6 +25,8 @@ function makeNewSession(id: string = NEW_SESSION_ID): ChatSession {
     claudeSessionIds: {},
     contextUsage: {},
     isDraft: true,
+    tags: [],
+    alwaysAllowedRecordIds: [],
   };
 }
 
@@ -128,6 +135,14 @@ export function useAIAssistant() {
     listAgents().then(setAgents);
   }, [phase]);
 
+  // Same refresh-on-open as agents above — TagChip needs a record's
+  // title/status to render anything more useful than a bare id.
+  const [recordSummaries, setRecordSummaries] = useState<RecordSummary[]>([]);
+  useEffect(() => {
+    if (phase !== "open") return;
+    listRecords().then(setRecordSummaries);
+  }, [phase]);
+
   // Loads every real past conversation from disk the first time the
   // window opens — the in-memory draft from useState above is just a
   // placeholder until this resolves, so there's never a render with no
@@ -140,7 +155,22 @@ export function useAIAssistant() {
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
       );
       setSessions((current) => {
-        const draft = current.find(isDraftSession) ?? makeNewSession(crypto.randomUUID());
+        const existingDraft = current.find(isDraftSession);
+        // The in-memory placeholder draft always starts life with id
+        // NEW_SESSION_ID ("current") before anything's loaded from disk
+        // (see the useState above). If an *earlier* app launch ever
+        // converted that exact draft into a real chat (picking an agent
+        // keeps the draft's own id — see startChatWithAgent below) and
+        // saved it, this launch's fresh placeholder collides with that
+        // same id once `ordered` loads. Two ChatSession objects would
+        // then share one id — every update keyed by id
+        // (`current.map(s => s.id === id ? ... : s)`) matches both at
+        // once, so they'd visibly "shine together" in the history list
+        // for every message/tag change in either. Found live, not
+        // theoretical — regenerate the draft's id instead of reusing it
+        // whenever this collision is actually possible.
+        const collides = existingDraft && ordered.some((session) => session.id === existingDraft.id);
+        const draft = existingDraft && !collides ? existingDraft : makeNewSession(crypto.randomUUID());
         return [draft, ...ordered];
       });
     });
@@ -162,6 +192,116 @@ export function useAIAssistant() {
 
   function selectSession(id: string) {
     setActiveSessionId(id);
+  }
+
+  // The "suggested" tag is never written to a session's stored `tags` —
+  // it's a pure, render-time reflection of wherever the user currently
+  // is in Performance Review (src/lib/mcp/activeRecord.ts), re-derived
+  // every render rather than synced via an effect (an effect that calls
+  // setState in response to an external store is exactly the kind of
+  // "derived state" React's docs recommend computing during render
+  // instead). Only a real, stored "active" tag (one the AI has actually
+  // read — see Phase C) ever lives in session.tags.
+  const activeRecordId = useActiveRecord();
+  // Dismissing a *suggested* chip can't remove something that was never
+  // stored — this is what makes "×" on a not-yet-active suggestion stick
+  // instead of reappearing on the next render. Keyed per session (tags
+  // are scoped per chat, per the user's own choice), reset for free the
+  // moment the user navigates to a different record.
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Record<string, string>>({});
+  const suggestedRecordId =
+    activeRecordId && dismissedSuggestions[activeSessionId] !== activeRecordId ? activeRecordId : null;
+  const visibleTags: PerformanceReviewTag[] = withSuggestedTag(activeSession.tags, suggestedRecordId);
+
+  // Pushes the active session's tag/always-allow state to the Rust
+  // bridge (src-tauri/src/mcp/bridge.rs) — a real external-system sync,
+  // not a setState call, so it belongs in an effect. Includes the
+  // computed "suggested" tag, not just what's stored, since that's what
+  // actually grants silent access to a not-yet-active suggestion (see
+  // mcp/permission.rs). Only the active session needs to stay live here —
+  // sendMessage captures its target session synchronously before this
+  // could change out from under it.
+  useEffect(() => {
+    void syncMcpTags(activeSessionId, visibleTags, activeSession.alwaysAllowedRecordIds);
+  }, [activeSessionId, visibleTags, activeSession.alwaysAllowedRecordIds]);
+
+  // Two long-lived subscriptions to the bridge's events — mount once,
+  // route by the sessionId each event itself carries (never assumed to
+  // be the currently active session; a reply the user has since
+  // navigated away from can still trigger either of these).
+  useEffect(() => {
+    const unlistenPromise = onMcpPermissionRequest((event) => {
+      appendMessageToSession(event.sessionId, {
+        id: crypto.randomUUID(),
+        role: "system",
+        text: "",
+        createdAt: new Date().toISOString(),
+        agentId: event.agentId,
+        permissionRequest: {
+          requestId: event.requestId,
+          agentId: event.agentId,
+          recordId: event.recordId,
+          recordTitle: event.recordTitle,
+          document: event.document,
+          status: "pending",
+        },
+      });
+    });
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
+    // Mount once — appendMessageToSession is stable in behavior (reads
+    // fresh state via setSessions's functional form) even though it's
+    // redefined every render; re-subscribing on every render would be
+    // wrong, not just unnecessary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const unlistenPromise = onMcpTagUsed((event) => {
+      updateAndPersistSession(event.sessionId, (session) => ({ ...session, tags: promoteTag(session.tags, event.recordId) }));
+    });
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, []);
+
+  // The Decline/Allow/Always Allow buttons on a PermissionRequest card.
+  // Resolves the bridge's blocked tool call immediately and, separately,
+  // collapses the card by updating its stored status — found by message
+  // id, not the active session, for the same reason the event listeners
+  // above don't assume it either.
+  function respondToPermission(messageId: string, decision: PermissionDecision) {
+    const owningSession = sessions.find((session) => session.messages.some((message) => message.id === messageId));
+    const request = owningSession?.messages.find((message) => message.id === messageId)?.permissionRequest;
+    if (!owningSession || !request) return;
+    void respondToMcpPermission(request.requestId, decision);
+    const status: PermissionRequestStatus =
+      decision === "decline" ? "declined" : decision === "allow" ? "allowed" : "always-allowed";
+    updateAndPersistSession(owningSession.id, (session) => ({
+      ...session,
+      alwaysAllowedRecordIds:
+        decision === "always-allow"
+          ? [...session.alwaysAllowedRecordIds, request.recordId]
+          : session.alwaysAllowedRecordIds,
+      messages: session.messages.map((message) =>
+        message.id === messageId && message.permissionRequest
+          ? { ...message, permissionRequest: { ...message.permissionRequest, status } }
+          : message,
+      ),
+    }));
+  }
+
+  // The × button on a tag chip. A stored (active) tag is actually
+  // removed from the session; a merely-suggested one (never stored) is
+  // just dismissed for as long as the user stays on that same record.
+  function removeTag(recordId: string) {
+    const isStored = activeSession.tags.some((tag) => tag.recordId === recordId);
+    if (isStored) {
+      updateAndPersistSession(activeSessionId, (session) => ({ ...session, tags: removeTagFromList(session.tags, recordId) }));
+    } else {
+      setDismissedSuggestions((current) => ({ ...current, [activeSessionId]: recordId }));
+    }
   }
 
   // Moves a session to the front of `sessions` — this array's order is
@@ -278,7 +418,7 @@ export function useAIAssistant() {
     });
 
     try {
-      const reply = await askAgent(jobId, input, agent.instructions, agent.id, session.claudeSessionIds[agent.id]);
+      const reply = await askAgent(jobId, input, agent.instructions, agent.id, session.claudeSessionIds[agent.id], sessionId);
       // The streamed-in text above is provisional (deltas could in theory
       // drop or reorder); the CLI's final `result` text is authoritative,
       // so it always wins here.
@@ -351,6 +491,8 @@ export function useAIAssistant() {
       claudeSessionIds: {},
       contextUsage: {},
       agentId,
+      tags: [],
+      alwaysAllowedRecordIds: [],
     };
     setSessions((current) => [session, ...current]);
     setActiveSessionId(session.id);
@@ -419,5 +561,9 @@ export function useAIAssistant() {
     agents,
     selectAgent,
     startChatWithAgent,
+    removeTag,
+    visibleTags,
+    recordSummaries,
+    respondToPermission,
   };
 }

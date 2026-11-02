@@ -1,0 +1,46 @@
+.root {
+  background: var(--rating-color);
+  color: var(--color-on-chip);
+  border-radius: 999px;
+  font-size: var(--text-size-micro);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: default;
+}
+
+/* Skipped is grayed out, not a colored chip — it carries no score. */
+.skipped {
+  background: transparent;
+  color: var(--color-rating-skipped);
+  border: 1px solid var(--color-rating-skipped);
+}
+
+/* "Legendary" Outstanding: an animated gradient sweep + glow, both derived
+   from --rating-color via color-mix — no new hardcoded hue (see this
+   update's wiki.md). */
+.outstanding {
+  background: linear-gradient(
+    120deg,
+    var(--rating-color) 0%,
+    color-mix(in srgb, var(--rating-color) 55%, white) 50%,
+    var(--rating-color) 100%
+  );
+  background-size: 220% 100%;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--rating-color) 55%, transparent);
+  animation: outstanding-shimmer 2.4s ease-in-out infinite;
+}
+
+@keyframes outstanding-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 220% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outstanding {
+    animation-duration: 0.01ms;
+  }
+}
