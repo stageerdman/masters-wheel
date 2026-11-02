@@ -90,3 +90,11 @@ already used for AI analysis / transcription.
   analysis pass) is a future update, same deferral already applied to AI
   analysis / lesson extraction elsewhere on this page.
 - Regenerate / re-score a single criterion — not requested this round.
+
+## Decisions
+- Committed alongside unrelated in-progress MCP-tools/multi-agent-chat work
+  that was already sitting uncommitted in the same working tree (some of
+  it interleaved in the same files, e.g. `PerformanceReview.script.ts`'s
+  `setActiveRecord` effect) — by explicit user choice, one combined commit
+  rather than a surgical per-feature split. See git log.
+
