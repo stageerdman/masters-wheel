@@ -16,6 +16,16 @@ Decided up front (user confirmed):
   `AppHeader` (which stays hidden on Main Menu as today).
 - Icon set: a curated open icon library (detailed line/outline style),
   recolored to the app's palette — not hand-drawn custom icons.
+- **Unified, visible root** (revised after initial research): every Space's
+  Agents + chats + Performance Review records all live together under one
+  real, Finder-visible folder — `~/Documents/Master's Wheel/<Space name>/`
+  — instead of splitting Agents/chats off into the hidden Tauri app-data
+  dir. The user explicitly wants to see Spaces as real folders in Finder.
+  This is safe because moving an existing folder on the same volume is an
+  O(1) rename, not a byte-copy — even large video files move instantly and
+  atomically, so consolidating the *existing* default Space's data into its
+  own subfolder carries the same low risk as the small-JSON moves below
+  (with an `EXDEV` cross-device fallback to copy+delete, just in case).
 
 ## Current architecture (researched before writing this plan)
 No shared "app root" helper exists today — three independent roots:
@@ -46,56 +56,77 @@ No shared "app root" helper exists today — three independent roots:
   prefs. Treated as low-priority UI preference, not Space data — left global
   unless a phase below finds a concrete reason to scope one.
 
+## Unified root layout
+```
+~/Documents/Master's Wheel/
+  spaces.json                 <- registry: [{id,name,icon,createdAt}], activeSpaceId
+  Default/                    <- existing data lands here on first migration
+    agents/<id>/{agent.json,versions.json,knowledge/...}
+    chats/<id>.json
+    records/<id>/{meta.json,user_notes.md,ai_analysis.md,transcript.md,scorecard.json,hero.<ext>}
+  <Second Space name>/
+    agents/...
+    chats/...
+    records/...
+```
+Folder name = sanitized Space display name (not id) — chosen deliberately so
+Spaces are legible in Finder, per the user's explicit ask. Tradeoff noted in
+`wiki.md`: renaming a Space later would need a folder-rename step too; not
+built now since rename isn't a requested feature yet.
+
 ## Phases
 
 ### Phase 1 — Spaces data model (additive, zero behavior change)
-- `src/lib/spaces/`: `Space { id, name, icon, createdAt }`, registry file at
-  `<app data>/spaces.json` (lives *outside* every Space folder — it's the
-  thing that lists them), holds `activeSpaceId` too.
-- On first run, auto-seed a `default` Space in the registry pointing at
-  today's existing data (no files moved yet — that's Phase 2/3).
+- `src/lib/spaces/`: `Space { id, name, icon, createdAt, folderName }`,
+  registry at `~/Documents/Master's Wheel/spaces.json` (sibling to the Space
+  folders, not inside any of them), holding `activeSpaceId` too.
+- On first run (registry file doesn't exist yet): create `Default/`, move
+  every existing top-level entry currently under `~/Documents/Master's
+  Wheel/` (today's flat record folders) into `Default/records/`, move
+  `<app data>/agents` → `Default/agents`, `<app data>/chats` →
+  `Default/chats`. All moves are real filesystem renames (same-volume case)
+  with copy-then-delete as an `EXDEV` cross-device fallback only — never
+  delete-then-copy, so a crash mid-migration can't lose data. Write
+  `spaces.json` last, only once every move succeeded.
 - `SpacesProvider` React context (same shape as `HeaderActionsContext`),
   mounted in `src/app/layout.tsx`: `activeSpace`, `spaces`, `switchSpace`,
   `createSpace`, `deleteSpace`.
-- Nothing else changes yet — this phase is pure data model, testable in
-  isolation.
-- Tests: registry CRUD, default-seeding, "can't delete the last Space."
+- A single shared TS path helper (`src/lib/spaces/paths.ts`) every other
+  storage module calls for its root — the thing that didn't exist before and
+  caused the 3-separate-hardcodes problem in Performance Review.
+- Tests: registry CRUD, migration logic (including the EXDEV fallback path),
+  "can't delete the last Space."
 
-### Phase 2 — Scope Agents + Chat storage per Space
-Small JSON files — cheap and safe to move.
-- Thread `activeSpaceId` through `src/lib/agents/storage.ts` and
-  `src/lib/chat/storage.ts`: paths become
-  `spaces/<spaceId>/agents/...` / `spaces/<spaceId>/chats/...`.
-- Thread a `spaceId` param through `knowledge/paths.rs`'s helpers and the two
-  knowledge Tauri commands.
-- One-time migration on first run: move `<app data>/agents` →
-  `<app data>/spaces/default/agents`, `<app data>/chats` →
-  `<app data>/spaces/default/chats`. Copy-then-delete-source (never
-  delete-then-copy), so a crash mid-migration can't lose data.
-- Verify by running the app: existing agents/chat history still appear under
-  the auto-created "default" Space; a newly created second Space starts with
-  zero agents and zero chat history; switching back to default restores
-  everything untouched.
+### Phase 2 — Scope Agents + Chat storage under the active Space's folder
+Small JSON files — cheap and safe either way, done first to prove the
+plumbing before touching records/video.
+- Thread `activeSpace.folderName` through `src/lib/agents/storage.ts` and
+  `src/lib/chat/storage.ts` via the Phase 1 path helper.
+- Thread the same through `knowledge/paths.rs`'s helpers and the two
+  knowledge Tauri commands (`ingest_knowledge_file` / `remove_knowledge_file`
+  gain a `spaceFolder` argument from the frontend caller).
+- Verify by running the app: existing agents/chat history appear under the
+  auto-created "Default" Space; a newly created second Space starts with
+  zero agents and zero chat history; switching back to Default restores
+  everything untouched; a real chat still sends/receives (Claude CLI session
+  plumbing itself is untouched, only its storage path moved).
 
-### Phase 3 — Scope Performance Review records per Space
-Higher risk: this is where the user's actual video files live, and the path
-is hardcoded in three places today.
-- **Default Space keeps today's root unchanged**: `~/Documents/Master's
-  Wheel/` stays exactly as-is for the `default` Space — no bulk-moving large
-  video files on first run. Every *new* Space created from here on gets
-  `~/Documents/Master's Wheel/Spaces/<space-id>/` instead.
-- Update `src/lib/records/index.ts` to resolve root by active Space (default
-  = unscoped root, else = subfolder).
+### Phase 3 — Scope Performance Review records under the active Space's folder
+This is where the hardcoded-in-3-places problem lived.
+- Update `src/lib/records/index.ts` to resolve its root via the same Phase 1
+  path helper instead of its own `BaseDirectory.Document` + fixed subpath.
 - Update `mcp/paths.rs` to stop hardcoding `$HOME/Documents/Master's Wheel`;
-  read the root from an env var the parent process sets (based on active
-  Space) before spawning the MCP server / Claude CLI subprocess, falling
-  back to the legacy path if unset.
+  read the active Space's full records root from an env var the parent
+  process sets before spawning the MCP server / Claude CLI subprocess
+  (that subprocess has no `AppHandle`, so env var is the only channel in).
 - Update the media server (`lib.rs` + `media_server.rs`) to resolve against
-  the *currently active* Space's root rather than one frozen at app launch —
-  needed so switching Spaces mid-session doesn't serve a stale video path.
-- Verify: open a video in default Space, switch Spaces, confirm nothing
+  the *currently active* Space's records root rather than one frozen at app
+  launch — needed so switching Spaces mid-session doesn't serve a stale
+  video path.
+- Verify: open a video in Default Space, switch Spaces, confirm nothing
   stale plays; create a record in a new Space, confirm it's invisible from
-  default Space's Navigation list and lives in its own subfolder.
+  Default Space's Navigation list and lives under that Space's own
+  `records/` folder.
 
 ### Phase 4 — Space switcher UI (Main Menu only)
 - New element, Main Menu's top-right: trigger (icon + name) → dropdown
