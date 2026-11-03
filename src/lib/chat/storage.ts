@@ -1,28 +1,34 @@
 // Chat session persistence — one real file per past conversation, under
-// the app's own data directory. Same precedent as src/lib/agents/storage.ts
-// (on-disk JSON over a hosted DB), simpler shape: a chat session has no
-// companion artifacts the way an agent has a knowledge database, so one
-// flat `<id>.json` file is enough — no per-session folder.
+// the active Space's own folder (see src/lib/spaces) — each Space has a
+// genuinely separate chat history. Same precedent as
+// src/lib/agents/storage.ts (on-disk JSON over a hosted DB), simpler shape:
+// a chat session has no companion artifacts the way an agent has a
+// knowledge database, so one flat `<id>.json` file is enough — no
+// per-session folder.
 //
-//   <app data>/chats/<id>.json
+//   .../<space>/chats/<id>.json
 //
 // Draft ("pick someone") sessions are never written here at all — see
 // AIAssistant.script.ts's isDraftSession — they aren't real conversations
 // yet, so there's nothing worth persisting.
 
-import { BaseDirectory, mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
+import { mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
+import { BASE_DIR, spaceChatsDir } from "@/lib/spaces/paths";
+import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 import type { ChatSession } from "./types";
 
-const CHATS_DIR = "chats";
-const BASE_DIR = BaseDirectory.AppData;
 const EXTENSION = ".json";
 
+function chatsRoot() {
+  return spaceChatsDir(getActiveSpaceFolder());
+}
+
 function sessionPath(id: string) {
-  return `${CHATS_DIR}/${id}${EXTENSION}`;
+  return `${chatsRoot()}/${id}${EXTENSION}`;
 }
 
 export async function ensureChatsRoot(): Promise<void> {
-  await mkdir(CHATS_DIR, { baseDir: BASE_DIR, recursive: true });
+  await mkdir(chatsRoot(), { baseDir: BASE_DIR, recursive: true });
 }
 
 function parseSession(id: string, text: string): ChatSession | null {
@@ -62,7 +68,7 @@ function parseSession(id: string, text: string): ChatSession | null {
 // body is skipped, not a crash — same convention listAgents() uses.
 export async function listSessions(): Promise<ChatSession[]> {
   await ensureChatsRoot();
-  const entries = await readDir(CHATS_DIR, { baseDir: BASE_DIR });
+  const entries = await readDir(chatsRoot(), { baseDir: BASE_DIR });
   const sessions: ChatSession[] = [];
   for (const entry of entries) {
     if (entry.isDirectory || !entry.name.endsWith(EXTENSION)) continue;

@@ -8,6 +8,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
+import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 import type { KnowledgeFile } from "./types";
 
 export const SUPPORTED_KNOWLEDGE_EXTENSIONS = ["txt", "md", "markdown", "pdf"];
@@ -37,6 +38,7 @@ export function basenameOf(path: string): string {
 export async function ingestKnowledgeFile(agentId: string, sourcePath: string, jobId: string): Promise<KnowledgeFile> {
   return invoke<KnowledgeFile>("ingest_knowledge_file", {
     jobId,
+    spaceFolder: getActiveSpaceFolder(),
     agentId,
     fileId: crypto.randomUUID(),
     sourcePath,
@@ -55,5 +57,5 @@ export async function onKnowledgeIngestProgress(callback: (progress: KnowledgeIn
 }
 
 export async function removeKnowledgeFile(agentId: string, file: KnowledgeFile): Promise<void> {
-  await invoke("remove_knowledge_file", { agentId, fileId: file.id, fileName: file.name });
+  await invoke("remove_knowledge_file", { spaceFolder: getActiveSpaceFolder(), agentId, fileId: file.id, fileName: file.name });
 }

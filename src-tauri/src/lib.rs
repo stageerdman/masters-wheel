@@ -3,6 +3,7 @@ mod avatar;
 mod knowledge;
 mod media_server;
 pub mod mcp;
+mod spaces;
 mod transcribe;
 mod util;
 
@@ -51,7 +52,9 @@ pub fn run() {
       knowledge::commands::remove_knowledge_file,
       avatar::read_image_as_data_url,
       mcp::bridge::sync_mcp_tags,
-      mcp::bridge::respond_to_mcp_permission
+      mcp::bridge::respond_to_mcp_permission,
+      spaces::migrate_legacy_data_to_default_space,
+      spaces::switch_space_media_root
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -62,7 +65,14 @@ pub fn run() {
         )?;
       }
       if let Ok(documents) = app.path().document_dir() {
-        media_server::spawn(documents.join("Master's Wheel"));
+        // Guesses "Default" as the initial root — correct on every
+        // launch except the rare case where the user's last-active Space
+        // wasn't Default, and even then only until the frontend mounts
+        // and calls switch_space_media_root with the real active Space
+        // moments later (src/lib/spaces/context.tsx's init effect), well
+        // before anything could actually request a video.
+        let initial_root = documents.join("Master's Wheel").join("Default").join("records");
+        app.manage(media_server::spawn(initial_root));
       }
       app.manage(mcp::bridge::spawn(app.handle().clone()));
       Ok(())

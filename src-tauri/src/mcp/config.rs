@@ -24,6 +24,10 @@ const MCP_SERVER_ENV: &str = "MASTERS_WHEEL_MCP_SERVER";
 const BRIDGE_PORT_ENV: &str = "MASTERS_WHEEL_BRIDGE_PORT";
 const CHAT_SESSION_ID_ENV: &str = "MASTERS_WHEEL_CHAT_SESSION_ID";
 const AGENT_ID_ENV: &str = "MASTERS_WHEEL_AGENT_ID";
+// Read by mcp/paths.rs, which has no AppHandle of its own (see that
+// file's doc comment) — this is the only channel it has to learn which
+// Space's records root the active chat is using.
+pub const RECORDS_ROOT_ENV: &str = "MASTERS_WHEEL_RECORDS_ROOT";
 
 /// Every tool name this server currently exposes, in the
 /// `mcp__<server name>__<tool name>` shape `--allowedTools` expects —
@@ -35,11 +39,13 @@ pub const ALLOWED_TOOLS: &[&str] = &[
     "mcp__masters_wheel__get_performance_review",
 ];
 
-// chat_session_id/agent_id flow into the mcp_server subprocess's env so
-// mcp/permission.rs knows which chat (for tag/always-allow lookups) and
-// which agent (shown on the permission card) a tool call is answering
-// for — the subprocess has no other way to know either.
-pub fn write_config_file(chat_session_id: &str, agent_id: &str) -> io::Result<PathBuf> {
+// chat_session_id/agent_id/records_root flow into the mcp_server
+// subprocess's env so mcp/permission.rs knows which chat (for
+// tag/always-allow lookups) and which agent (shown on the permission
+// card) a tool call is answering for, and mcp/paths.rs knows which
+// Space's records to read — the subprocess has no other way to know any
+// of these.
+pub fn write_config_file(chat_session_id: &str, agent_id: &str, records_root: &str) -> io::Result<PathBuf> {
     let current_exe = std::env::current_exe()?;
     let config = serde_json::json!({
         "mcpServers": {
@@ -51,6 +57,7 @@ pub fn write_config_file(chat_session_id: &str, agent_id: &str) -> io::Result<Pa
                     BRIDGE_PORT_ENV: bridge::PORT.to_string(),
                     CHAT_SESSION_ID_ENV: chat_session_id,
                     AGENT_ID_ENV: agent_id,
+                    RECORDS_ROOT_ENV: records_root,
                 }
             }
         }

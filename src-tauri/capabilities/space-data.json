@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "records",
-  "description": "Local records backend: fs + dialog access scoped to the Master's Wheel storage root only.",
+  "identifier": "space-data",
+  "description": "Every Space's data (Agents, chat history, Performance Review records) plus the spaces.json registry itself: fs + dialog access scoped to the Master's Wheel storage root only.",
   "windows": ["main"],
   "permissions": [
     "dialog:allow-open",

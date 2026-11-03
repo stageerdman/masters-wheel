@@ -12,16 +12,22 @@
 // actual internet already serves multi-gigabyte files.
 //
 // Scope is intentionally the same as the existing `fs` capability
-// (`records.json`): anything under the Master's Wheel storage root. This
+// (`space-data.json`): anything under the Master's Wheel storage root. This
 // introduces no new trust boundary — the frontend can already read that
 // whole tree via the fs plugin.
+//
+// The root is held behind a Mutex, not captured once at spawn time: the
+// user can switch Spaces while the app is running, and the server has to
+// start serving the newly active Space's records root on the very next
+// request — see MediaServerHandle::set_root, called from
+// spaces::switch_space_media_root.
 
 use std::{
   fs::File,
   io::{Read, Seek, SeekFrom},
   net::Ipv4Addr,
   path::{Path, PathBuf},
-  sync::Arc,
+  sync::{Arc, Mutex},
 };
 
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
@@ -29,27 +35,44 @@ use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 const PORT: u16 = 47821;
 const WORKER_THREADS: usize = 4;
 
-pub fn spawn(storage_root: PathBuf) {
+#[derive(Clone)]
+pub struct MediaServerHandle {
+  root: Arc<Mutex<PathBuf>>,
+}
+
+impl MediaServerHandle {
+  pub fn set_root(&self, new_root: PathBuf) {
+    *self.root.lock().expect("media server root mutex poisoned") = new_root;
+  }
+}
+
+pub fn spawn(initial_root: PathBuf) -> MediaServerHandle {
+  let root = Arc::new(Mutex::new(initial_root));
+  let handle = MediaServerHandle { root: Arc::clone(&root) };
+
   let server = match Server::http((Ipv4Addr::LOCALHOST, PORT)) {
     Ok(server) => Arc::new(server),
     Err(e) => {
       eprintln!("media server: failed to bind 127.0.0.1:{PORT}: {e}");
-      return;
+      return handle;
     }
   };
 
   for _ in 0..WORKER_THREADS {
     let server = Arc::clone(&server);
-    let root = storage_root.clone();
+    let root = Arc::clone(&root);
     std::thread::spawn(move || {
       while let Ok(request) = server.recv() {
-        handle(request, &root);
+        let current_root = root.lock().expect("media server root mutex poisoned").clone();
+        handle_request(request, &current_root);
       }
     });
   }
+
+  handle
 }
 
-fn handle(request: Request, root: &Path) {
+fn handle_request(request: Request, root: &Path) {
   let raw_path = request.url().split('?').next().unwrap_or("");
   let decoded = percent_decode(raw_path.trim_start_matches('/'));
 

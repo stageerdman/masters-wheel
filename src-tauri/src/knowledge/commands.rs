@@ -53,6 +53,7 @@ const EMBED_BATCH_SIZE: usize = 16;
 pub async fn ingest_knowledge_file(
     app: AppHandle,
     job_id: String,
+    space_folder: String,
     agent_id: String,
     file_id: String,
     source_path: String,
@@ -62,7 +63,7 @@ pub async fn ingest_knowledge_file(
         let source = std::path::Path::new(&source_path);
         let size = std::fs::metadata(source).map(|m| m.len()).unwrap_or(0);
 
-        let knowledge_dir = agent_knowledge_dir(&app, &agent_id)?;
+        let knowledge_dir = agent_knowledge_dir(&app, &space_folder, &agent_id)?;
         std::fs::create_dir_all(&knowledge_dir).map_err(|e| format!("Couldn't create the agent's knowledge folder: {e}"))?;
         let stored_path = knowledge_dir.join(format!("{file_id}_{file_name}"));
         std::fs::copy(source, &stored_path).map_err(|e| format!("Couldn't store a copy of this file: {e}"))?;
@@ -75,7 +76,7 @@ pub async fn ingest_knowledge_file(
         let total = chunks.len();
         emit_ingest_progress(&app, &job_id, 0, total);
 
-        let db_path = agent_db_path(&app, &agent_id)?;
+        let db_path = agent_db_path(&app, &space_folder, &agent_id)?;
         let conn = open_db(&db_path)?;
 
         // Embedded and stored in small batches (not all at once) so the
@@ -101,14 +102,14 @@ pub async fn ingest_knowledge_file(
 // Removes a knowledge file's stored copy and every chunk/vector it
 // produced.
 #[tauri::command]
-pub async fn remove_knowledge_file(app: AppHandle, agent_id: String, file_id: String, file_name: String) -> Result<(), String> {
+pub async fn remove_knowledge_file(app: AppHandle, space_folder: String, agent_id: String, file_id: String, file_name: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let db_path = agent_db_path(&app, &agent_id)?;
+        let db_path = agent_db_path(&app, &space_folder, &agent_id)?;
         if db_path.exists() {
             let conn = open_db(&db_path)?;
             delete_file_chunks(&conn, &file_id)?;
         }
-        let knowledge_dir = agent_knowledge_dir(&app, &agent_id)?;
+        let knowledge_dir = agent_knowledge_dir(&app, &space_folder, &agent_id)?;
         let _ = std::fs::remove_file(knowledge_dir.join(format!("{file_id}_{file_name}")));
         Ok(())
     })
@@ -120,8 +121,8 @@ pub async fn remove_knowledge_file(app: AppHandle, agent_id: String, file_id: St
 // list (not an error) whenever an agent has no indexed knowledge at all,
 // so callers can always just check `.is_empty()` instead of separately
 // branching on "does this agent even have knowledge files."
-pub fn retrieve_for_agent(app: &AppHandle, agent_id: &str, query: &str, top_k: usize) -> Result<Vec<RetrievedChunk>, String> {
-    let db_path = agent_db_path(app, agent_id)?;
+pub fn retrieve_for_agent(app: &AppHandle, space_folder: &str, agent_id: &str, query: &str, top_k: usize) -> Result<Vec<RetrievedChunk>, String> {
+    let db_path = agent_db_path(app, space_folder, agent_id)?;
     if !db_path.exists() {
         return Ok(Vec::new());
     }

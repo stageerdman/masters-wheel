@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AIAssistant } from "@/elements/AIAssistant/AIAssistant";
 import { AppHeader } from "@/elements/AppHeader/AppHeader";
 import { HeaderActionsProvider } from "@/elements/AppHeader/AppHeader.context";
+import { SpacesProvider } from "@/lib/spaces";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,11 +27,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
-        <HeaderActionsProvider>
-          <AppHeader />
-          {children}
-        </HeaderActionsProvider>
-        <AIAssistant />
+        <SpacesProvider>
+          <HeaderActionsProvider>
+            <AppHeader />
+            {children}
+          </HeaderActionsProvider>
+          <AIAssistant />
+        </SpacesProvider>
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ import { buildAgentTurnInput, listSessions, saveSession, deleteSessionFile } fro
 import type { ChatMessage, ChatMessageRole, ChatSession } from "@/lib/chat";
 import { listRecords, type RecordSummary } from "@/lib/records";
 import { useActiveRecord } from "@/lib/mcp/activeRecord";
+import { useActiveSpace } from "@/lib/spaces";
 import { onMcpPermissionRequest, onMcpTagUsed, respondToMcpPermission, syncMcpTags } from "@/lib/mcp/bridge";
 import { promoteTag, removeTag as removeTagFromList, withSuggestedTag } from "@/lib/mcp/tags";
 import type { PerformanceReviewTag, PermissionDecision, PermissionRequestStatus } from "@/lib/mcp/types";
@@ -126,6 +127,7 @@ export function useAIAssistant() {
   const [isSending, setIsSending] = useState(false);
 
   const activeSession = sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
+  const activeSpace = useActiveSpace();
 
   // Refreshes the roster from disk every time the window opens — cheap,
   // and good enough to pick up an agent created/edited on the Agents page
@@ -133,7 +135,7 @@ export function useAIAssistant() {
   useEffect(() => {
     if (phase !== "open") return;
     listAgents().then(setAgents);
-  }, [phase]);
+  }, [phase, activeSpace?.id]);
 
   // Same refresh-on-open as agents above — TagChip needs a record's
   // title/status to render anything more useful than a bare id.
@@ -141,10 +143,35 @@ export function useAIAssistant() {
   useEffect(() => {
     if (phase !== "open") return;
     listRecords().then(setRecordSummaries);
-  }, [phase]);
+  }, [phase, activeSpace?.id]);
+
+  // Switching Spaces must drop every bit of this Space's in-memory state —
+  // agents, sessions, records — since the new Space is a genuinely
+  // separate set of all three, not a filtered view of the same data. This
+  // window is a global singleton (mounted once in layout.tsx, outlives
+  // route changes), so it can't rely on a remount to reset itself the way
+  // a page component would. Resetting during render (React's documented
+  // "adjust state when a prop changes" pattern), not inside a useEffect —
+  // an effect body calling setState synchronously is exactly the
+  // cascading-render footgun react-hooks/set-state-in-effect exists to
+  // catch; comparing against a ref during render re-renders once, cleanly,
+  // with the reset state already applied. Resetting sessionsLoadStarted
+  // lets the sessions effect below reload exactly once for the new Space,
+  // same "once per (open, Space)" shape it already had for "once per
+  // open".
+  const lastSeenSpaceIdRef = useRef(activeSpace?.id);
+  if (activeSpace && activeSpace.id !== lastSeenSpaceIdRef.current) {
+    lastSeenSpaceIdRef.current = activeSpace.id;
+    sessionsLoadStarted.current = false;
+    setAgents([]);
+    setRecordSummaries([]);
+    setSessions([makeNewSession()]);
+    setActiveSessionId(NEW_SESSION_ID);
+  }
 
   // Loads every real past conversation from disk the first time the
-  // window opens — the in-memory draft from useState above is just a
+  // window opens (and again whenever the active Space changes — see
+  // above) — the in-memory draft from useState above is just a
   // placeholder until this resolves, so there's never a render with no
   // active session at all.
   useEffect(() => {
@@ -174,7 +201,7 @@ export function useAIAssistant() {
         return [draft, ...ordered];
       });
     });
-  }, [phase]);
+  }, [phase, activeSpace?.id]);
 
   function open() {
     setPhase("open");

@@ -5,6 +5,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 
 // contextTokens/contextWindow describe how full the agent's resumed CLI
 // session is as of this reply (0/0 if the CLI's result event didn't carry
@@ -27,6 +28,7 @@ export async function askAgent(
     agentId,
     sessionId: sessionId ?? null,
     chatSessionId,
+    spaceFolder: getActiveSpaceFolder(),
   });
 }
 

@@ -1,11 +1,11 @@
 // Local records backend — plain TS, no React. Every Performance Review
-// record is a real folder on disk under ~/Documents/Master's Wheel/; the
-// folder name IS the record's id (see this update's wiki.md). All disk
-// access goes through Tauri's fs plugin, scoped (see
-// src-tauri/capabilities/records.json) to that one directory.
+// record is a real folder on disk under the active Space's own `records/`
+// folder (see src/lib/spaces) — each Space has a genuinely separate set of
+// records; the folder name IS the record's id (see this update's
+// wiki.md). All disk access goes through Tauri's fs plugin, scoped (see
+// src-tauri/capabilities/space-data.json) to the Master's Wheel root.
 
 import {
-  BaseDirectory,
   copyFile,
   exists,
   mkdir,
@@ -17,8 +17,12 @@ import {
 import { documentDir, join } from "@tauri-apps/api/path";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { SCORECARD_CRITERIA_ORDER, type Scorecard, type ScorecardItem } from "@/lib/scorecard";
-const STORAGE_DIR_NAME = "Master's Wheel";
-const BASE_DIR = BaseDirectory.Document;
+import { BASE_DIR, spaceRecordsDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
+import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
+
+function recordsRoot() {
+  return spaceRecordsDir(getActiveSpaceFolder());
+}
 
 export type DocKind = "notes" | "analysis";
 
@@ -50,7 +54,7 @@ export type RecordSummary = RecordMetaFields & {
 };
 
 function recordDir(id: string) {
-  return `${STORAGE_DIR_NAME}/${id}`;
+  return `${recordsRoot()}/${id}`;
 }
 
 function docPath(id: string, kind: DocKind) {
@@ -167,14 +171,14 @@ async function findHeroFileName(id: string): Promise<string | null> {
 // call repeatedly — mkdir with recursive:true is a no-op if it's already
 // there.
 export async function ensureStorageRoot(): Promise<void> {
-  await mkdir(STORAGE_DIR_NAME, { baseDir: BASE_DIR, recursive: true });
+  await mkdir(recordsRoot(), { baseDir: BASE_DIR, recursive: true });
 }
 
 // One record per subfolder of the storage root. A folder with a missing
 // or corrupt meta.json is skipped, not a crash — see wiki.md.
 export async function listRecords(): Promise<RecordSummary[]> {
   await ensureStorageRoot();
-  const entries = await readDir(STORAGE_DIR_NAME, { baseDir: BASE_DIR });
+  const entries = await readDir(recordsRoot(), { baseDir: BASE_DIR });
   const summaries: RecordSummary[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory) continue;
@@ -367,7 +371,7 @@ export async function setHeroFile(id: string, sourcePath: string): Promise<strin
 // heroStreamUrl's HTTP URL onto the media server.
 export async function heroAbsolutePath(id: string, heroFileName: string): Promise<string> {
   const docDir = await documentDir();
-  return join(docDir, STORAGE_DIR_NAME, id, heroFileName);
+  return join(docDir, STORAGE_DIR_NAME, getActiveSpaceFolder(), "records", id, heroFileName);
 }
 
 // Reveals a record's folder in the OS file explorer (Finder on macOS),
@@ -376,7 +380,7 @@ export async function heroAbsolutePath(id: string, heroFileName: string): Promis
 // scope/BaseDirectory system.
 export async function revealRecordInFinder(id: string): Promise<void> {
   const docDir = await documentDir();
-  const absolutePath = await join(docDir, STORAGE_DIR_NAME, id);
+  const absolutePath = await join(docDir, STORAGE_DIR_NAME, getActiveSpaceFolder(), "records", id);
   await revealItemInDir(absolutePath);
 }
 

@@ -1,29 +1,30 @@
-// Agent persistence — one real folder per agent, under the app's own data
-// directory. Deliberately NOT ~/Documents/Master's Wheel (see
-// src/lib/records/index.ts) — that's for the user's own call recordings;
-// an agent's folder holds a generated knowledge database and indexed file
-// copies, not something the user browses directly. The Rust side (see
+// Agent persistence — one real folder per agent, under the active Space's
+// own folder (see src/lib/spaces) — not a fixed path, since each Space has
+// a genuinely separate set of Agents. The Rust side (see
 // src-tauri/src/knowledge/) writes knowledge.db and the knowledge/ folder
 // straight into the same per-agent directory, so this is the one place on
 // disk everything about one agent lives.
 //
-//   <app data>/agents/<id>/agent.json       (this file)
-//   <app data>/agents/<id>/versions.json    (this file)
-//   <app data>/agents/<id>/knowledge.db     (written by Rust)
-//   <app data>/agents/<id>/knowledge/<file> (written by Rust)
+//   .../<space>/agents/<id>/agent.json       (this file)
+//   .../<space>/agents/<id>/versions.json    (this file)
+//   .../<space>/agents/<id>/knowledge.db     (written by Rust)
+//   .../<space>/agents/<id>/knowledge/<file> (written by Rust)
 //
 // Only persistence lives here (read/write JSON to disk) — computing what
 // a new version's change-label should say is a separate concern, see
 // versionDiff.ts.
 
-import { BaseDirectory, mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
+import { mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
+import { BASE_DIR, spaceAgentsDir } from "@/lib/spaces/paths";
+import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 import type { Agent, AgentFields, AgentVersion } from "./types";
 
-const AGENTS_DIR = "agents";
-const BASE_DIR = BaseDirectory.AppData;
+function agentsRoot() {
+  return spaceAgentsDir(getActiveSpaceFolder());
+}
 
 function agentDir(id: string) {
-  return `${AGENTS_DIR}/${id}`;
+  return `${agentsRoot()}/${id}`;
 }
 
 function agentJsonPath(id: string) {
@@ -35,7 +36,7 @@ function versionsJsonPath(id: string) {
 }
 
 export async function ensureAgentsRoot(): Promise<void> {
-  await mkdir(AGENTS_DIR, { baseDir: BASE_DIR, recursive: true });
+  await mkdir(agentsRoot(), { baseDir: BASE_DIR, recursive: true });
 }
 
 function parseAgent(id: string, text: string): Agent | null {
@@ -73,7 +74,7 @@ function parseAgent(id: string, text: string): Agent | null {
 // listRecords() uses in src/lib/records/index.ts.
 export async function listAgents(): Promise<Agent[]> {
   await ensureAgentsRoot();
-  const entries = await readDir(AGENTS_DIR, { baseDir: BASE_DIR });
+  const entries = await readDir(agentsRoot(), { baseDir: BASE_DIR });
   const agents: Agent[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory) continue;

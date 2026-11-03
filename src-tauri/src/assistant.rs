@@ -156,6 +156,10 @@ pub async fn ask_agent(
     // generated --mcp-config's env so mcp/permission.rs knows which
     // chat's tags/always-allowed list to check. See mcp/bridge.rs.
     chat_session_id: String,
+    // Which Space this chat belongs to — scopes both this agent's own
+    // knowledge retrieval and (via mcp/config.rs) which Space's
+    // Performance Review records the MCP tools can see.
+    space_folder: String,
 ) -> Result<AgentReply, String> {
     // Cloned out of the State wrapper (cheap — Bridge is just an Arc)
     // before moving into spawn_blocking: tauri::State's own lifetime
@@ -189,7 +193,7 @@ pub async fn ask_agent(
         // Code from breaking character and self-identifying instead of
         // the persona (see this update's wiki.md for the repro).
         let system_prompt = match &agent_id {
-            Some(id) => match knowledge::commands::retrieve_for_agent(&app, id, &message, RETRIEVAL_TOP_K) {
+            Some(id) => match knowledge::commands::retrieve_for_agent(&app, &space_folder, id, &message, RETRIEVAL_TOP_K) {
                 Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks, &tagged_records),
                 Err(_) => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records),
             },
@@ -221,9 +225,13 @@ pub async fn ask_agent(
         // since the tool schema is then declared directly instead of
         // needing a separate discovery round-trip first. See this
         // update's wiki.md for the full repro.
-        let mcp_config_path =
-            crate::mcp::config::write_config_file(&chat_session_id, agent_id.as_deref().unwrap_or(""))
-                .map_err(|e| format!("Couldn't prepare MCP tools: {e}"))?;
+        let records_root = crate::spaces::records_dir(&app, &space_folder)?;
+        let mcp_config_path = crate::mcp::config::write_config_file(
+            &chat_session_id,
+            agent_id.as_deref().unwrap_or(""),
+            &records_root.to_string_lossy(),
+        )
+        .map_err(|e| format!("Couldn't prepare MCP tools: {e}"))?;
 
         let binary = resolve_binary("claude");
         let mut command = Command::new(&binary);
