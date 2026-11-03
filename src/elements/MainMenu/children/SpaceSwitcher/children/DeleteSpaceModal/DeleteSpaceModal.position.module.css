@@ -1,0 +1,49 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 24rem;
+  max-width: calc(100vw - 2rem);
+  padding: 1.25rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.closeButton {
+  width: 1.5rem;
+  height: 1.5rem;
+  line-height: 1;
+}
+
+.label {
+  margin-top: 0.25rem;
+}
+
+.input {
+  padding: 0.5rem 0.75rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.cancelButton,
+.deleteButton {
+  padding: 0.5rem 1rem;
+}

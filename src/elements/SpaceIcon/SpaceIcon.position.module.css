@@ -1,0 +1,7 @@
+/* Where this sits relative to whatever row/grid cell it's embedded in. */
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}

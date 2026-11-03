@@ -1,0 +1,55 @@
+.trigger {
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text);
+  font-size: var(--text-size-label);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.trigger:hover {
+  background: var(--color-border);
+}
+
+.trigger:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.triggerLabel {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.addRow {
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.addRow:hover {
+  color: var(--color-text);
+  background: var(--color-border);
+}
+
+.addGlyph {
+  color: var(--color-accent);
+  font-weight: 600;
+}

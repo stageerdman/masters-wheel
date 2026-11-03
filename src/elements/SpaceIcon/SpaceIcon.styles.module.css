@@ -1,0 +1,7 @@
+/* How this element looks. Always the same core-palette white, regardless
+   of context (active row, trigger, icon-picker grid) — see SpaceIcon.tsx's
+   comment: the glyph itself identifies a Space, not a color, so this is
+   deliberately not a per-category hue (no 6th/category color needed). */
+.root {
+  color: var(--color-text);
+}

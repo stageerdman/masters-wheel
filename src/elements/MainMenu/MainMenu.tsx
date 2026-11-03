@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BackgroundImage } from "./children/BackgroundImage/BackgroundImage";
 import { NavMenu, type NavMenuEntry } from "./children/NavMenu/NavMenu";
 import { SidePanel } from "./children/SidePanel/SidePanel";
+import { SpaceSwitcher } from "./children/SpaceSwitcher/SpaceSwitcher";
 import position from "./MainMenu.position.module.css";
 import styles from "./MainMenu.styles.module.css";
 
@@ -35,6 +36,9 @@ export function MainMenu() {
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
       <BackgroundImage />
+      <div className={position.spaceSwitcherSlot} data-construction>
+        <SpaceSwitcher />
+      </div>
       <div className={position.content} data-construction>
         <NavMenu items={MENU_ITEMS} onActivate={handleActivate} />
         <SidePanel content={panelContent} />

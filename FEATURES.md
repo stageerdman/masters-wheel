@@ -216,7 +216,57 @@ between the two lists. Each page gets its own section as pages get added.
 - [ ] Keyboard-only path to cycle dock states / toggle the side menu
       (currently pointer-only)
 
+## Spaces (global — every page)
+
+### Built — real backend
+- [x] Multiple isolated Spaces, each with a genuinely separate set of
+      Agents, chat history, and Performance Review records — not a UI
+      filter over shared data. Every Space's data lives together under one
+      real, Finder-visible folder: `~/Documents/Master's Wheel/
+      <Space name>/{agents,chats,records}/`, with a `spaces.json` registry
+      (id/name/icon/folder) alongside the Space folders, not inside any of
+      them. `src/lib/spaces` owns the registry and active-Space store;
+      `src-tauri/src/spaces.rs` owns the one-time migration.
+- [x] First launch after this feature shipped auto-migrated all
+      pre-existing data (Agents and chats, previously under the hidden app
+      data dir; Performance Review records, previously flat under
+      `~/Documents/Master's Wheel/`) into a `Default` Space, via real
+      filesystem renames (not byte-copies, so even large videos moved
+      instantly) — copy-then-delete-source only as an `EXDEV`
+      cross-device fallback. See this update's `wiki.md`.
+- [x] Switcher lives in Main Menu's top-right corner (`SpaceSwitcher`):
+      current Space's icon + name, click for a dropdown of every Space
+      (icon + name) plus "Add Space". Icons are a curated
+      `@phosphor-icons/react` duotone set, rendered as one uniform white
+      glyph per Space (the icon identifies the Space, not a color).
+- [x] "Add Space": name + icon-grid picker, creates the Space's on-disk
+      folders and switches into it immediately — a brand-new Space starts
+      with zero Agents, zero chat history, and zero records, including in
+      the always-mounted AI Assistant (which resets its in-memory state on
+      every Space switch, not just on next open).
+- [x] Right-click a Space in the dropdown → "Delete Space" → a modal
+      requiring the literal word "delete" typed in before the button
+      enables — the highest-stakes destructive action in the app (an
+      entire Space's Agents/chats/records, gone at once), so a higher bar
+      than this app's usual native-confirm pattern. Deleting the active
+      Space switches to another remaining one first; the last remaining
+      Space can't be deleted (the option is omitted from the menu
+      entirely, not shown disabled).
+
+### To build (real functionality — not started)
+- [ ] Renaming a Space (its on-disk folder name is derived from its
+      display name at creation time — see this update's `wiki.md`)
+- [ ] Reordering Spaces in the dropdown
+- [ ] Per-Space UI preferences (e.g. `StatFilterBar`'s saved date range,
+      the AI Assistant dock position) are still global `localStorage`
+      keys, not Space-scoped — low-priority, flagged but not built this
+      round
+
 ## Main Menu page
+
+### Built (real functionality)
+- [x] Top-right corner: `SpaceSwitcher` — see the "Spaces" section above
+      for the full feature; this page is just where it's mounted.
 
 ### Built (UI shell only — no real functionality behind it)
 - [x] `MainMenu` at `/`: wallpaper background, left `NavMenu` (5 items:

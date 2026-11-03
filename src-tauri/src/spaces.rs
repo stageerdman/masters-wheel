@@ -169,3 +169,61 @@ pub fn switch_space_media_root(app: AppHandle, media: tauri::State<'_, MediaServ
     media.set_root(records_dir(&app, &space_folder)?);
     Ok(())
 }
+
+// rename_or_copy/copy_dir_recursive are the actual risky part of this
+// whole feature — real user data (Agents, chats, Performance Review
+// records, potentially large videos) moves through them exactly once,
+// with no undo. migrate_legacy_data_to_default_space itself needs a real
+// AppHandle to test meaningfully (not worth mocking just for this), but
+// these two don't — covering them directly is what matters.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn unique_temp_dir(label: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("masters-wheel-spaces-test-{label}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("create temp test dir");
+        dir
+    }
+
+    #[test]
+    fn rename_or_copy_moves_a_nested_tree_and_removes_the_source() {
+        let base = unique_temp_dir("rename-basic");
+        let src = base.join("src");
+        let dst = base.join("dst");
+        std::fs::create_dir_all(src.join("sub")).unwrap();
+        std::fs::write(src.join("top.txt"), b"top").unwrap();
+        std::fs::write(src.join("sub").join("nested.txt"), b"nested").unwrap();
+
+        rename_or_copy(&src, &dst).expect("rename_or_copy should succeed");
+
+        assert!(!src.exists(), "source should be gone after a successful move");
+        assert_eq!(std::fs::read(dst.join("top.txt")).unwrap(), b"top");
+        assert_eq!(std::fs::read(dst.join("sub").join("nested.txt")).unwrap(), b"nested");
+
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn copy_dir_recursive_preserves_every_nested_file_and_keeps_the_source() {
+        let base = unique_temp_dir("copy-recursive");
+        let src = base.join("src");
+        let dst = base.join("dst");
+        std::fs::create_dir_all(src.join("a").join("b")).unwrap();
+        std::fs::write(src.join("root.txt"), b"root").unwrap();
+        std::fs::write(src.join("a").join("mid.txt"), b"mid").unwrap();
+        std::fs::write(src.join("a").join("b").join("deep.txt"), b"deep").unwrap();
+
+        copy_dir_recursive(&src, &dst).expect("copy_dir_recursive should succeed");
+
+        // Unlike rename_or_copy, this helper alone never deletes the
+        // source — that's the caller's job, only after a successful copy.
+        assert!(src.exists());
+        assert_eq!(std::fs::read(dst.join("root.txt")).unwrap(), b"root");
+        assert_eq!(std::fs::read(dst.join("a").join("mid.txt")).unwrap(), b"mid");
+        assert_eq!(std::fs::read(dst.join("a").join("b").join("deep.txt")).unwrap(), b"deep");
+
+        let _ = std::fs::remove_dir_all(&base);
+    }
+}

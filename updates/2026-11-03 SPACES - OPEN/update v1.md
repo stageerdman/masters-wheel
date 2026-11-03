@@ -151,4 +151,10 @@ This is where the hardcoded-in-3-places problem lived.
 - Update this folder's `wiki.md` with any decisions made along the way.
 
 ## Status
-Planning complete, confirmed with user before implementation. Not started.
+Phases 1–3 (data model, migration, Agents/chat/records scoping) and Phase
+4 (switcher UI) done and verified — user confirmed the real migration ran
+cleanly against their actual data, built into the installed `.app`. Phase
+5 (tests) done for the riskiest logic (`spaces.rs`'s file-move helpers);
+no new TS test framework stood up — see `wiki.md`. `FEATURES.md` updated.
+Remaining: nothing blocking: this update can move to CLOSED once the
+switcher UI itself gets a final look-over in the real app.

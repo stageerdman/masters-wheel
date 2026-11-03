@@ -1,0 +1,13 @@
+/* Where this sits within the switcher's dropdown list (its parent). */
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+}

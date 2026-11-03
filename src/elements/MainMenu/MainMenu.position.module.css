@@ -19,3 +19,14 @@
   width: 100%;
   height: 100%;
 }
+
+/* Persistent corner chrome, independent of NavMenu/SidePanel's own
+   layout — stays in the same spot whether or not Analytics is open
+   (SidePanel can grow to the whole right side; the switcher floats above
+   it, not inside its flow). */
+.spaceSwitcherSlot {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 2;
+}
