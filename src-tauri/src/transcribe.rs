@@ -354,7 +354,7 @@ pub async fn generate_transcript(
                 emit_progress(&app, &job_id, "extracting", track_index, track_count, &track.name);
                 let tmp_path = std::env::temp_dir().join(format!(
                     "masters-wheel-track-{}-{}.mp3",
-                    std::process::id(),
+                    job_id,
                     track.index
                 ));
                 let extraction = extract_track_to_mp3(&source_path, track.index, &tmp_path, &control);
