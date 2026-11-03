@@ -11,7 +11,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { setActiveSpace, useActiveSpace } from "./activeSpaceStore";
-import { createSpace as createSpaceOnDisk, deleteSpace as deleteSpaceOnDisk, ensureInitialized, resolveActiveSpace, switchSpace as switchSpaceOnDisk } from "./registry";
+import {
+  createSpace as createSpaceOnDisk,
+  deleteSpace as deleteSpaceOnDisk,
+  ensureInitialized,
+  renameSpace as renameSpaceOnDisk,
+  resolveActiveSpace,
+  switchSpace as switchSpaceOnDisk,
+} from "./registry";
 import type { Space } from "./types";
 
 type SpacesContextValue = {
@@ -19,6 +26,7 @@ type SpacesContextValue = {
   activeSpace: Space;
   switchSpace: (id: string) => Promise<void>;
   createSpace: (name: string, icon: string) => Promise<Space>;
+  renameSpace: (id: string, name: string, icon: string) => Promise<void>;
   deleteSpace: (id: string) => Promise<void>;
 };
 
@@ -68,6 +76,13 @@ export function SpacesProvider({ children }: { children: ReactNode }) {
         notifyMediaServer(active);
         setSpaces(registry.spaces);
         return active;
+      },
+      async renameSpace(id, name, icon) {
+        const registry = await renameSpaceOnDisk(id, name, icon);
+        const active = resolveActiveSpace(registry);
+        setActiveSpace(active);
+        notifyMediaServer(active);
+        setSpaces(registry.spaces);
       },
       async deleteSpace(id) {
         const registry = await deleteSpaceOnDisk(id);

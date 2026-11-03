@@ -235,27 +235,32 @@ between the two lists. Each page gets its own section as pages get added.
       instantly) — copy-then-delete-source only as an `EXDEV`
       cross-device fallback. See this update's `wiki.md`.
 - [x] Switcher lives in Main Menu's top-right corner (`SpaceSwitcher`):
-      current Space's icon + name, click for a dropdown of every Space
-      (icon + name) plus "Add Space". Icons are a curated
-      `@phosphor-icons/react` duotone set, rendered as one uniform white
-      glyph per Space (the icon identifies the Space, not a color).
+      just the current Space's icon, no label/background chrome at rest —
+      click opens a dropdown of every Space (icon + name) plus "Add
+      Space". Icons are a curated `@phosphor-icons/react` duotone set (32
+      of them), rendered as one uniform white glyph per Space (the icon
+      identifies the Space, not a color). The dropdown clamps to the
+      viewport (`AnchoredPopup`'s own fix, shared by every other consumer
+      of that element too) — it previously overflowed off-screen for a
+      trigger this close to the corner.
 - [x] "Add Space": name + icon-grid picker, creates the Space's on-disk
       folders and switches into it immediately — a brand-new Space starts
       with zero Agents, zero chat history, and zero records, including in
       the always-mounted AI Assistant (which resets its in-memory state on
       every Space switch, not just on next open).
-- [x] Right-click a Space in the dropdown → "Delete Space" → a modal
+- [x] Right-click a Space in the dropdown → "Edit Space" (rename + change
+      icon — a name change renames the real on-disk folder too, since the
+      folder name is derived from the display name; collision-checked the
+      same way a new Space's folder name is) or "Delete Space" → a modal
       requiring the literal word "delete" typed in before the button
       enables — the highest-stakes destructive action in the app (an
       entire Space's Agents/chats/records, gone at once), so a higher bar
       than this app's usual native-confirm pattern. Deleting the active
       Space switches to another remaining one first; the last remaining
-      Space can't be deleted (the option is omitted from the menu
-      entirely, not shown disabled).
+      Space can't be deleted ("Delete Space" is omitted from the menu
+      entirely for it, not shown disabled).
 
 ### To build (real functionality — not started)
-- [ ] Renaming a Space (its on-disk folder name is derived from its
-      display name at creation time — see this update's `wiki.md`)
 - [ ] Reordering Spaces in the dropdown
 - [ ] Per-Space UI preferences (e.g. `StatFilterBar`'s saved date range,
       the AI Assistant dock position) are still global `localStorage`

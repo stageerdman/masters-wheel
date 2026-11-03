@@ -18,10 +18,12 @@ move (`EXDEV`), which a same-machine move should never actually hit.
 ## Space folder name = sanitized display name, not id
 Chosen deliberately so Spaces are legible in Finder (the whole point of
 the unified-root decision above) rather than opaque folder names like a
-UUID. Tradeoff: renaming a Space later would need its folder renamed too
-— not built, since rename isn't a requested feature yet. If it ever is,
-`src/lib/spaces/registry.ts` is where that logic would go (mirroring
-`createSpace`'s `uniqueFolderName`).
+UUID. Tradeoff this implied: renaming a Space means renaming its real
+on-disk folder too — built as `registry.ts::renameSpace`, which only
+touches the filesystem (a real `rename()`, same O(1)-on-the-same-volume
+move the migration uses) when the sanitized name actually changed,
+reusing `uniqueFolderName` for the collision check. A pure icon change
+with no name change never touches the folder at all.
 
 ## Migration lives in Rust, not TS, despite every other storage module
 being plain TS/plugin-fs
@@ -106,6 +108,18 @@ Wheel/` like everything else, the existing `records.json` capability's
 `$DOCUMENT/Master's Wheel/**` scope already covers them with every
 permission identifier they need. Renamed `records.json` →
 `space-data.json` to reflect that it's no longer records-only.
+
+## AnchoredPopup didn't clamp to the viewport — fixed at the shared
+component, not patched locally
+SpaceSwitcher's trigger sits in Main Menu's literal top-right corner, so
+`anchorRect.left` is near `window.innerWidth` — the dropdown (left-aligned
+to the anchor, sized by its own content) overflowed off the right edge.
+`AnchoredPopup` had never needed to handle this before (its other
+consumers, `StatFilterBar`'s chips, aren't anchored at a screen edge).
+Fixed in `AnchoredPopup.tsx` itself with the same `useLayoutEffect`
+measure-then-clamp technique `ContextMenu` already used, rather than
+giving `SpaceSwitcher` its own one-off positioning logic — every current
+and future `AnchoredPopup` consumer benefits, not just this one.
 
 ## Icon set
 Curated from `@phosphor-icons/react` (MIT), "duotone" weight, rendered via

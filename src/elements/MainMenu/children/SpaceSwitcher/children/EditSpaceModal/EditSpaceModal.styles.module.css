@@ -1,0 +1,81 @@
+.backdrop {
+  background: color-mix(in srgb, var(--color-text) 40%, transparent);
+}
+
+.root {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.title {
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-heading);
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  color: var(--color-text);
+}
+
+.nameInput {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: var(--text-size-label);
+}
+
+.nameInput:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.iconOption {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.iconOption:hover {
+  background: var(--color-border);
+}
+
+.iconOptionSelected {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+.iconOption:focus-visible,
+.saveButton:focus-visible,
+.closeButton:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.saveButton {
+  background: var(--color-accent);
+  color: var(--color-on-chip);
+  border: none;
+  border-radius: 6px;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveButton:hover {
+  opacity: 0.9;
+}
+
+.saveButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

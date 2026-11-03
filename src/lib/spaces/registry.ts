@@ -7,7 +7,7 @@
 // unrestricted access instead of widening that scope just for one-time use.
 
 import { invoke } from "@tauri-apps/api/core";
-import { exists, mkdir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
+import { exists, mkdir, readTextFile, remove, rename, writeTextFile } from "@tauri-apps/plugin-fs";
 import { BASE_DIR, registryPath, spaceAgentsDir, spaceChatsDir, spaceDir, spaceRecordsDir } from "./paths";
 import type { Space, SpaceRegistry } from "./types";
 
@@ -109,6 +109,33 @@ export async function switchSpace(id: string): Promise<SpaceRegistry> {
   const registry = await readRegistry();
   if (!registry.spaces.some((space) => space.id === id)) return registry;
   const next: SpaceRegistry = { ...registry, activeSpaceId: id };
+  await writeRegistry(next);
+  return next;
+}
+
+// Renames a Space and/or changes its icon. A name change that actually
+// changes the sanitized folder name renames the real on-disk folder too
+// (the folder name IS the display name, by design — see this update's
+// wiki.md) via a real filesystem rename, same O(1)-on-the-same-volume
+// move the first-run migration relies on, not a copy. Collision-checked
+// the same way createSpace's uniqueFolderName is, since the target name
+// might already belong to a different Space's folder.
+export async function renameSpace(id: string, name: string, icon: string): Promise<SpaceRegistry> {
+  const registry = await readRegistry();
+  const target = registry.spaces.find((space) => space.id === id);
+  if (!target) return registry;
+
+  const trimmedName = name.trim() || target.name;
+  const sanitized = sanitizeFolderName(trimmedName);
+  let folderName = target.folderName;
+  if (sanitized !== target.folderName) {
+    folderName = await uniqueFolderName(sanitized);
+    await rename(spaceDir(target.folderName), spaceDir(folderName), { oldPathBaseDir: BASE_DIR, newPathBaseDir: BASE_DIR });
+  }
+
+  const updated: Space = { ...target, name: trimmedName, icon: icon || target.icon, folderName };
+  const nextSpaces = registry.spaces.map((space) => (space.id === id ? updated : space));
+  const next: SpaceRegistry = { ...registry, spaces: nextSpaces };
   await writeRegistry(next);
   return next;
 }

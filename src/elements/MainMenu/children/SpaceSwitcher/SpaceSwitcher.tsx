@@ -8,6 +8,7 @@ import { useAnchoredPopup } from "@/lib/useAnchoredPopup";
 import { useSpaces, type Space } from "@/lib/spaces";
 import { CreateSpaceModal } from "./children/CreateSpaceModal/CreateSpaceModal";
 import { DeleteSpaceModal } from "./children/DeleteSpaceModal/DeleteSpaceModal";
+import { EditSpaceModal } from "./children/EditSpaceModal/EditSpaceModal";
 import { SpaceRow } from "./children/SpaceRow/SpaceRow";
 import position from "./SpaceSwitcher.position.module.css";
 import styles from "./SpaceSwitcher.styles.module.css";
@@ -20,10 +21,11 @@ type ContextMenuState = { space: Space; x: number; y: number };
 // when it's the last remaining Space, since there's nothing a tooltip
 // would need to explain that the row's absence doesn't already say.
 export function SpaceSwitcher() {
-  const { spaces, activeSpace, switchSpace, createSpace, deleteSpace } = useSpaces();
+  const { spaces, activeSpace, switchSpace, createSpace, renameSpace, deleteSpace } = useSpaces();
   const { anchorRef, open, anchorRect, toggleOpen, close } = useAnchoredPopup<HTMLButtonElement>();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Space | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Space | null>(null);
 
   function handleSelect(space: Space) {
@@ -33,18 +35,15 @@ export function SpaceSwitcher() {
 
   function handleRowContextMenu(event: MouseEvent<HTMLButtonElement>, space: Space) {
     event.preventDefault();
-    if (spaces.length <= 1) return;
     setContextMenu({ space, x: event.clientX, y: event.clientY });
   }
 
   const contextMenuItems: ContextMenuItem[] = contextMenu
     ? [
-        {
-          id: "delete",
-          label: "Delete Space",
-          destructive: true,
-          onSelect: () => setDeleteTarget(contextMenu.space),
-        },
+        { id: "edit", label: "Edit Space", onSelect: () => setEditTarget(contextMenu.space) },
+        ...(spaces.length > 1
+          ? [{ id: "delete", label: "Delete Space", destructive: true, onSelect: () => setDeleteTarget(contextMenu.space) }]
+          : []),
       ]
     : [];
 
@@ -60,13 +59,7 @@ export function SpaceSwitcher() {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <SpaceIcon icon={activeSpace.icon} size={20} />
-        <span className={`${styles.triggerLabel} ${position.triggerLabel}`} data-construction>
-          {activeSpace.name}
-        </span>
-        <span className={`${styles.chevron} ${position.chevron}`} data-construction aria-hidden="true">
-          ▾
-        </span>
+        <SpaceIcon icon={activeSpace.icon} size={22} />
       </button>
 
       {open && anchorRect && (
@@ -109,6 +102,17 @@ export function SpaceSwitcher() {
           onCreate={async (name, icon) => {
             await createSpace(name, icon);
             setIsCreateOpen(false);
+          }}
+        />
+      )}
+
+      {editTarget && (
+        <EditSpaceModal
+          space={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSave={async (name, icon) => {
+            await renameSpace(editTarget.id, name, icon);
+            setEditTarget(null);
           }}
         />
       )}
