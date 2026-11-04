@@ -5,12 +5,16 @@ and tuned for this project. Regenerate with the `rebuild-claude-md` routine
 when the global modules change. Local additions below the modules are
 preserved across rebuilds.
 
-masters-wheel is a prototype of "Master's Wheel": a mastery platform for
-uploading lessons/videos, analyzing performance, and always refocusing on the
-right lesson. Right now it's UI shell only — no backend, no real features.
-Stack: Next.js (App Router) + TypeScript + CSS Modules, deployed to Vercel
-later. No Tailwind, no shadcn — this project uses its own element convention
-instead of a component library (see "Project-specific notes" below).
+masters-wheel is "Master's Wheel": a native macOS desktop app (Tauri-packaged
+Next.js/TypeScript/CSS-Modules frontend + a Rust backend in `src-tauri/`) for
+reviewing recorded sales/coaching calls — real video upload, real
+transcription, a real local-LLM-backed AI Assistant and Agents with MCP tool
+access, a Scorecard, and multi-Space workspace isolation. No longer
+"UI shell only" — real backend logic now lives in `src-tauri/`, all
+local-first (no server, no Vercel deploy; the Next.js build is a static
+export bundled straight into the `.app`). No Tailwind, no shadcn — this
+project uses its own element convention instead of a component library (see
+"Project-specific notes" below).
 
 ## Structure
 - Keep the standard AI Control scaffold: `.project`, this `CLAUDE.md`,
@@ -194,7 +198,44 @@ Update it whenever a feature crosses that line — it's the running source of
 truth across updates, since any one `updates/` folder only covers a single
 phase of work.
 
+### Current architecture at a glance
+- **Packaged as a native macOS app via Tauri** (`src-tauri/`, Rust) — not a
+  website. Next.js builds to a static export (`output: "export"`); Tauri
+  wraps it. No Node server at runtime, so all backend logic is Rust
+  (`src-tauri/src/`) or TS calling Tauri's `fs`/`dialog` plugins directly —
+  never a Next.js API route.
+- **Real backend logic**, as small shelled-out modules under
+  `src-tauri/src/`: `transcribe.rs` (ffmpeg/ffprobe + ElevenLabs cloud
+  Speech-to-Text via `curl`), `assistant.rs` (shells out to the user's own
+  already-authenticated local `claude -p` CLI — not the Anthropic API — for
+  every real AI reply), `mcp/` (a stdio MCP server the CLI talks to; see
+  below), `knowledge/` (local RAG: `fastembed` + `sqlite-vec` per agent).
+- **Records (Performance Review) are real Finder-visible folders** under
+  `~/Documents/Master's Wheel/<Space>/records/<id>/` — `meta.json`,
+  `user_notes.md`, `ai_analysis.md` (both lazily created; missing/empty
+  until the user or AI actually writes to them — that's expected, not a
+  bug), `transcript.md`, `scorecard.json`, `hero.<ext>`. Agents and chat
+  sessions live as sibling `agents/`/`chats/` folders in the same per-Space
+  root. **Spaces** (`src/lib/spaces/`) give full on-disk isolation per
+  workspace — always resolve storage roots through the shared Spaces path
+  helper, never hardcode `~/Documents/Master's Wheel/...` directly (three
+  separate hardcodes of that exact path already caused a real bug — see
+  `updates/2026-11-03 SPACES - OPEN/wiki.md`).
+- **MCP tools** live in `src-tauri/src/mcp/tools/`, one file per tool (name
+  + model-facing description + schema + execute fn), collected in
+  `tools/mod.rs`. The app re-execs its own binary as the MCP server
+  (`MASTERS_WHEEL_MCP_SERVER=1`) instead of shipping a second bin target.
+  **Known gap:** `get_performance_review` returns a record's full notes/
+  transcript/analysis as one JSON blob with no pagination — a long
+  transcript can exceed the CLI's MCP tool-output limit with no way for the
+  agent to retry in parts. Not yet fixed; any future tool returning
+  large/unbounded text should add offset/limit (or a cursor) instead of
+  repeating this.
+
 ### What's deliberately not built yet
-No lesson upload, video, performance analysis, or refocus logic — those come
-later, dictated one at a time. No auth, database, or AI integration, so
-`.env`/`secrets` in `.project` are empty until a phase actually needs one.
+- Real AI-generated analysis: `ai_analysis.md` and the Scorecard both exist
+  and persist real data, but nothing populates them with a real model pass
+  yet — "Generate Scorecard" currently fabricates a plausible fake result.
+- Auth, a remote database, Windows/Linux packaging, code signing/
+  notarization — all out of scope so far; `.env`/`secrets` in `.project`
+  stay empty until a phase actually needs one.
