@@ -50,11 +50,11 @@ impl MastersWheelServer {
     }
 
     #[tool(
-        description = "Read a specific Performance Review record's real content (notes, transcript, and/or AI analysis) by its record_id from list_performance_reviews. The first time a given record comes up in this conversation, this may need the user's permission — if declined, you'll get a plain message back instead of the content. Don't keep re-asking for the same declined record without the user bringing it up again themselves."
+        description = "Read a specific Performance Review record's real content (notes, transcript, and/or AI analysis) by its record_id from list_performance_reviews. The first time a given record comes up in this conversation, this may need the user's permission — if declined, you'll get a plain message back instead of the content. Don't keep re-asking for the same declined record without the user bringing it up again themselves. Long documents come back in chunks: if a returned document's has_more is true, call again with the same record_id/documents and offset = that document's offset + content.length to keep reading, repeating until has_more is false, before answering questions about its full content."
     )]
     async fn get_performance_review(
         &self,
-        Parameters(get_performance_review::GetPerformanceReviewInput { record_id, documents }): Parameters<
+        Parameters(get_performance_review::GetPerformanceReviewInput { record_id, documents, offset, limit }): Parameters<
             get_performance_review::GetPerformanceReviewInput,
         >,
     ) -> Result<CallToolResult, McpError> {
@@ -65,7 +65,7 @@ impl MastersWheelServer {
             .map_err(|e| McpError::internal_error(e, None))?
         {
             Access::Allowed => {
-                let content = get_performance_review::read(&record_id, &documents);
+                let content = get_performance_review::read(&record_id, &documents, offset, limit);
                 let json = serde_json::to_string_pretty(&content).map_err(|e| McpError::internal_error(e.to_string(), None))?;
                 Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
             }

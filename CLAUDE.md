@@ -225,11 +225,15 @@ phase of work.
   (`get_performance_review`) is permission-gated per chat session
   (`mcp/bridge.rs`'s `SessionAccess`: tag-suggested / explicitly allowed /
   always-allowed) via an inline Decline/Allow/Always Allow chat card;
-  `list_performance_reviews` (metadata only) is always ungated. The CLI's
-  default MCP tool-output cap is raised (`MAX_MCP_OUTPUT_TOKENS` env var
-  on the `claude` subprocess) well past any realistic call-transcript
-  length, so a full record is always returned in one call — no
-  pagination to build or maintain.
+  `list_performance_reviews` (metadata only) is always ungated. Text
+  documents (notes/transcript/analysis) are paginated by `offset`/`limit`
+  in plain characters, not returned whole — a long transcript crossing
+  the CLI's own undocumented "large tool output" size wall gets silently
+  routed through a file-plus-`Read`-tool fallback instead
+  (`MAX_MCP_OUTPUT_TOKENS` doesn't govern that path at all, confirmed by
+  hand), and that fallback is useless here anyway since our JSON puts
+  the whole document on one line and `Read` truncates long lines. Our
+  own pagination avoids depending on any of that.
 - **Records (Performance Review) are real Finder-visible folders** under
   `~/Documents/Master's Wheel/<Space>/records/<id>/` — `meta.json`,
   `user_notes.md`, `ai_analysis.md` (both lazily created; missing/empty

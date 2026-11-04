@@ -237,14 +237,6 @@ pub async fn ask_agent(
         let mut command = Command::new(&binary);
         command
             .current_dir(temp_dir())
-            // The CLI's default MCP tool-output cap (25,000 tokens) is
-            // tuned for typical tool results, not a full call transcript —
-            // get_performance_review hit it on a real ~60KB transcript
-            // (notes/analysis were also legitimately empty, a separate
-            // non-bug: those files are created lazily and simply didn't
-            // exist for that record). Raised well past any realistic
-            // transcript length rather than teaching that tool to paginate.
-            .env("MAX_MCP_OUTPUT_TOKENS", "100000")
             .arg("-p")
             .arg(&message)
             .arg("--output-format")
