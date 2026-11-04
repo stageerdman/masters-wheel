@@ -206,10 +206,30 @@ phase of work.
   never a Next.js API route.
 - **Real backend logic**, as small shelled-out modules under
   `src-tauri/src/`: `transcribe.rs` (ffmpeg/ffprobe + ElevenLabs cloud
-  Speech-to-Text via `curl`), `assistant.rs` (shells out to the user's own
-  already-authenticated local `claude -p` CLI — not the Anthropic API — for
-  every real AI reply), `mcp/` (a stdio MCP server the CLI talks to; see
-  below), `knowledge/` (local RAG: `fastembed` + `sqlite-vec` per agent).
+  Speech-to-Text via `curl`), `assistant.rs` + `mcp/` (how the AI is
+  handled — see below), `knowledge/` (local RAG: `fastembed` +
+  `sqlite-vec` per agent).
+- **How the AI Assistant/Agents are handled**: there's no Anthropic API
+  key anywhere — `assistant.rs` shells out to the user's own
+  already-authenticated local `claude -p` CLI (`--output-format
+  stream-json`, streamed back to the UI as Tauri events) for every real
+  reply, the same "shell out to a real binary" pattern `transcribe.rs`
+  uses for `ffmpeg`/`curl`. Tool/MCP access works via a small Rust MCP
+  server (`src-tauri/src/mcp/`) the CLI is pointed at with `--mcp-config
+  --strict-mcp-config --allowedTools <exact list>`; the app re-execs its
+  own binary as that server (`MASTERS_WHEEL_MCP_SERVER=1`) rather than
+  shipping a second bin target. Each tool lives in its own file under
+  `mcp/tools/` (name + model-facing description + schema + execute fn),
+  collected in `tools/mod.rs` — add tool N+1 by adding one file, not
+  editing the others. Reading a record's real content
+  (`get_performance_review`) is permission-gated per chat session
+  (`mcp/bridge.rs`'s `SessionAccess`: tag-suggested / explicitly allowed /
+  always-allowed) via an inline Decline/Allow/Always Allow chat card;
+  `list_performance_reviews` (metadata only) is always ungated. The CLI's
+  default MCP tool-output cap is raised (`MAX_MCP_OUTPUT_TOKENS` env var
+  on the `claude` subprocess) well past any realistic call-transcript
+  length, so a full record is always returned in one call — no
+  pagination to build or maintain.
 - **Records (Performance Review) are real Finder-visible folders** under
   `~/Documents/Master's Wheel/<Space>/records/<id>/` — `meta.json`,
   `user_notes.md`, `ai_analysis.md` (both lazily created; missing/empty
@@ -221,16 +241,24 @@ phase of work.
   helper, never hardcode `~/Documents/Master's Wheel/...` directly (three
   separate hardcodes of that exact path already caused a real bug — see
   `updates/2026-11-03 SPACES - OPEN/wiki.md`).
-- **MCP tools** live in `src-tauri/src/mcp/tools/`, one file per tool (name
-  + model-facing description + schema + execute fn), collected in
-  `tools/mod.rs`. The app re-execs its own binary as the MCP server
-  (`MASTERS_WHEEL_MCP_SERVER=1`) instead of shipping a second bin target.
-  **Known gap:** `get_performance_review` returns a record's full notes/
-  transcript/analysis as one JSON blob with no pagination — a long
-  transcript can exceed the CLI's MCP tool-output limit with no way for the
-  agent to retry in parts. Not yet fixed; any future tool returning
-  large/unbounded text should add offset/limit (or a cursor) instead of
-  repeating this.
+- **The AI Assistant and Agents are powered by the user's own local `claude`
+  CLI**, not the Anthropic API — `assistant.rs` shells out to `claude -p
+  --output-format stream-json`, streaming deltas back as Tauri events.
+  Tool/MCP access works via a small Rust MCP server
+  (`src-tauri/src/mcp/`) that the CLI is pointed at with `--mcp-config
+  --strict-mcp-config --allowedTools <exact list>`; the app re-execs its
+  own binary as that server (`MASTERS_WHEEL_MCP_SERVER=1`) rather than
+  shipping a second bin target. Each tool lives in its own file under
+  `mcp/tools/` (name + model-facing description + schema + execute fn),
+  collected in `tools/mod.rs` — add tool N+1 by adding one file, not
+  editing the others. Reading a record's real content
+  (`get_performance_review`) is permission-gated per chat session
+  (`mcp/bridge.rs`'s `SessionAccess`: tag-suggested / explicitly allowed /
+  always-allowed) via an inline Decline/Allow/Always Allow chat card;
+  `list_performance_reviews` (metadata only) is always ungated. Large
+  text documents (e.g. a long `transcript.md`) are read in bounded
+  chunks via `offset`/`limit` on `get_performance_review`, not read whole
+  — a tool result has to fit the CLI's MCP output-size limit.
 
 ### What's deliberately not built yet
 - Real AI-generated analysis: `ai_analysis.md` and the Scorecard both exist
