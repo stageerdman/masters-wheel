@@ -40,6 +40,24 @@ async function countClosed(filters: StatFilters): Promise<string> {
   return String(records.length);
 }
 
+// Meetings where an offer was genuinely on the table — closed (won),
+// failed (a real opportunity that didn't close), or postponed (still
+// unresolved, but only once an actual amount was put on the table — a
+// postponed call with no offeredAmount yet hasn't reached offer stage).
+// Excludes training and notQualified, which per CALL_STATE_META were
+// never real opportunities to begin with.
+async function countOffers(filters: StatFilters): Promise<string> {
+  if (!isTauri()) return "—";
+  const records = await matchingRecords(
+    filters,
+    (record) =>
+      record.state === "closed" ||
+      record.state === "failed" ||
+      (record.state === "postponed" && record.offeredAmount != null),
+  );
+  return String(records.length);
+}
+
 async function closedAmount(filters: StatFilters): Promise<string> {
   if (!isTauri()) return "—";
   const records = await matchingRecords(filters, (record) => record.state === "closed");
@@ -90,6 +108,11 @@ export const STATISTICS: Record<string, Statistic> = {
     label: "Meetings",
     fixedFilters: { sessionTypeFilter: { mode: "excludes", values: ["training"] } },
     compute: countMeetings,
+  },
+  offers: {
+    id: "offers",
+    label: "Offers",
+    compute: countOffers,
   },
   closed: {
     id: "closed",

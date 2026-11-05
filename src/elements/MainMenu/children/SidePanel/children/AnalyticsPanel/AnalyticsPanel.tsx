@@ -5,6 +5,7 @@ import styles from "./AnalyticsPanel.styles.module.css";
 
 const SLOTS: StatSlot[] = [
   { id: "meetings", statisticId: "meetings" },
+  { id: "offers", statisticId: "offers" },
   { id: "closed", statisticId: "closed" },
   { id: "closed-amount", statisticId: "closed-amount" },
   { id: "real-close-rate", statisticId: "real-close-rate" },
