@@ -4,6 +4,26 @@
 // The old fake fixture (FAKE_VIDEOS / mainText) has been removed.
 
 import type { Scorecard } from "@/lib/scorecard";
+import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
+
+// Which text kind Hero/Detail can show, and how each renders as a
+// bookmark badge (color + 2-letter label — see this element's own
+// "Bookmarks are visually minimal by design" note in
+// `updates/2026-10-28 PERFORMANCE-REVIEW - OPEN/wiki.md`). Lives here
+// (page-specific data) rather than in BookmarkBadge/BookmarkRail/SplitRail
+// themselves, which are generic over any kind set — see
+// `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md` for why.
+export type ContentKind = "ai" | "transcript" | "notes" | "lessons" | "scorecard";
+
+export const CONTENT_KIND_ORDER: ContentKind[] = ["ai", "transcript", "notes", "lessons", "scorecard"];
+
+export const CONTENT_KIND_META: Record<ContentKind, BookmarkMeta> = {
+  ai: { label: "AI", color: "var(--color-bookmark-ai)" },
+  transcript: { label: "TR", color: "var(--color-bookmark-transcript)" },
+  notes: { label: "NT", color: "var(--color-bookmark-notes)" },
+  lessons: { label: "CL", color: "var(--color-bookmark-lessons)" },
+  scorecard: { label: "SC", color: "var(--color-bookmark-scorecard)" },
+};
 
 export type CallState = "closed" | "training" | "postponed" | "failed" | "notQualified";
 

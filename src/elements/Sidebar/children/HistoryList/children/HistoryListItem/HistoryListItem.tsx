@@ -56,7 +56,7 @@ export function HistoryListItem({ session, active, onSelect, onDelete, onRename,
 
   const menuItems: ContextMenuItem[] = [
     { id: "rename", label: "Rename chat", onSelect: startRename },
-    { id: "delete", label: "Delete chat", onSelect: handleDelete, destructive: true },
+    { id: "delete", label: "Delete chat", onSelect: handleDelete, tone: "destructive" },
   ];
 
   if (isEditing) {

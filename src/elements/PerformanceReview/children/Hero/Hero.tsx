@@ -6,7 +6,7 @@ import { BookmarkRail } from "@/elements/BookmarkRail/BookmarkRail";
 import { TextView } from "@/elements/TextView/TextView";
 import { MetaPanel } from "./children/MetaPanel/MetaPanel";
 import { usePersistedActiveKind } from "./Hero.script";
-import type { VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
+import { CONTENT_KIND_META, CONTENT_KIND_ORDER, type VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./Hero.position.module.css";
 import styles from "./Hero.styles.module.css";
@@ -137,7 +137,12 @@ export function Hero({
         )}
       </div>
       <div className={position.railSlot} data-construction>
-        <BookmarkRail active={active} onSelect={setActive} />
+        <BookmarkRail
+          kinds={CONTENT_KIND_ORDER}
+          metaFor={(kind) => CONTENT_KIND_META[kind]}
+          active={active}
+          onSelect={setActive}
+        />
       </div>
       <div className={position.textSlot} data-construction>
         <TextView

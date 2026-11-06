@@ -87,14 +87,14 @@ function buildMenuItems(
       id: "remove-media",
       label: "Remove video",
       onSelect: () => handlers.onRemoveMedia(video.id),
-      destructive: true,
+      tone: "destructive",
     });
   }
   items.push({
     id: "remove-record",
     label: "Remove record",
     onSelect: () => handlers.onRemoveRecord(video.id),
-    destructive: true,
+    tone: "destructive",
   });
   return items;
 }

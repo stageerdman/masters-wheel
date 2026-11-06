@@ -57,7 +57,7 @@ export function useGenerateTranscript(
   // Kicks off detection whenever the modal opens (or is reopened against a
   // different record) — a one-shot reaction to that transition, not a
   // sync loop, same justification as the hydration effects in
-  // Hero.script.ts / Detail.script.ts.
+  // Hero.script.ts / src/lib/splitRail.ts.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!isOpen) return;

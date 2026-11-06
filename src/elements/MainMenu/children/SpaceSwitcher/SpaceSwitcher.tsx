@@ -42,7 +42,7 @@ export function SpaceSwitcher() {
     ? [
         { id: "edit", label: "Edit Space", onSelect: () => setEditTarget(contextMenu.space) },
         ...(spaces.length > 1
-          ? [{ id: "delete", label: "Delete Space", destructive: true, onSelect: () => setDeleteTarget(contextMenu.space) }]
+          ? [{ id: "delete", label: "Delete Space", tone: "destructive" as const, onSelect: () => setDeleteTarget(contextMenu.space) }]
           : []),
       ]
     : [];

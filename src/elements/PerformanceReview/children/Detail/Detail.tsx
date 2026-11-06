@@ -1,9 +1,9 @@
 "use client";
 
-import { SplitRail } from "./children/SplitRail/SplitRail";
+import { SplitRail } from "@/elements/SplitRail/SplitRail";
 import { TextView } from "@/elements/TextView/TextView";
-import { useSplitRail } from "./Detail.script";
-import type { VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
+import { useSplitRail } from "@/lib/splitRail";
+import { CONTENT_KIND_META, CONTENT_KIND_ORDER, type VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./Detail.position.module.css";
 import styles from "./Detail.styles.module.css";
@@ -58,7 +58,7 @@ export function Detail({
     beginLineDrag,
     beginBadgeDrag,
     dragOffset,
-  } = useSplitRail();
+  } = useSplitRail(CONTENT_KIND_ORDER, "performance-review-detail-split");
 
   return (
     <aside className={`${styles.root} ${position.root}`} data-construction>
@@ -124,6 +124,7 @@ export function Detail({
       <div className={position.railSlot} data-construction>
         <SplitRail
           railRef={railRef}
+          metaFor={(kind) => CONTENT_KIND_META[kind]}
           linePx={linePx}
           topKinds={topKinds}
           bottomKind={bottomKind}

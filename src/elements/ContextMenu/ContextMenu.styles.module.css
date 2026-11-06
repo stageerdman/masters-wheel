@@ -26,3 +26,7 @@
 .destructive {
   color: var(--color-status-failed);
 }
+
+.positive {
+  color: var(--color-status-closed);
+}

@@ -133,7 +133,7 @@ export function Agents() {
         {
           id: "remove",
           label: "Remove",
-          destructive: true,
+          tone: "destructive",
           onSelect: () => handleDeleteAgent(agentContextMenu.agentId),
         },
       ]

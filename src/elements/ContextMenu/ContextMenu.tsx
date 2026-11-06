@@ -10,7 +10,9 @@ export type ContextMenuItem = {
   id: string;
   label: string;
   onSelect: () => void;
-  destructive?: boolean;
+  // "destructive" = red (deletes something); "positive" = green (closes/
+  // completes something) — e.g. Training Room's "Close session".
+  tone?: "destructive" | "positive";
 };
 
 type ContextMenuProps = {
@@ -90,7 +92,7 @@ export function ContextMenu({ x, y, items, onClose, header }: ContextMenuProps) 
           key={item.id}
           type="button"
           role="menuitem"
-          className={`${styles.item} ${position.item} ${item.destructive ? styles.destructive : ""}`}
+          className={`${styles.item} ${position.item} ${item.tone ? styles[item.tone] : ""}`}
           data-construction
           onClick={() => {
             onClose();

@@ -1,8 +1,16 @@
+"use client";
+
+// State machine behind the SplitRail element: where the drag-to-split line
+// sits, which kinds are pinned above/below it, and persistence — generic
+// over whatever kind set + storage key a page passes in, so each page
+// (Performance Review's Detail, Training Room's Detail, ...) keeps its own
+// independently-persisted layout. Originally Performance-Review-specific
+// (Detail.script.ts); promoted here once Training Room became a second
+// real consumer — see
+// `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`.
+
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
-
-const ALL_KINDS: ContentKind[] = ["ai", "transcript", "notes", "lessons", "scorecard"];
 
 type DragInfo = {
   startY: number;
@@ -10,33 +18,23 @@ type DragInfo = {
   railHeight: number;
 };
 
-// The split layout (where the line sits, what's pinned below it, which top
-// tab is active) is a UI preference, not per-record data — it persists
-// across reloads the same way AIAssistant's dock presets do (see
-// AIAssistant.windowDock.script.ts), shared across every record rather
-// than reset each time you switch or reopen one.
-const SPLIT_STORAGE_KEY = "performance-review-detail-split";
-
-type PersistedSplit = {
+type PersistedSplit<K extends string> = {
   linePx: number | null;
-  bottomKind: ContentKind | null;
-  activeTop: ContentKind;
+  bottomKind: K | null;
+  activeTop: K;
 };
 
-function isContentKind(value: unknown): value is ContentKind {
-  return typeof value === "string" && (ALL_KINDS as string[]).includes(value);
-}
-
-function loadSplitState(): PersistedSplit | null {
+function loadSplitState<K extends string>(storageKey: string, kinds: readonly K[]): PersistedSplit<K> | null {
+  const isKind = (value: unknown): value is K => typeof value === "string" && (kinds as readonly string[]).includes(value);
   try {
-    const raw = localStorage.getItem(SPLIT_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
     return {
       linePx: typeof parsed.linePx === "number" ? parsed.linePx : null,
-      bottomKind: isContentKind(parsed.bottomKind) ? parsed.bottomKind : null,
-      activeTop: isContentKind(parsed.activeTop) ? parsed.activeTop : "ai",
+      bottomKind: isKind(parsed.bottomKind) ? parsed.bottomKind : null,
+      activeTop: isKind(parsed.activeTop) ? parsed.activeTop : kinds[0],
     };
   } catch {
     // Storage unavailable or malformed — fall back to the built-in defaults.
@@ -44,26 +42,25 @@ function loadSplitState(): PersistedSplit | null {
   return null;
 }
 
-function saveSplitState(state: PersistedSplit) {
+function saveSplitState<K extends string>(storageKey: string, state: PersistedSplit<K>) {
   try {
-    localStorage.setItem(SPLIT_STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(storageKey, JSON.stringify(state));
   } catch {
     // Storage disabled (e.g. private browsing) — the layout just won't persist.
   }
 }
 
-// One rail spans the Detail column's full height. The 4 bookmarks are
-// pinned at its top; the line is a second, fully independent piece of
-// state — a continuous pixel offset draggable across that whole height,
-// not just the badge cluster. Dragging a bookmark past wherever the line
-// currently sits attaches it there (the split); dragging it back above
-// detaches it. See wiki.md for the full reasoning and what this replaced.
-export function useSplitRail() {
+// One rail spans the Detail column's full height. `kinds` are pinned at
+// its top; the line is a second, fully independent piece of state — a
+// continuous pixel offset draggable across that whole height, not just the
+// badge cluster. Dragging a bookmark past wherever the line currently sits
+// attaches it there (the split); dragging it back above detaches it.
+export function useSplitRail<K extends string>(kinds: readonly K[], storageKey: string) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [linePx, setLinePx] = useState<number | null>(null); // null = resting at the very bottom (unsplit)
-  const [bottomKind, setBottomKind] = useState<ContentKind | null>(null);
-  const [activeTop, setActiveTop] = useState<ContentKind>("ai");
-  const [dragOffset, setDragOffset] = useState<{ kind: ContentKind; offsetY: number } | null>(null);
+  const [bottomKind, setBottomKind] = useState<K | null>(null);
+  const [activeTop, setActiveTop] = useState<K>(kinds[0]);
+  const [dragOffset, setDragOffset] = useState<{ kind: K; offsetY: number } | null>(null);
   const dragRef = useRef<DragInfo | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -72,14 +69,18 @@ export function useSplitRail() {
   // rule otherwise guards against.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    const saved = loadSplitState();
+    const saved = loadSplitState(storageKey, kinds);
     if (saved) {
       setLinePx(saved.linePx);
       setBottomKind(saved.bottomKind);
       setActiveTop(saved.activeTop);
     }
     setIsHydrated(true);
-  }, []);
+    // Only ever re-run if the storage key itself changes (a different
+    // page/instance) — the kinds array identity is not meant to retrigger
+    // hydration.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Persist whenever the layout changes, gated on hydration having
@@ -87,10 +88,10 @@ export function useSplitRail() {
   // layout before it's had a chance to load.
   useEffect(() => {
     if (!isHydrated) return;
-    saveSplitState({ linePx, bottomKind, activeTop });
-  }, [isHydrated, linePx, bottomKind, activeTop]);
+    saveSplitState(storageKey, { linePx, bottomKind, activeTop });
+  }, [isHydrated, storageKey, linePx, bottomKind, activeTop]);
 
-  const topKinds = ALL_KINDS.filter((kind) => kind !== bottomKind);
+  const topKinds = kinds.filter((kind) => kind !== bottomKind);
   const isSplit = bottomKind !== null;
   const resolvedTop = topKinds.includes(activeTop) ? activeTop : topKinds[0];
 
@@ -119,7 +120,7 @@ export function useSplitRail() {
     window.addEventListener("pointerup", handleUp);
   }
 
-  function beginBadgeDrag(event: ReactPointerEvent, kind: ContentKind) {
+  function beginBadgeDrag(event: ReactPointerEvent, kind: K) {
     event.preventDefault();
     const rail = railRef.current;
     if (!rail) return;

@@ -2,25 +2,23 @@ import type { PointerEvent } from "react";
 import position from "./BookmarkBadge.position.module.css";
 import styles from "./BookmarkBadge.styles.module.css";
 
-export type ContentKind = "ai" | "transcript" | "notes" | "lessons" | "scorecard";
-
-export const BOOKMARK_META: Record<ContentKind, { label: string; color: string }> = {
-  ai: { label: "AI", color: "var(--color-bookmark-ai)" },
-  transcript: { label: "TR", color: "var(--color-bookmark-transcript)" },
-  notes: { label: "NT", color: "var(--color-bookmark-notes)" },
-  lessons: { label: "CL", color: "var(--color-bookmark-lessons)" },
-  scorecard: { label: "SC", color: "var(--color-bookmark-scorecard)" },
-};
+// A color + up to a 2-letter label, nothing more — see
+// `updates/2026-10-28 PERFORMANCE-REVIEW - OPEN/wiki.md` for why bookmarks
+// are deliberately this minimal. What the available kinds *are* and what
+// each one's label/color is stays with whichever page uses this (see e.g.
+// PerformanceReview.data.ts's CONTENT_KIND_META) — this element only knows
+// how to render one badge given its meta, not the full kind set.
+export type BookmarkMeta = { label: string; color: string };
 
 type BookmarkBadgeProps = {
-  kind: ContentKind;
+  kind: string;
+  meta: BookmarkMeta;
   active: boolean;
   onClick?: () => void;
   onPointerDown?: (event: PointerEvent<HTMLButtonElement>) => void;
 };
 
-export function BookmarkBadge({ kind, active, onClick, onPointerDown }: BookmarkBadgeProps) {
-  const meta = BOOKMARK_META[kind];
+export function BookmarkBadge({ kind, meta, active, onClick, onPointerDown }: BookmarkBadgeProps) {
   return (
     <button
       type="button"

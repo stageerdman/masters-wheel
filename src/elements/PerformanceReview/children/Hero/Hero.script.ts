@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
+import { CONTENT_KIND_ORDER, type ContentKind } from "@/elements/PerformanceReview/PerformanceReview.data";
 
-const VALID_KINDS: ContentKind[] = ["ai", "transcript", "notes", "lessons", "scorecard"];
+const VALID_KINDS = CONTENT_KIND_ORDER;
 
 // Which bookmark tab the Hero's text view shows is a UI preference, not
 // per-record data — it persists across reloads (same pattern as Detail's
-// split layout, see Detail.script.ts) shared across every record rather
-// than resetting each time you switch or reopen one.
+// split layout, see src/lib/splitRail.ts) shared across every record
+// rather than resetting each time you switch or reopen one.
 const ACTIVE_KIND_STORAGE_KEY = "performance-review-hero-active-kind";
 
 function loadActiveKind(): ContentKind | null {

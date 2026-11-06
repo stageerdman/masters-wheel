@@ -1,7 +1,6 @@
 import { Transcript } from "@/elements/Transcript/Transcript";
 import { Scorecard } from "@/elements/Scorecard/Scorecard";
-import type { ContentKind } from "@/elements/BookmarkBadge/BookmarkBadge";
-import type { VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
+import type { ContentKind, VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./TextView.position.module.css";
 import styles from "./TextView.styles.module.css";
