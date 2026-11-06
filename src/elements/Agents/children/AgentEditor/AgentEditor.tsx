@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import type { AgentFields, AgentVersion, CoachAgent } from "@/elements/Agents/Agents.data";
+import { useSpaces } from "@/lib/spaces";
 import { useAgentDraft } from "./AgentEditor.script";
 import { IdentityHeader } from "./children/IdentityHeader/IdentityHeader";
 import { InstructionsField } from "./children/InstructionsField/InstructionsField";
 import { KnowledgeManager } from "./children/KnowledgeManager/KnowledgeManager";
 import { SaveButton } from "./children/SaveButton/SaveButton";
+import { SpacesField } from "./children/SpacesField/SpacesField";
 import { VersionHistoryPanel } from "./children/VersionHistoryPanel/VersionHistoryPanel";
 import position from "./AgentEditor.position.module.css";
 import styles from "./AgentEditor.styles.module.css";
@@ -19,6 +21,7 @@ type AgentEditorProps = {
 
 export function AgentEditor({ agent, versions, onSave }: AgentEditorProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const { spaces } = useSpaces();
   const {
     draft,
     dirty,
@@ -30,6 +33,7 @@ export function AgentEditor({ agent, versions, onSave }: AgentEditorProps) {
     handleFocusField,
     handleBlurField,
     setPhoto,
+    setAvailableSpaces,
     addKnowledgeFile,
     removeKnowledgeFile,
     restore,
@@ -72,6 +76,7 @@ export function AgentEditor({ agent, versions, onSave }: AgentEditorProps) {
           onFieldFocus={handleFocusField}
           onFieldBlur={handleBlurField}
         />
+        <SpacesField spaces={spaces} selectedIds={draft.availableSpaceIds} onChange={setAvailableSpaces} />
         <InstructionsField
           value={draft.instructions}
           knowledgeFiles={draft.knowledgeFiles}
@@ -81,6 +86,7 @@ export function AgentEditor({ agent, versions, onSave }: AgentEditorProps) {
         />
         <KnowledgeManager
           agentId={agent.id}
+          agentSpaceFolder={agent.homeSpaceFolder}
           files={draft.knowledgeFiles}
           onAddFile={addKnowledgeFile}
           onRemoveFile={removeKnowledgeFile}

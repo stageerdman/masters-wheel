@@ -25,7 +25,7 @@ export type IndexingStatus = { fileName: string; processed: number; total: numbe
 // describes exactly one real in-progress file rather than needing to
 // track a list. One file failing (e.g. an unsupported type) doesn't abort
 // the rest of the batch.
-export function useKnowledgeUpload(agentId: string, onAdded: (file: KnowledgeFile) => void) {
+export function useKnowledgeUpload(agentId: string, agentSpaceFolder: string, onAdded: (file: KnowledgeFile) => void) {
   const [indexing, setIndexing] = useState<IndexingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,14 +41,14 @@ export function useKnowledgeUpload(agentId: string, onAdded: (file: KnowledgeFil
       });
 
       try {
-        onAdded(await ingestKnowledgeFile(agentId, path, jobId));
+        onAdded(await ingestKnowledgeFile(agentId, path, jobId, agentSpaceFolder));
       } catch (e) {
         setError(String(e));
       } finally {
         unlisten();
       }
     },
-    [agentId, onAdded],
+    [agentId, agentSpaceFolder, onAdded],
   );
 
   // Stable across renders (as long as agentId/onAdded are) so a consumer

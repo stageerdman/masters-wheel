@@ -35,7 +35,7 @@ const CORE_RULE: &str = "Only state facts that are actually supported by the kno
 // enough on its own to get them actually used: same live bug as above,
 // a direct "analyze my call" request got answered with "send me the
 // transcript" instead of a single tool call.
-const TOOL_USE_RULE: &str = "You have tools for Master's Wheel's Performance Review records: list_performance_reviews (always available, metadata only) and get_performance_review (the real notes/transcript/analysis for one record_id — may need the user's permission the first time). When the user asks you to analyze, review, or discuss a call/session, use these tools yourself instead of asking them to paste a transcript — only ask them directly if the tools genuinely don't have what you need (e.g. get_performance_review was declined, or nothing matches what they described).";
+const TOOL_USE_RULE: &str = "You have tools for Master's Wheel's Performance Review records: list_performance_reviews (always available, metadata only) and get_performance_review (the real notes/transcript/analysis for one record_id — may need the user's permission the first time). When the user asks you to analyze, review, or discuss a call/session, use these tools yourself instead of asking them to paste a transcript — only ask them directly if the tools genuinely don't have what you need (e.g. get_performance_review was declined, or nothing matches what they described). Never guess, construct, or pattern-match a record_id yourself (e.g. from a date or a name the user mentioned) — a record_id is an opaque folder name that often has no relationship to the call's title or participant. Always call list_performance_reviews first and copy the record_id verbatim from whichever result's title matches, unless the record is already named with its record_id below. Never write out what a tool call would look like (e.g. text like `{\"name\": \"get_performance_review\", ...}` or `[Tool call: ...]`) as your actual reply — that leaves the user with no real answer. If you intend to use a tool, actually invoke it through the real tool-calling mechanism every time, never describe or simulate the call in prose instead.";
 
 // A record the user has visibly tagged in this exact chat (see TagBar in
 // the UI) — built from the live bridge state, not anything in the
@@ -113,6 +113,28 @@ mod tests {
         assert!(TOOL_USE_RULE.contains("list_performance_reviews"));
         assert!(TOOL_USE_RULE.contains("get_performance_review"));
         assert!(TOOL_USE_RULE.to_lowercase().contains("transcript"));
+    }
+
+    #[test]
+    fn tool_use_rule_forbids_narrating_a_fake_tool_call() {
+        // Regression check for a live bug: the model sometimes wrote out
+        // literal text that *looked* like a tool call (JSON or bracket
+        // syntax naming the tool and its inputs) as its actual reply,
+        // instead of invoking get_performance_review for real — leaving
+        // the user with a non-answer that merely resembled one.
+        assert!(TOOL_USE_RULE.to_lowercase().contains("tool call") || TOOL_USE_RULE.to_lowercase().contains("tool-calling"));
+        assert!(TOOL_USE_RULE.to_lowercase().contains("never write out"));
+    }
+
+    #[test]
+    fn tool_use_rule_forbids_guessing_a_record_id() {
+        // Regression check for a live bug: asked about a call by the
+        // participant's name, the model skipped list_performance_reviews
+        // and fabricated a record_id by pattern-matching other calls'
+        // folder names, landing on a record_id that didn't exist because
+        // record_ids are opaque and unrelated to the call's real title.
+        assert!(TOOL_USE_RULE.to_lowercase().contains("guess"));
+        assert!(TOOL_USE_RULE.contains("verbatim"));
     }
 
     #[test]

@@ -156,10 +156,17 @@ pub async fn ask_agent(
     // generated --mcp-config's env so mcp/permission.rs knows which
     // chat's tags/always-allowed list to check. See mcp/bridge.rs.
     chat_session_id: String,
-    // Which Space this chat belongs to — scopes both this agent's own
-    // knowledge retrieval and (via mcp/config.rs) which Space's
-    // Performance Review records the MCP tools can see.
-    space_folder: String,
+    // Where this agent's own knowledge.db physically lives — an agent can
+    // now be chatted with from any Space it's available in, but its
+    // indexed knowledge files only ever live under the one Space it was
+    // actually created in (see src/lib/agents/types.ts's homeSpaceFolder).
+    agent_space_folder: String,
+    // Which Space this *chat* belongs to — scopes which Space's
+    // Performance Review records the MCP tools can see (via
+    // mcp/config.rs). Deliberately separate from agent_space_folder: the
+    // records a chat's tools can reach are always the Space the user is
+    // actually sitting in, regardless of which Space the agent lives in.
+    active_space_folder: String,
 ) -> Result<AgentReply, String> {
     // Cloned out of the State wrapper (cheap — Bridge is just an Arc)
     // before moving into spawn_blocking: tauri::State's own lifetime
@@ -193,7 +200,7 @@ pub async fn ask_agent(
         // Code from breaking character and self-identifying instead of
         // the persona (see this update's wiki.md for the repro).
         let system_prompt = match &agent_id {
-            Some(id) => match knowledge::commands::retrieve_for_agent(&app, &space_folder, id, &message, RETRIEVAL_TOP_K) {
+            Some(id) => match knowledge::commands::retrieve_for_agent(&app, &agent_space_folder, id, &message, RETRIEVAL_TOP_K) {
                 Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks, &tagged_records),
                 Err(_) => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records),
             },
@@ -225,7 +232,7 @@ pub async fn ask_agent(
         // since the tool schema is then declared directly instead of
         // needing a separate discovery round-trip first. See this
         // update's wiki.md for the full repro.
-        let records_root = crate::spaces::records_dir(&app, &space_folder)?;
+        let records_root = crate::spaces::records_dir(&app, &active_space_folder)?;
         let mcp_config_path = crate::mcp::config::write_config_file(
             &chat_session_id,
             agent_id.as_deref().unwrap_or(""),

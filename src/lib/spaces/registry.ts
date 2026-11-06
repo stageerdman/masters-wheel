@@ -58,6 +58,14 @@ export async function ensureInitialized(): Promise<SpaceRegistry> {
   return readRegistry();
 }
 
+// Read-only list of every Space that exists — used by agents/storage.ts to
+// scan across every Space's agents/ folder now that an agent can be visible
+// outside the one Space it physically lives in.
+export async function listSpaces(): Promise<Space[]> {
+  const registry = await readRegistry();
+  return registry.spaces;
+}
+
 export function resolveActiveSpace(registry: SpaceRegistry): Space {
   const active = registry.spaces.find((space) => space.id === registry.activeSpaceId);
   // Guards against a hand-edited/corrupt activeSpaceId — falls back to the

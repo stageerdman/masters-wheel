@@ -8,6 +8,7 @@ import styles from "./KnowledgeManager.styles.module.css";
 
 type KnowledgeManagerProps = {
   agentId: string;
+  agentSpaceFolder: string;
   files: KnowledgeFile[];
   onAddFile: (file: KnowledgeFile) => void;
   onRemoveFile: (id: string) => void;
@@ -18,8 +19,8 @@ function indexingLabel(indexing: { fileName: string; processed: number; total: n
   return `Indexing ${indexing.fileName}… ${indexing.processed}/${indexing.total} chunks`;
 }
 
-export function KnowledgeManager({ agentId, files, onAddFile, onRemoveFile }: KnowledgeManagerProps) {
-  const { indexing, error, addFiles, pickAndAddFiles } = useKnowledgeUpload(agentId, onAddFile);
+export function KnowledgeManager({ agentId, agentSpaceFolder, files, onAddFile, onRemoveFile }: KnowledgeManagerProps) {
+  const { indexing, error, addFiles, pickAndAddFiles } = useKnowledgeUpload(agentId, agentSpaceFolder, onAddFile);
   const isDragActive = useWindowFileDrop(true, addFiles);
   const totalChunks = files.reduce((sum, file) => sum + file.chunkCount, 0);
 

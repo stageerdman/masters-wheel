@@ -12,6 +12,7 @@ const FIELD_LABELS: Record<keyof AgentFields, string> = {
   instructions: "Instructions",
   photoUrl: "Photo",
   knowledgeFiles: "Knowledge",
+  availableSpaceIds: "Available spaces",
 };
 
 function describeChange(previous: AgentFields | null, next: AgentFields): string {
@@ -20,7 +21,9 @@ function describeChange(previous: AgentFields | null, next: AgentFields): string
   for (const key of Object.keys(next) as (keyof AgentFields)[]) {
     if (key === "nicknameLocked") continue;
     const isEqual =
-      key === "knowledgeFiles" ? JSON.stringify(previous[key]) === JSON.stringify(next[key]) : previous[key] === next[key];
+      key === "knowledgeFiles" || key === "availableSpaceIds"
+        ? JSON.stringify(previous[key]) === JSON.stringify(next[key])
+        : previous[key] === next[key];
     if (!isEqual) changed.add(FIELD_LABELS[key]);
   }
   if (changed.size === 0) return "No changes";

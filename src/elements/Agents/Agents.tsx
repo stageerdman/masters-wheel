@@ -15,6 +15,7 @@ import {
   type AgentVersion,
   type Agent,
 } from "@/lib/agents";
+import { useSpaces } from "@/lib/spaces";
 import { AgentNav } from "./children/AgentNav/AgentNav";
 import { AgentEditor } from "./children/AgentEditor/AgentEditor";
 import { ContextMenu, type ContextMenuItem } from "@/elements/ContextMenu/ContextMenu";
@@ -23,21 +24,29 @@ import styles from "./Agents.styles.module.css";
 
 type AgentContextMenuState = { agentId: string; x: number; y: number };
 
-function makeDraftAgent(): Agent {
-  return {
-    id: crypto.randomUUID(),
-    name: "",
-    nickname: "",
-    nicknameLocked: false,
-    description: "",
-    instructions: "",
-    photoUrl: null,
-    knowledgeFiles: [],
-  };
-}
-
 export function Agents() {
   const { setBrand } = useHeaderActions();
+  const { spaces, activeSpace } = useSpaces();
+
+  // A brand-new, unsaved agent lives in whichever Space it was created
+  // from — and defaults to visible in every Space that currently exists,
+  // same "universal unless narrowed down" default a legacy agent gets
+  // (see src/lib/agents/storage.ts's parseAgent).
+  function makeDraftAgent(): Agent {
+    return {
+      id: crypto.randomUUID(),
+      homeSpaceId: activeSpace.id,
+      homeSpaceFolder: activeSpace.folderName,
+      name: "",
+      nickname: "",
+      nicknameLocked: false,
+      description: "",
+      instructions: "",
+      photoUrl: null,
+      knowledgeFiles: [],
+      availableSpaceIds: spaces.map((space) => space.id),
+    };
+  }
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -78,7 +87,7 @@ export function Agents() {
   }
 
   async function handleSave(agentId: string, fields: AgentFields) {
-    setAgents((current) => current.map((agent) => (agent.id === agentId ? { id: agentId, ...fields } : agent)));
+    setAgents((current) => current.map((agent) => (agent.id === agentId ? { ...agent, ...fields } : agent)));
     await saveAgent(agentId, fields);
     const previous = versionsByAgent[agentId] ?? [];
     const version = makeVersion(previous, fields);

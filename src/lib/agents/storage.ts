@@ -1,45 +1,60 @@
-// Agent persistence — one real folder per agent, under the active Space's
-// own folder (see src/lib/spaces) — not a fixed path, since each Space has
-// a genuinely separate set of Agents. The Rust side (see
-// src-tauri/src/knowledge/) writes knowledge.db and the knowledge/ folder
-// straight into the same per-agent directory, so this is the one place on
-// disk everything about one agent lives.
+// Agent persistence. An agent physically lives in exactly one Space's own
+// folder (whichever Space it was created in — see src/lib/spaces), since
+// the Rust knowledge pipeline writes knowledge.db/knowledge/ straight into
+// that same per-agent directory and a file can't live in two places at
+// once. But an agent is *visible* from any Space listed in its own
+// `availableSpaceIds` (see types.ts) — "universal" by default, narrowed
+// per-agent from the Agents page. So listAgents() scans every Space's
+// agents/ folder, not just the active one, and every other operation here
+// first has to find out which Space an agent's id actually lives under.
 //
-//   .../<space>/agents/<id>/agent.json       (this file)
-//   .../<space>/agents/<id>/versions.json    (this file)
-//   .../<space>/agents/<id>/knowledge.db     (written by Rust)
-//   .../<space>/agents/<id>/knowledge/<file> (written by Rust)
+//   .../<home space>/agents/<id>/agent.json       (this file)
+//   .../<home space>/agents/<id>/versions.json    (this file)
+//   .../<home space>/agents/<id>/knowledge.db     (written by Rust)
+//   .../<home space>/agents/<id>/knowledge/<file> (written by Rust)
 //
 // Only persistence lives here (read/write JSON to disk) — computing what
 // a new version's change-label should say is a separate concern, see
 // versionDiff.ts.
 
-import { mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
+import { exists, mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
 import { BASE_DIR, spaceAgentsDir } from "@/lib/spaces/paths";
-import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
+import { getActiveSpace, getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
+import { listSpaces } from "@/lib/spaces/registry";
+import type { Space } from "@/lib/spaces/types";
 import type { Agent, AgentFields, AgentVersion } from "./types";
 
-function agentsRoot() {
-  return spaceAgentsDir(getActiveSpaceFolder());
+function agentsRootFor(spaceFolder: string) {
+  return spaceAgentsDir(spaceFolder);
 }
 
-function agentDir(id: string) {
-  return `${agentsRoot()}/${id}`;
+function agentDirFor(spaceFolder: string, id: string) {
+  return `${agentsRootFor(spaceFolder)}/${id}`;
 }
 
-function agentJsonPath(id: string) {
-  return `${agentDir(id)}/agent.json`;
+function agentJsonPathFor(spaceFolder: string, id: string) {
+  return `${agentDirFor(spaceFolder, id)}/agent.json`;
 }
 
-function versionsJsonPath(id: string) {
-  return `${agentDir(id)}/versions.json`;
+function versionsJsonPathFor(spaceFolder: string, id: string) {
+  return `${agentDirFor(spaceFolder, id)}/versions.json`;
 }
 
 export async function ensureAgentsRoot(): Promise<void> {
-  await mkdir(agentsRoot(), { baseDir: BASE_DIR, recursive: true });
+  await mkdir(agentsRootFor(getActiveSpaceFolder()), { baseDir: BASE_DIR, recursive: true });
 }
 
-function parseAgent(id: string, text: string): Agent | null {
+// Scans every Space's agents/ folder for one with id — an agent only ever
+// lives under one Space, so the first match found is it. Returns null for
+// an id that hasn't been saved to disk yet (a brand-new, unsaved draft).
+async function findAgentHomeSpace(id: string, spaces: Space[]): Promise<Space | null> {
+  for (const space of spaces) {
+    if (await exists(agentDirFor(space.folderName, id), { baseDir: BASE_DIR }).catch(() => false)) return space;
+  }
+  return null;
+}
+
+function parseAgent(id: string, text: string, homeSpace: Space, allSpaceIds: string[]): Agent | null {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -57,8 +72,17 @@ function parseAgent(id: string, text: string): Agent | null {
   // user re-uploading via the current (persistent) picker is what
   // actually restores a working photo.
   const photoUrl = typeof candidate.photoUrl === "string" && !candidate.photoUrl.startsWith("blob:") ? candidate.photoUrl : null;
+  // Missing/corrupt availableSpaceIds (every agent saved before this field
+  // existed) defaults to every Space that currently exists — agents are
+  // universal unless explicitly narrowed down.
+  const availableSpaceIds =
+    Array.isArray(candidate.availableSpaceIds) && candidate.availableSpaceIds.every((value) => typeof value === "string")
+      ? candidate.availableSpaceIds
+      : allSpaceIds;
   return {
     id,
+    homeSpaceId: homeSpace.id,
+    homeSpaceFolder: homeSpace.folderName,
     name: candidate.name,
     nickname: typeof candidate.nickname === "string" ? candidate.nickname : "",
     nicknameLocked: typeof candidate.nicknameLocked === "boolean" ? candidate.nicknameLocked : false,
@@ -66,44 +90,64 @@ function parseAgent(id: string, text: string): Agent | null {
     instructions: typeof candidate.instructions === "string" ? candidate.instructions : "",
     photoUrl,
     knowledgeFiles: Array.isArray(candidate.knowledgeFiles) ? candidate.knowledgeFiles : [],
+    availableSpaceIds,
   };
 }
 
-// One agent per subfolder of the agents root. A folder with a missing or
-// corrupt agent.json is skipped, not a crash — same convention
-// listRecords() uses in src/lib/records/index.ts.
+// One agent per subfolder of each Space's agents root. A folder with a
+// missing or corrupt agent.json is skipped, not a crash — same convention
+// listRecords() uses in src/lib/records/index.ts. Returns only the agents
+// visible from the active Space (see parseAgent's availableSpaceIds
+// default above).
 export async function listAgents(): Promise<Agent[]> {
-  await ensureAgentsRoot();
-  const entries = await readDir(agentsRoot(), { baseDir: BASE_DIR });
+  const spaces = await listSpaces();
+  const activeSpace = getActiveSpace();
+  const allSpaceIds = spaces.map((space) => space.id);
   const agents: Agent[] = [];
-  for (const entry of entries) {
-    if (!entry.isDirectory) continue;
+  for (const space of spaces) {
+    const root = agentsRootFor(space.folderName);
+    await mkdir(root, { baseDir: BASE_DIR, recursive: true }).catch(() => {});
+    let entries;
     try {
-      const text = await readTextFile(agentJsonPath(entry.name), { baseDir: BASE_DIR });
-      const agent = parseAgent(entry.name, text);
-      if (agent) agents.push(agent);
+      entries = await readDir(root, { baseDir: BASE_DIR });
     } catch {
       continue;
     }
+    for (const entry of entries) {
+      if (!entry.isDirectory) continue;
+      try {
+        const text = await readTextFile(agentJsonPathFor(space.folderName, entry.name), { baseDir: BASE_DIR });
+        const agent = parseAgent(entry.name, text, space, allSpaceIds);
+        if (agent) agents.push(agent);
+      } catch {
+        continue;
+      }
+    }
   }
-  return agents;
+  return agents.filter((agent) => agent.availableSpaceIds.includes(activeSpace.id));
 }
 
 export async function saveAgent(id: string, fields: AgentFields): Promise<void> {
-  await mkdir(agentDir(id), { baseDir: BASE_DIR, recursive: true });
-  await writeTextFile(agentJsonPath(id), JSON.stringify(fields, null, 2), { baseDir: BASE_DIR });
+  const spaces = await listSpaces();
+  const homeFolder = (await findAgentHomeSpace(id, spaces))?.folderName ?? getActiveSpaceFolder();
+  await mkdir(agentDirFor(homeFolder, id), { baseDir: BASE_DIR, recursive: true });
+  await writeTextFile(agentJsonPathFor(homeFolder, id), JSON.stringify(fields, null, 2), { baseDir: BASE_DIR });
 }
 
 // Deletes an agent entirely — its folder, knowledge database, and every
 // stored knowledge file. Irreversible; the caller is responsible for
 // confirming with the user first.
 export async function deleteAgent(id: string): Promise<void> {
-  await remove(agentDir(id), { baseDir: BASE_DIR, recursive: true });
+  const homeSpace = await findAgentHomeSpace(id, await listSpaces());
+  if (!homeSpace) return;
+  await remove(agentDirFor(homeSpace.folderName, id), { baseDir: BASE_DIR, recursive: true });
 }
 
 export async function listVersions(id: string): Promise<AgentVersion[]> {
+  const homeSpace = await findAgentHomeSpace(id, await listSpaces());
+  if (!homeSpace) return [];
   try {
-    const text = await readTextFile(versionsJsonPath(id), { baseDir: BASE_DIR });
+    const text = await readTextFile(versionsJsonPathFor(homeSpace.folderName, id), { baseDir: BASE_DIR });
     const raw = JSON.parse(text);
     return Array.isArray(raw) ? raw : [];
   } catch {
@@ -112,6 +156,8 @@ export async function listVersions(id: string): Promise<AgentVersion[]> {
 }
 
 export async function appendVersion(id: string, version: AgentVersion): Promise<void> {
+  const spaces = await listSpaces();
+  const homeFolder = (await findAgentHomeSpace(id, spaces))?.folderName ?? getActiveSpaceFolder();
   const current = await listVersions(id);
-  await writeTextFile(versionsJsonPath(id), JSON.stringify([...current, version], null, 2), { baseDir: BASE_DIR });
+  await writeTextFile(versionsJsonPathFor(homeFolder, id), JSON.stringify([...current, version], null, 2), { baseDir: BASE_DIR });
 }

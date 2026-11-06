@@ -23,9 +23,15 @@ export type AgentFields = {
   instructions: string;
   photoUrl: string | null;
   knowledgeFiles: KnowledgeFile[];
+  /** Which Spaces (by Space id) this agent shows up and is usable in. */
+  availableSpaceIds: string[];
 };
 
-export type Agent = { id: string } & AgentFields;
+// homeSpaceId/homeSpaceFolder are where this agent's files physically live
+// on disk — derived from which Space's agents/ folder it was found in, not
+// stored in agent.json itself (an agent only ever lives in one place; which
+// Spaces it's *visible* from is the separate availableSpaceIds field above).
+export type Agent = { id: string; homeSpaceId: string; homeSpaceFolder: string } & AgentFields;
 
 export type AgentVersion = {
   id: string;

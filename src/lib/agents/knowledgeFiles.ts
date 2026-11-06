@@ -8,7 +8,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 import type { KnowledgeFile } from "./types";
 
 export const SUPPORTED_KNOWLEDGE_EXTENSIONS = ["txt", "md", "markdown", "pdf"];
@@ -29,16 +28,20 @@ export function basenameOf(path: string): string {
   return path.split(/[\\/]/).pop() ?? path;
 }
 
-// Indexes one already-picked file for an agent. The caller passes its own
-// `jobId` and should start listening via onKnowledgeIngestProgress with
-// that same id *before* calling this, so no early progress event is
-// missed — same jobId-then-subscribe-then-call shape as askAgent.ts.
-// Throws (with a message safe to show the user) if the file type isn't
-// supported or extraction fails.
-export async function ingestKnowledgeFile(agentId: string, sourcePath: string, jobId: string): Promise<KnowledgeFile> {
+// Indexes one already-picked file for an agent. `spaceFolder` must be the
+// agent's own home Space (agent.homeSpaceFolder) — not necessarily the
+// active Space, since an agent can now be edited while viewed from a Space
+// it's merely available in, but its knowledge.db only ever lives under the
+// Space it was actually created in. The caller passes its own `jobId` and
+// should start listening via onKnowledgeIngestProgress with that same id
+// *before* calling this, so no early progress event is missed — same
+// jobId-then-subscribe-then-call shape as askAgent.ts. Throws (with a
+// message safe to show the user) if the file type isn't supported or
+// extraction fails.
+export async function ingestKnowledgeFile(agentId: string, sourcePath: string, jobId: string, spaceFolder: string): Promise<KnowledgeFile> {
   return invoke<KnowledgeFile>("ingest_knowledge_file", {
     jobId,
-    spaceFolder: getActiveSpaceFolder(),
+    spaceFolder,
     agentId,
     fileId: crypto.randomUUID(),
     sourcePath,
@@ -56,6 +59,7 @@ export async function onKnowledgeIngestProgress(callback: (progress: KnowledgeIn
   return listen<KnowledgeIngestProgress>("knowledge-ingest-progress", (event) => callback(event.payload));
 }
 
-export async function removeKnowledgeFile(agentId: string, file: KnowledgeFile): Promise<void> {
-  await invoke("remove_knowledge_file", { spaceFolder: getActiveSpaceFolder(), agentId, fileId: file.id, fileName: file.name });
+// `spaceFolder` is the agent's own home Space — see ingestKnowledgeFile.
+export async function removeKnowledgeFile(agentId: string, file: KnowledgeFile, spaceFolder: string): Promise<void> {
+  await invoke("remove_knowledge_file", { spaceFolder, agentId, fileId: file.id, fileName: file.name });
 }

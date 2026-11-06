@@ -445,7 +445,16 @@ export function useAIAssistant() {
     });
 
     try {
-      const reply = await askAgent(jobId, input, agent.instructions, agent.id, session.claudeSessionIds[agent.id], sessionId);
+      const reply = await askAgent(
+        jobId,
+        input,
+        agent.instructions,
+        agent.id,
+        session.claudeSessionIds[agent.id],
+        sessionId,
+        agent.homeSpaceFolder,
+        activeSpace?.folderName ?? agent.homeSpaceFolder,
+      );
       // The streamed-in text above is provisional (deltas could in theory
       // drop or reorder); the CLI's final `result` text is authoritative,
       // so it always wins here.

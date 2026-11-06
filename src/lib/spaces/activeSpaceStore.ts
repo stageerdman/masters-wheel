@@ -27,10 +27,17 @@ export function setActiveSpace(space: Space): void {
 // agent/chat/record data before a Space is known would silently scope it
 // to the wrong place, which is worse than a loud crash during development.
 export function getActiveSpaceFolder(): string {
+  return getActiveSpace().folderName;
+}
+
+// Same guard as getActiveSpaceFolder, but returns the whole Space — agents
+// storage needs both the id (to check availableSpaceIds) and the folder
+// name (to build a path) for the active Space.
+export function getActiveSpace(): Space {
   if (!current) {
     throw new Error("No active Space set yet — storage was called before SpacesProvider finished initializing.");
   }
-  return current.folderName;
+  return current;
 }
 
 function subscribe(listener: Listener): () => void {

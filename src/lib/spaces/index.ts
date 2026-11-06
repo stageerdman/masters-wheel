@@ -9,5 +9,6 @@
 
 export * from "./types";
 export { STORAGE_DIR_NAME, spaceAgentsDir, spaceChatsDir, spaceDir, spaceRecordsDir } from "./paths";
-export { getActiveSpaceFolder, useActiveSpace } from "./activeSpaceStore";
+export { getActiveSpace, getActiveSpaceFolder, useActiveSpace } from "./activeSpaceStore";
+export { listSpaces } from "./registry";
 export { SpacesProvider, useSpaces } from "./context";

@@ -15,6 +15,7 @@ function extractFields(agent: CoachAgent): AgentFields {
     instructions: agent.instructions,
     photoUrl: agent.photoUrl,
     knowledgeFiles: agent.knowledgeFiles,
+    availableSpaceIds: agent.availableSpaceIds,
   };
 }
 
@@ -26,7 +27,8 @@ function fieldsEqual(a: AgentFields, b: AgentFields) {
     a.description === b.description &&
     a.instructions === b.instructions &&
     a.photoUrl === b.photoUrl &&
-    JSON.stringify(a.knowledgeFiles) === JSON.stringify(b.knowledgeFiles)
+    JSON.stringify(a.knowledgeFiles) === JSON.stringify(b.knowledgeFiles) &&
+    JSON.stringify(a.availableSpaceIds) === JSON.stringify(b.availableSpaceIds)
   );
 }
 
@@ -103,6 +105,10 @@ export function useAgentDraft(agent: CoachAgent, onSave: (fields: AgentFields) =
     commitImmediate({ ...draft, photoUrl });
   }
 
+  function setAvailableSpaces(ids: string[]) {
+    commitImmediate({ ...draft, availableSpaceIds: ids });
+  }
+
   function addKnowledgeFile(file: KnowledgeFile) {
     commitImmediate({ ...draft, knowledgeFiles: [...draft.knowledgeFiles, file] });
   }
@@ -113,7 +119,7 @@ export function useAgentDraft(agent: CoachAgent, onSave: (fields: AgentFields) =
   function removeKnowledgeFile(id: string) {
     const file = draft.knowledgeFiles.find((candidate) => candidate.id === id);
     commitImmediate({ ...draft, knowledgeFiles: draft.knowledgeFiles.filter((candidate) => candidate.id !== id) });
-    if (file) void removeKnowledgeFileOnDisk(agent.id, file);
+    if (file) void removeKnowledgeFileOnDisk(agent.id, file, agent.homeSpaceFolder);
   }
 
   // One atomic commit, same as any other action — one Cmd+Z right after a
@@ -188,6 +194,7 @@ export function useAgentDraft(agent: CoachAgent, onSave: (fields: AgentFields) =
     handleFocusField,
     handleBlurField,
     setPhoto,
+    setAvailableSpaces,
     addKnowledgeFile,
     removeKnowledgeFile,
     restore,
