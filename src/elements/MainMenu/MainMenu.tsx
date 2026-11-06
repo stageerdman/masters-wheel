@@ -26,6 +26,8 @@ export function MainMenu() {
       router.push("/performance-review");
     } else if (id === "agents") {
       router.push("/agents");
+    } else if (id === "chat") {
+      router.push("/chat");
     } else if (id === "analytics") {
       setPanelContent((current) => (current === "analytics" ? null : "analytics"));
     } else {

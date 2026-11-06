@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { AIAssistantTrigger } from "./children/AIAssistantTrigger/AIAssistantTrigger";
 import { AIAssistantWindow } from "./children/AIAssistantWindow/AIAssistantWindow";
 import { DockZoneOverlay } from "./children/DockZoneOverlay/DockZoneOverlay";
@@ -8,8 +9,15 @@ import { useWindowDock } from "./AIAssistant.windowDock.script";
 import position from "./AIAssistant.position.module.css";
 import styles from "./AIAssistant.styles.module.css";
 
+// The full-screen ChatPage at this route is the same chat experience,
+// just full-screen with its own independent useAIAssistant() instance —
+// showing the floating widget there too would risk two out-of-sync copies
+// of the same chat state on screen at once (see ChatPage.tsx).
+const HIDDEN_ON_ROUTES = ["/chat"];
+
 // Lives on top of every environment. Mounted once from the root layout.
 export function AIAssistant() {
+  const pathname = usePathname();
   const {
     phase,
     open,
@@ -58,6 +66,8 @@ export function AIAssistant() {
     selectAgent(id);
     closeSideMenu();
   }
+
+  if (HIDDEN_ON_ROUTES.includes(pathname)) return null;
 
   return (
     <div id="ai-assistant-root" className={`${styles.root} ${position.root}`} data-construction>

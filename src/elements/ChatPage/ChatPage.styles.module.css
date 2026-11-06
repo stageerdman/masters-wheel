@@ -1,0 +1,33 @@
+/* How this element looks. No layout/positioning here. */
+.root {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.topBar {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topBarButton {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.topBarButton:hover {
+  color: var(--color-text);
+}
+
+.topBarButton:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.topBarButton[aria-pressed="true"] {
+  color: var(--color-text);
+}
+
+.chatColumn {
+  background: none;
+}

@@ -8,10 +8,10 @@ type AgentPickerProps = {
   onSelectAgent: (id: string) => void;
 };
 
-// Shown in place of MessageList + Composer while the active session is a
-// fresh draft (see AIAssistant.script.ts's isDraftSession) — picking an
-// agent is the first thing a new chat asks for now, not something you had
-// to dig into the Sidebar's Agents tab to find.
+// Shown in place of MessageList + Composer whenever the active session has
+// no dedicated agent yet (session.agentId unset) — picking an agent is the
+// first thing a new chat asks for now, not something you had to dig into
+// the Sidebar's Agents tab to find.
 export function AgentPicker({ agents, onSelectAgent }: AgentPickerProps) {
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>

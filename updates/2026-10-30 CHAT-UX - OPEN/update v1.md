@@ -228,3 +228,29 @@ Five related upgrades, dictated together:
    every chat in the active Space. The floating widget hides itself on
    this route (two independent `useAIAssistant()` instances visible at
    once would drift out of sync).
+
+## Status: all 5 shipped
+Item 5 required promoting `Sidebar`/`AgentPicker`/`Composer`/`MessageList`/
+`TagBar` (and their own nested-children subtrees — `AgentStrip`,
+`HistoryList`+`HistoryListItem`, `AgentRosterItem`, `Message`+
+`PermissionRequest`, `TagChip`) out of
+`AIAssistant/children/AIAssistantWindow/children/` to flat
+`src/elements/`, per CLAUDE.md's own element convention — they now have a
+second consumer (`ChatPage`) besides `AIAssistantWindow`, so nesting them
+under the floating widget specifically was no longer accurate. Pure
+move + import-path fixes, landed as its own commit before the new page's
+real logic. Also fixed two pre-existing convention gaps surfaced by the
+same move: `HistoryList` and `AgentRosterItem` were each already
+single-consumer (of `Sidebar` and `AgentPicker` respectively) but sat as
+flat siblings instead of properly nested under their one parent's own
+`children/` — now `Sidebar/children/HistoryList/...` and
+`AgentPicker/children/AgentRosterItem/...`.
+
+`tsc --noEmit`, `npm run lint`, `npm run build`, and `cargo check` are
+all clean; `npm run app:build` rebuilt and reinstalled to
+`/Applications/Master's Wheel.app`. Not yet confirmed by the user's own
+click-through — in particular, `name_chat`'s real output quality, the
+narrow-breakpoint auto-collapse on an actually-resized window, and
+`/chat`'s full-screen layout at real window sizes all only exercise
+meaningfully once Tauri's `invoke`/`fs` bridge and real window geometry
+are live, neither of which `npm run dev`/`next build` alone can exercise.

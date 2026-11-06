@@ -184,6 +184,47 @@ between the two lists. Each page gets its own section as pages get added.
       `modelUsage` report on every reply (`assistant.rs`'s
       `extract_context_usage`), persisted per-agent
       (`ChatSession.contextUsage`) alongside `claudeSessionIds`.
+- [x] A chat is auto-named off its first message, the same beat Claude/
+      ChatGPT do it at — a new, cheap, one-shot, non-persona Rust command
+      (`name_chat`, deliberately separate from `ask_agent`: no `--resume`,
+      no MCP tools, no persona system prompt) fires once per session right
+      after the first user message sends.
+- [x] Picking an agent for a new chat no longer hits disk or shows in
+      History by itself — `ChatSession.isDraft` now only flips to `false`
+      (and the session only gets its first `saveSession`) once an actual
+      message sends. Picking an agent just switches the chat column's
+      view (`AgentPicker` → composer); abandoning a picked-but-unsent chat
+      leaves nothing behind.
+- [x] A new chat's default title (before auto-naming lands, or if it
+      fails) is the tagged/suggested Performance Review record's own
+      title when one exists ("the client we're talking about"), falling
+      back to "Chat with {agent}" otherwise.
+- [x] Right-click → **Rename** in `HistoryListItem`, inline-edit (click-
+      to-edit input, same idiom as `Hero`'s record title) committed on
+      blur/Enter, discarded on Escape.
+- [x] Selecting a chat or starting a new one auto-collapses the sidebar,
+      but only once it's actually acting as a full-width overlay (the
+      same `@container window-content (max-width: 480px)` breakpoint
+      `Sidebar` already had) — untouched in the normal side-by-side
+      layout. A new shared `src/lib/useNarrowContainer.ts` hook mirrors
+      that CSS breakpoint in JS for this one decision that can't be
+      expressed in CSS alone.
+- [x] A full-screen "universal" chat page at `/chat` (`ChatPage`), wired
+      to Main Menu's previously-unwired "Chat with AI" item — the same
+      engine and the same designed chat experience as the floating
+      widget (`Sidebar`/`AgentPicker`/`TagBar`/`MessageList`/`Composer`,
+      reused unchanged, not copy-pasted), just laid out full-screen with
+      a persistent, default-open sidebar showing every chat in the active
+      Space. Its own independent `useAIAssistant()` instance — disk is
+      the shared source of truth, not any live cross-instance link, which
+      is why the floating widget hides itself entirely on this route
+      (`AIAssistant.tsx`'s `HIDDEN_ON_ROUTES`) rather than risk two
+      out-of-sync copies of the same chat state on screen at once. Landing
+      this page also meant promoting `Sidebar`/`AgentPicker`/`Composer`/
+      `MessageList`/`TagBar` (and their own nested children) out from
+      under `AIAssistantWindow/children/` to flat `src/elements/`, per
+      this project's own element convention, now that they have a second
+      consumer.
 
 ### Built — MCP tool calling (Performance Review visibility)
 - [x] Every reply is now generated with two real MCP tools granted
@@ -281,7 +322,8 @@ between the two lists. Each page gets its own section as pages get added.
       highlights, click activates (same effect as keyboard); highlighted
       item shows an arrow marker
 - [x] Performance Review activation navigates to `/performance-review`;
-      Agents activation navigates to `/agents`
+      Agents activation navigates to `/agents`; Chat with AI activation
+      navigates to `/chat` (see `ChatPage` in the AI Assistant section)
 - [x] Analytics activation toggles `AnalyticsPanel` in/out of the right
       panel (now the whole right side of the screen, not a narrow column)
       with a pop-in/pop-out animation — doesn't navigate; activating it
@@ -325,8 +367,7 @@ between the two lists. Each page gets its own section as pages get added.
       live off Performance Review's own call-state registry. Both the
       date range and any added filters persist across restarts and are
       actually wired into what each statistic computes
-- [x] Training / Chat with AI: listed, selectable, inert (no behavior
-      dictated yet)
+- [x] Training: listed, selectable, inert (no behavior dictated yet)
 - [x] `NavMenu` items aren't text-selectable (they're controls, not
       reading content)
 - [x] `AppHeader` wordmark is now a link home (`/`) and is brand-aware via
@@ -335,7 +376,7 @@ between the two lists. Each page gets its own section as pages get added.
       hidden entirely on Main Menu (`/`)
 
 ### To build (real functionality — not started)
-- [ ] Training and Chat with AI behavior (not dictated yet)
+- [ ] Training behavior (not dictated yet)
 - [ ] Multiple Spaces (swipe/page between `StatSpace` pages, each holding
       its own Grid); live edit mode (drag to add/remove/resize/reorder
       Widgets) — see `updates/2026-10-30 ANALYTICS - OPEN`
