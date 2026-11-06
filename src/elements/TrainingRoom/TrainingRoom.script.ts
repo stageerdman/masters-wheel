@@ -8,10 +8,11 @@
 // a fixed example after a short fake delay (same shape as
 // `generateFakeScorecard` — no real ElevenLabs call yet).
 
-import { useCallback, useMemo, useState } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { useWindowFileDrop } from "@/lib/useWindowFileDrop";
+import { removeSessionStorage, storeClipFile } from "@/lib/training";
 import {
   TOOL_TYPE_ORDER,
   type ClipKind,
@@ -74,7 +75,7 @@ const INITIAL_SESSIONS: TrainingSession[] = [
     toolType: "voicePracticing",
     name: "Voice Practicing #1",
     status: "open",
-    lastUsedAt: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(),
+    lastUpdatedAt: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(),
     clips: [],
     notes: "",
   },
@@ -83,7 +84,7 @@ const INITIAL_SESSIONS: TrainingSession[] = [
     toolType: "voicePracticing",
     name: "Cold open drills",
     status: "open",
-    lastUsedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6).toISOString(),
+    lastUpdatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6).toISOString(),
     clips: [],
     notes: "",
   },
@@ -92,7 +93,7 @@ const INITIAL_SESSIONS: TrainingSession[] = [
     toolType: "voicePracticing",
     name: "Objection handling warm-up",
     status: "closed",
-    lastUsedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 35).toISOString(),
+    lastUpdatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 35).toISOString(),
     clips: [],
     notes: "",
   },
@@ -109,22 +110,23 @@ export function useTrainingRoomData() {
     () =>
       sessions
         .filter((session) => session.status === "open")
-        .sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt)),
+        .sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt)),
     [sessions]
   );
   const closedSessions = useMemo(
     () =>
       sessions
         .filter((session) => session.status === "closed")
-        .sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt)),
+        .sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt)),
     [sessions]
   );
 
+  // Opening/selecting a session is navigation, not an edit — it must not
+  // bump lastUpdatedAt (that's reserved for real content changes, see
+  // onNotesChange/addClip below), or Open Sessions would reorder just
+  // from clicking around.
   const selectSession = useCallback((id: string) => {
     setSelectedIdState(id);
-    setSessions((prev) =>
-      prev.map((session) => (session.id === id ? { ...session, lastUsedAt: new Date().toISOString() } : session))
-    );
   }, []);
 
   const addSession = useCallback(() => {
@@ -135,7 +137,7 @@ export function useTrainingRoomData() {
         toolType,
         name: nameFor(toolType, prev),
         status: "open",
-        lastUsedAt: new Date().toISOString(),
+        lastUpdatedAt: new Date().toISOString(),
         clips: [],
         notes: "",
       };
@@ -152,6 +154,7 @@ export function useTrainingRoomData() {
         kind: "warning",
       });
       if (!confirmed) return;
+      if (isTauri()) await removeSessionStorage(id);
       setSessions((prev) => {
         const next = prev.filter((session) => session.id !== id);
         if (selectedId === id) setSelectedIdState(next[0]?.id ?? null);
@@ -169,23 +172,55 @@ export function useTrainingRoomData() {
     setSessions((prev) => prev.map((session) => (session.id === id ? { ...session, name } : session)));
   }, []);
 
+  // Bumping lastUpdatedAt on every keystroke would reorder the Navigation
+  // list while the user is still mid-sentence — debounce it to settle a
+  // moment after typing stops, same shape as Performance Review's
+  // debounced disk writes (this has no disk write to debounce, just the
+  // timestamp).
+  const NOTES_UPDATE_DEBOUNCE_MS = 800;
+  const notesUpdateTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
   const onNotesChange = useCallback((id: string, notes: string) => {
     setSessions((prev) => prev.map((session) => (session.id === id ? { ...session, notes } : session)));
+    clearTimeout(notesUpdateTimers.current[id]);
+    notesUpdateTimers.current[id] = setTimeout(() => {
+      setSessions((prev) =>
+        prev.map((session) => (session.id === id ? { ...session, lastUpdatedAt: new Date().toISOString() } : session))
+      );
+    }, NOTES_UPDATE_DEBOUNCE_MS);
   }, []);
 
-  const addClip = useCallback((sessionId: string, path: string) => {
+  // Uploading a clip is a real content change too, so it bumps
+  // lastUpdatedAt — unlike mere selection. The picked path is almost
+  // never inside the asset protocol's allowed scope ($DOCUMENT/Master's
+  // Wheel/**), so it's copied into real Space storage first (see
+  // src/lib/training) before being played back via convertFileSrc —
+  // playing the picked path directly silently fails outside that scope.
+  const addClip = useCallback(async (sessionId: string, path: string) => {
+    let absolutePath = path;
+    let displayName = fileNameOf(path);
+    if (isTauri()) {
+      try {
+        const stored = await storeClipFile(sessionId, path);
+        absolutePath = stored.absolutePath;
+        displayName = stored.displayName;
+      } catch (error) {
+        console.error("Failed to store clip file:", sessionId, error);
+        return;
+      }
+    }
     const clip: TrainingClip = {
       id: makeId("clip"),
       kind: kindForPath(path),
-      src: convertFileSrc(path),
-      fileName: fileNameOf(path),
+      src: convertFileSrc(absolutePath),
+      fileName: displayName,
       transcriptRaw: null,
       isGeneratingTranscript: false,
     };
     setSessions((prev) =>
       prev.map((session) =>
         session.id === sessionId
-          ? { ...session, clips: [clip, ...session.clips], lastUsedAt: new Date().toISOString() }
+          ? { ...session, clips: [clip, ...session.clips], lastUpdatedAt: new Date().toISOString() }
           : session
       )
     );

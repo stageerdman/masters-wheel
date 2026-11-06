@@ -499,23 +499,31 @@ A practice space, deliberately **not tracked in performance** (unlike
 Performance Review) — scalable by "training tool"; the first tool is
 **Voice Practicing**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
 
-### Built (UI shell — in-memory fake data, no disk persistence yet)
+### Built (UI shell — session metadata is in-memory fake data; clip files are real)
 - [x] Same 3-column layout as Performance Review (Navigation / Hero /
       Detail), reusing (and generalizing) its shared primitives —
       `BookmarkBadge`/`BookmarkRail`/`SplitRail`/`useSplitRail` are no
       longer hardcoded to Performance Review's 5 content kinds.
 - [x] Navigation: pinned "Add training practice" (+) above the list, Open
-      Sessions (sorted by recency of last use) and Closed Sessions groups
-      below it. Each row: fixed type glyph (per tool type, never
-      user-adjustable), click-to-rename name, relative "last used" label
-      (`1d`/`30d`/`2mo`/`1y`, `src/lib/formatShortRelativeTime.ts`).
-      Right-click: "Close session" (green ✓) / "Reopen session", and
-      "Remove session" (destructive, native confirmation first).
+      Sessions (sorted by recency of last **update**, not last opened —
+      selecting a session is navigation, not an edit, see wiki) and
+      Closed Sessions groups below it. Each row: fixed type glyph (per
+      tool type, never user-adjustable), click-to-rename name, relative
+      "last updated" label (`1d`/`30d`/`2mo`/`1y`,
+      `src/lib/formatShortRelativeTime.ts`). Right-click: "Close session"
+      (green ✓) / "Reopen session", and "Remove session" (destructive,
+      native confirmation first, also deletes its real clip-storage
+      folder).
 - [x] Hero (Voice Practicing): empty "Upload a clip" placeholder; once
       clips exist, a scrollable Facebook-feed-style list (newest on top,
       "+ Add another clip" pinned above it) — each clip is a real
       video-or-audio element (reuses `VideoUploadModal`, no extension
       filtering) with an optional "Generate transcript" button per clip.
+      The picked file is copied into real on-disk Space storage
+      (`src/lib/training`, a `training/<sessionId>/` folder) before
+      playback — a picked path is almost never inside Tauri's asset
+      protocol scope on its own, so playing it directly silently failed
+      until this fix (see wiki).
 - [x] Lyrics-style synced transcript (new `LyricsTranscript` element):
       word-by-word highlight driven by the clip's real `timeupdate`,
       click any word to seek — built on real per-line timestamps but
@@ -534,8 +542,10 @@ Performance Review) — scalable by "training tool"; the first tool is
       the selected session's feed (Tauri native window-level drag-drop).
 
 ### To build (real functionality — not started)
-- [ ] Real on-disk storage (a `training/<id>/` folder per session,
-      mirroring `records/<id>/`) — nothing here survives a reload yet.
+- [ ] Real on-disk storage for session *metadata* (name, status, notes,
+      which clips belong to it) — clip files themselves are already real
+      (`training/<sessionId>/`), but the session list is still in-memory
+      and resets on reload/restart.
 - [ ] Real transcript generation (ElevenLabs), and persisting real
       per-word timestamps so the lyrics highlight is exact instead of
       interpolated.

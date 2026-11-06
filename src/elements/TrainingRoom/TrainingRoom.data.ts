@@ -65,8 +65,9 @@ export type TrainingSession = {
   name: string;
   status: SessionStatus;
   // Drives both the Navigation list's relative-date label and its Open-
-  // Sessions ordering. Bumped on open/select, not on every keystroke.
-  lastUsedAt: string;
+  // Sessions ordering. Bumped only on a real content edit (notes text,
+  // adding a clip) — never on merely opening/selecting the session.
+  lastUpdatedAt: string;
   // Newest first — the scrollable feed shown in Hero.
   clips: TrainingClip[];
   notes: string;

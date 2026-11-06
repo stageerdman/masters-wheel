@@ -10,6 +10,7 @@
 //   ~/Documents/Master's Wheel/<folderName>/agents/<id>/...
 //   ~/Documents/Master's Wheel/<folderName>/chats/<id>.json
 //   ~/Documents/Master's Wheel/<folderName>/records/<id>/...
+//   ~/Documents/Master's Wheel/<folderName>/training/<id>/...
 
 import { BaseDirectory } from "@tauri-apps/plugin-fs";
 
@@ -35,4 +36,8 @@ export function spaceChatsDir(folderName: string): string {
 
 export function spaceRecordsDir(folderName: string): string {
   return `${spaceDir(folderName)}/records`;
+}
+
+export function spaceTrainingDir(folderName: string): string {
+  return `${spaceDir(folderName)}/training`;
 }

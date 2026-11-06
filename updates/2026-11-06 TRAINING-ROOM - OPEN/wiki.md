@@ -50,15 +50,36 @@ persistence) moved to `src/lib/splitRail.ts`, parameterized by
 `kinds`/`storageKey`/`defaultActive` so each page's layout persists
 independently under its own key.
 
-## Why clips aren't real storage yet
-Phase 1 here is explicitly UI-shell-only, same as Performance Review's own
-first phase — but "fake" only means *no disk persistence* (nothing survives
-a reload). Uploading itself is real: `VideoUploadModal` already opens a
-real native file picker / accepts a real Tauri drag-drop path with no
-extension filtering, so it's reused as-is (just with configurable title/
-instructions text so its copy can say "clip" instead of "video"). Real
-storage (writing clips into a Space's `training/<id>/` folder, same pattern
-as `records/<id>/`) is a later phase once the UI shape is confirmed.
+## Clip files are real storage; session metadata still isn't
+Phase 1 shipped with clip playback going straight through
+`convertFileSrc(pickedPath)` — and it silently didn't work. Root cause:
+Tauri's asset protocol (what `convertFileSrc` needs to actually serve a
+file to the webview) is scoped to `$DOCUMENT/Master's Wheel/**`
+(`tauri.conf.json`'s `security.assetProtocol.scope`), and a file picked
+from anywhere else on disk (which is almost always, since users pick from
+Desktop/Downloads/wherever) is silently refused — no error, the `<video>`
+element just never loads anything. Reported back as "I upload a video and
+it's not saved, it resets to some default."
+
+Fixed (2026-11-06) by adding `src/lib/training` — same cross-filesystem
+copy pattern `src/lib/records` already uses for hero files
+(`copyFile(sourcePath, destRelativePath, { toPathBaseDir: BASE_DIR })`):
+copy the picked file into the active Space's real
+`training/<sessionId>/` folder first, *then* `convertFileSrc` the copy's
+absolute path. That puts it inside the allowed scope, so it actually
+plays. Deliberately still uses `convertFileSrc`, not Performance Review's
+local HTTP media server (`media_server.rs`) — that server exists
+specifically to stream multi-gigabyte call recordings past
+`convertFileSrc`'s whole-file-buffering limit; practice clips are expected
+to be far smaller, so that tradeoff doesn't bite here.
+
+What's still fake: the *session list itself* (name, status, notes, which
+clips belong to it) is still plain in-memory React state — reloading the
+page or restarting the app resets it to `INITIAL_SESSIONS`, same as before.
+Only the clip *files* on disk are now real and will outlive a reload even
+though the session that references them won't (yet) remember they're
+there. Removing a session now also deletes its real `training/<id>/`
+folder (`removeSessionStorage`), so clip files don't orphan on disk.
 
 ## Why the word-by-word highlight is real UI built on fake timing
 This isn't faked at the interaction level — it's a real `<video>`/`<audio>`

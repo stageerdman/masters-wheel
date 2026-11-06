@@ -46,57 +46,76 @@ Two decisions made with the user before starting (2026-11-06):
 ## Roadmap
 
 ### Phase 1 — Generalize the shared split-rail/context-menu primitives
-- [ ] `ContextMenu`: `ContextMenuItem.destructive?: boolean` →
+- [x] `ContextMenu`: `ContextMenuItem.destructive?: boolean` →
       `tone?: "destructive" | "positive"` (adds a green "close" affordance
       via the existing `--color-status-closed` token — no new core color).
-- [ ] `BookmarkBadge`: drop the hardcoded `ContentKind`/`BOOKMARK_META`;
+- [x] `BookmarkBadge`: drop the hardcoded `ContentKind`/`BOOKMARK_META`;
       take a generic `kind` + `meta: { label, color }` instead.
-- [ ] `BookmarkRail`: generic over `kinds`/`metaFor`/`active`/`onSelect`
+- [x] `BookmarkRail`: generic over `kinds`/`metaFor`/`active`/`onSelect`
       instead of a fixed 5-kind `ORDER`.
-- [ ] Promote `SplitRail` out of
+- [x] Promote `SplitRail` out of
       `PerformanceReview/children/Detail/children/` to flat
       `src/elements/SplitRail/`, generalized the same way.
-- [ ] Move the split-state logic (`useSplitRail`, currently
+- [x] Move the split-state logic (`useSplitRail`, currently
       `Detail.script.ts`) into `src/lib/splitRail.ts`, parameterized by
       `kinds`/`storageKey`/`defaultActive` so each page keeps its own
       persisted layout under its own key.
-- [ ] Re-point Performance Review's `Hero`/`Detail`/`TextView` at the
+- [x] Re-point Performance Review's `Hero`/`Detail`/`TextView` at the
       generalized primitives; `ContentKind`/`CONTENT_KIND_META` move into
       `PerformanceReview.data.ts` (page-specific metadata, same home as
       `CALL_STATE_META`). No visible behavior change for that page.
 
 ### Phase 2 — Page shell + Navigation
-- [ ] `TrainingRoom.data.ts`: `TrainingSession`/`TrainingClip` types,
+- [x] `TrainingRoom.data.ts`: `TrainingSession`/`TrainingClip` types,
       `TOOL_TYPE_META` (icon/color/label per tool type — just
       `voicePracticing` for now), fake in-memory fixture.
-- [ ] `TrainingRoom.script.ts`: in-memory session state (add/remove/
+- [x] `TrainingRoom.script.ts`: in-memory session state (add/remove/
       close/reopen session, add clip, fake transcript generation) — no
       disk writes this phase.
-- [ ] `TrainingRoom` 3-column shell (mirrors `PerformanceReview.tsx`),
+- [x] `TrainingRoom` 3-column shell (mirrors `PerformanceReview.tsx`),
       wired into `src/app/training/page.tsx`.
-- [ ] Navigation column: pinned add-session item, Open/Closed grouping,
+- [x] Navigation column: pinned add-session item, Open/Closed grouping,
       `SessionListItem` (icon + editable name + relative-date via new
       `formatShortRelativeTime`), right-click menu (remove/close).
 
 ### Phase 3 — Hero (Voice Practicing feed)
-- [ ] Reuse `VideoUploadModal` (now accepting optional title/instructions
+- [x] Reuse `VideoUploadModal` (now accepting optional title/instructions
       text) for clip upload — accepts video or audio.
-- [ ] Clip feed: newest-first, each item = media player (video or audio)
+- [x] Clip feed: newest-first, each item = media player (video or audio)
       + optional "Generate transcript" + transcript slot.
-- [ ] New `LyricsTranscript` element: word-by-word highlight driven by the
+- [x] New `LyricsTranscript` element: word-by-word highlight driven by the
       player's real `timeupdate`, word spans interpolated evenly across
       each (fake) transcript line's start/next-line-start window — a real
       interaction, just built on fake per-line timestamps this phase. See
       `wiki.md` for why this isn't real word-level data yet.
 
 ### Phase 4 — Detail (Notes)
-- [ ] `TrainingRoom`'s `Detail` reuses the generalized `SplitRail` +
+- [x] `TrainingRoom`'s `Detail` reuses the generalized `SplitRail` +
       `useSplitRail`, seeded with a single `"notes"` kind under its own
       `training-room-detail-split` storage key.
 
 ### Phase 5 — Wire up + verify
-- [ ] `MainMenu`'s existing dormant `"training"` nav entry → `/training`,
+- [x] `MainMenu`'s existing dormant `"training"` nav entry → `/training`,
       relabeled "Training Room".
-- [ ] `npm run build` / `lint` / `tsc --noEmit` clean.
-- [ ] `FEATURES.md` gets a new Training Room section.
-- [ ] Rebuild and reinstall the `.app`.
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean.
+- [x] `FEATURES.md` gets a new Training Room section.
+- [x] Rebuild and reinstall the `.app`.
+
+### Phase 6 — Follow-up fixes (2026-11-06, same day)
+- [x] Hide the native scrollbar in Hero's feed and `LyricsTranscript`'s
+      scroll area (same treatment as `StatSpace`) — scrolling still works,
+      the chrome just isn't needed in the main view.
+- [x] Fix "last used" semantics: renamed `lastUsedAt` → `lastUpdatedAt`,
+      dropped the bump on mere select/open, added a debounced bump on
+      real content edits (notes text, adding a clip) — selecting a
+      session in Navigation no longer reorders the Open Sessions group.
+- [x] Fix real bug: an uploaded clip never actually played. Root cause —
+      Tauri's asset protocol (what `convertFileSrc` needs) is scoped to
+      `$DOCUMENT/Master's Wheel/**` (`tauri.conf.json`), and a file picked
+      from anywhere else on disk is silently refused, so the `<video>`
+      element never loads anything. Fixed by copying the picked file into
+      real Space storage first (new `src/lib/training`, same
+      cross-filesystem-copy pattern `src/lib/records` uses for hero
+      files) before building its playback URL — see `wiki.md`. Session
+      *metadata* (the list itself) is still in-memory only; only the clip
+      *files* are real now.

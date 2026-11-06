@@ -71,7 +71,7 @@ export function SessionListItem({ session, active, onClick, onContextMenu, onRen
           </span>
         )}
         <span className={styles.date} data-construction>
-          {formatShortRelativeTime(session.lastUsedAt)}
+          {formatShortRelativeTime(session.lastUpdatedAt)}
         </span>
       </span>
     </button>
