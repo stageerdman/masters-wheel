@@ -1,16 +1,18 @@
 "use client";
 
+import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.script";
-import { isDraftSession, resolveDedicatedAgent } from "@/elements/AIAssistant/AIAssistant.script";
+import { resolveDedicatedAgent } from "@/elements/AIAssistant/AIAssistant.script";
 import type { DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
 import type { RecordSummary } from "@/lib/records";
 import type { PerformanceReviewTag, PermissionDecision } from "@/lib/mcp/types";
-import { AgentPicker } from "./children/AgentPicker/AgentPicker";
-import { Composer } from "./children/Composer/Composer";
-import { MessageList } from "./children/MessageList/MessageList";
-import { Sidebar } from "./children/Sidebar/Sidebar";
-import { TagBar } from "./children/TagBar/TagBar";
+import { useNarrowContainer } from "@/lib/useNarrowContainer";
+import { AgentPicker } from "@/elements/AgentPicker/AgentPicker";
+import { Composer } from "@/elements/Composer/Composer";
+import { MessageList } from "@/elements/MessageList/MessageList";
+import { Sidebar } from "@/elements/Sidebar/Sidebar";
+import { TagBar } from "@/elements/TagBar/TagBar";
 import { useWindowEnterTransition, useWindowGeometry } from "./AIAssistantWindow.script";
 import position from "./AIAssistantWindow.position.module.css";
 import styles from "./AIAssistantWindow.styles.module.css";
@@ -35,10 +37,12 @@ type AIAssistantWindowProps = {
   activeOverride: PresetOverride | undefined;
   isSideMenuOpen: boolean;
   onToggleSideMenu: () => void;
+  onCloseSideMenu: () => void;
   sessions: ChatSession[];
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
   onDeleteSession: (id: string) => void;
+  onRenameSession: (id: string, title: string) => void;
   agents: Agent[];
   agentsByRecency: Agent[];
   onSelectAgent: (id: string) => void;
@@ -53,6 +57,13 @@ const DOCK_CLASS: Record<DockState, string> = {
   left: position.dockLeft,
   center: position.dockCenter,
 };
+
+// Must stay in sync with AIAssistantWindow.position.module.css's own
+// `@container window-content (max-width: 480px)` — below this width the
+// sidebar stops being a side-by-side column and becomes a full-width
+// overlay, which is the only situation auto-closing it on navigation
+// below actually makes sense in.
+const NARROW_SIDEBAR_BREAKPOINT = 480;
 
 export function AIAssistantWindow({
   isClosing,
@@ -74,10 +85,12 @@ export function AIAssistantWindow({
   activeOverride,
   isSideMenuOpen,
   onToggleSideMenu,
+  onCloseSideMenu,
   sessions,
   onSelectSession,
   onNewChat,
   onDeleteSession,
+  onRenameSession,
   agents,
   agentsByRecency,
   onSelectAgent,
@@ -99,6 +112,25 @@ export function AIAssistantWindow({
   function handleTransitionEnd(event: React.TransitionEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
     if (isClosing) onCollapsed();
+  }
+
+  // Below NARROW_SIDEBAR_BREAKPOINT the sidebar is a full-width overlay
+  // (see the container query on `.content` itself) sitting on top of the
+  // entire chat column — navigating anywhere from it should close it back
+  // out of the way automatically, the way a phone's nav drawer does. Above
+  // that width it's a side-by-side column with its own room, so selecting
+  // a chat there leaves it exactly as the user left it.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const isSidebarOverlay = useNarrowContainer(contentRef, NARROW_SIDEBAR_BREAKPOINT);
+
+  function handleSelectSession(id: string) {
+    onSelectSession(id);
+    if (isSidebarOverlay) onCloseSideMenu();
+  }
+
+  function handleNewChat() {
+    onNewChat();
+    if (isSidebarOverlay) onCloseSideMenu();
   }
 
   const geometryClass = showCollapsedGeometry ? position.enter : DOCK_CLASS[dockState];
@@ -140,7 +172,7 @@ export function AIAssistantWindow({
             type="button"
             className={`${styles.headerButton} ${position.headerButton}`}
             data-construction
-            onClick={onNewChat}
+            onClick={handleNewChat}
             aria-label="Start a new chat"
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -169,13 +201,14 @@ export function AIAssistantWindow({
           aria-hidden="true"
           onPointerDown={onResizeHandlePointerDown}
         />
-        <div className={`${styles.content} ${position.content}`} data-construction>
+        <div className={`${styles.content} ${position.content}`} data-construction ref={contentRef}>
           <Sidebar
             isOpen={isSideMenuOpen}
             sessions={sessions}
             activeSessionId={activeSession.id}
-            onSelectSession={onSelectSession}
+            onSelectSession={handleSelectSession}
             onDeleteSession={onDeleteSession}
+            onRenameSession={onRenameSession}
             agents={agents}
             agentsByRecency={agentsByRecency}
             onSelectAgent={onSelectAgent}
@@ -184,7 +217,7 @@ export function AIAssistantWindow({
             className={`${styles.chatColumn} ${position.chatColumn} ${isSideMenuOpen ? position.chatColumnSidebarOpen : ""}`}
             data-construction
           >
-            {isDraftSession(activeSession) ? (
+            {!activeSession.agentId ? (
               <AgentPicker agents={agents} onSelectAgent={onPickAgentForNewChat} />
             ) : (
               <>

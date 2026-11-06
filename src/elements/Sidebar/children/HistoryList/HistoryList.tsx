@@ -9,6 +9,7 @@ type HistoryListProps = {
   activeId: string;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
   agents: Agent[];
 };
 
@@ -17,7 +18,7 @@ type HistoryListProps = {
 // AIAssistant.script.ts's isDraftSession) is just the current "pick
 // someone" prompt, not a real past conversation, so it's filtered out
 // here rather than showing as a fake "Now" entry.
-export function HistoryList({ sessions, activeId, onSelect, onDelete, agents }: HistoryListProps) {
+export function HistoryList({ sessions, activeId, onSelect, onDelete, onRename, agents }: HistoryListProps) {
   const realSessions = sessions.filter((session) => !isDraftSession(session));
 
   return (
@@ -29,6 +30,7 @@ export function HistoryList({ sessions, activeId, onSelect, onDelete, agents }: 
           active={session.id === activeId}
           onSelect={() => onSelect(session.id)}
           onDelete={() => onDelete(session.id)}
+          onRename={(title) => onRename(session.id, title)}
           agents={agents}
         />
       ))}

@@ -1,6 +1,6 @@
 import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.script";
 import { AgentStrip } from "./children/AgentStrip/AgentStrip";
-import { HistoryList } from "../HistoryList/HistoryList";
+import { HistoryList } from "./children/HistoryList/HistoryList";
 import position from "./Sidebar.position.module.css";
 import styles from "./Sidebar.styles.module.css";
 
@@ -10,6 +10,7 @@ type SidebarProps = {
   activeSessionId: string;
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
+  onRenameSession: (id: string, title: string) => void;
   agents: Agent[];
   agentsByRecency: Agent[];
   onSelectAgent: (id: string) => void;
@@ -26,6 +27,7 @@ export function Sidebar({
   activeSessionId,
   onSelectSession,
   onDeleteSession,
+  onRenameSession,
   agents,
   agentsByRecency,
   onSelectAgent,
@@ -42,6 +44,7 @@ export function Sidebar({
           activeId={activeSessionId}
           onSelect={onSelectSession}
           onDelete={onDeleteSession}
+          onRename={onRenameSession}
           agents={agents}
         />
       </div>

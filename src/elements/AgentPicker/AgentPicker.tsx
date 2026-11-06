@@ -1,5 +1,5 @@
 import type { Agent } from "@/elements/AIAssistant/AIAssistant.script";
-import { AgentRosterItem } from "../AgentRosterItem/AgentRosterItem";
+import { AgentRosterItem } from "./children/AgentRosterItem/AgentRosterItem";
 import position from "./AgentPicker.position.module.css";
 import styles from "./AgentPicker.styles.module.css";
 

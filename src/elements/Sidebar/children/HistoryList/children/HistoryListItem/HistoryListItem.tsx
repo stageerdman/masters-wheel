@@ -16,11 +16,19 @@ type HistoryListItemProps = {
   active: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onRename: (title: string) => void;
   agents: Agent[];
 };
 
-export function HistoryListItem({ session, active, onSelect, onDelete, agents }: HistoryListItemProps) {
+export function HistoryListItem({ session, active, onSelect, onDelete, onRename, agents }: HistoryListItemProps) {
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  // Click-to-edit, same idiom as PerformanceReview's Hero title: a plain
+  // span swaps for an input while editing, committed on blur/Enter.
+  // Entered only via the context menu's "Rename chat" (there's no visible
+  // affordance on the row itself — this is a secondary action, not the
+  // row's primary click target, which stays "open this chat").
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(session.title);
   // Who's actually in this conversation — every distinct agent that has
   // replied, not just the chat's dedicated one — so a thread where you
   // @mentioned someone else in too shows that here, in history, instead
@@ -36,9 +44,51 @@ export function HistoryListItem({ session, active, onSelect, onDelete, agents }:
     if (window.confirm(`Delete "${session.title}"? This can't be undone.`)) onDelete();
   }
 
+  function startRename() {
+    setDraftTitle(session.title);
+    setIsEditing(true);
+  }
+
+  function commitRename() {
+    setIsEditing(false);
+    onRename(draftTitle);
+  }
+
   const menuItems: ContextMenuItem[] = [
+    { id: "rename", label: "Rename chat", onSelect: startRename },
     { id: "delete", label: "Delete chat", onSelect: handleDelete, destructive: true },
   ];
+
+  if (isEditing) {
+    return (
+      <div className={`${styles.root} ${position.root} ${active ? styles.active : ""}`} data-construction>
+        <input
+          className={`${styles.titleInput} ${position.titleInput}`}
+          data-construction
+          value={draftTitle}
+          autoFocus
+          onChange={(event) => setDraftTitle(event.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+            if (event.key === "Escape") {
+              setDraftTitle(session.title);
+              setIsEditing(false);
+            }
+          }}
+          aria-label="Chat title"
+        />
+        <span className={`${position.meta}`} data-construction>
+          <span className={styles.date} data-construction>
+            {formatRelativeTime(session.updatedAt)}
+          </span>
+          {respondedAgents.map((agent) => (
+            <AgentAvatar key={agent.id} agent={agent} size={14} />
+          ))}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <>
