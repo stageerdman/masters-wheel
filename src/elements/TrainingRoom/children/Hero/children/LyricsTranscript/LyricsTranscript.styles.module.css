@@ -1,0 +1,24 @@
+.line {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-body);
+  line-height: 1.6;
+  transition: color 0.2s ease;
+}
+
+.lineActive {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.word {
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.word:hover {
+  color: var(--color-accent);
+}
+
+.wordActive {
+  color: var(--color-accent);
+}

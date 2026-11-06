@@ -1,0 +1,22 @@
+.root {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-left: 1px solid var(--color-border);
+}
+
+.divider {
+  background: var(--color-border);
+}
+
+.editableText {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: var(--text-size-body);
+}
+
+.editableText::placeholder {
+  color: var(--color-text-muted);
+}

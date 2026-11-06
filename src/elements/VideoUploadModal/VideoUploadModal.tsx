@@ -9,6 +9,8 @@ type VideoUploadModalProps = {
   isDragActive: boolean;
   onFileSelected: (path: string) => void;
   onClose: () => void;
+  title?: string;
+  dropZoneText?: string;
 };
 
 // A dedicated popup for uploading a record's hero video — only shown
@@ -16,7 +18,17 @@ type VideoUploadModalProps = {
 // entry point). Same shape as TranscriptUploadModal, deliberately
 // separate so a drop here never gets misread as "add a new video record"
 // or "import a transcript" (see PerformanceReview.script.ts's drop hooks).
-export function VideoUploadModal({ isOpen, isDragActive, onFileSelected, onClose }: VideoUploadModalProps) {
+// `title`/`dropZoneText` default to Performance Review's own copy — Training
+// Room reuses this element as-is for clip upload (video or audio) with its
+// own wording instead of duplicating the whole modal.
+export function VideoUploadModal({
+  isOpen,
+  isDragActive,
+  onFileSelected,
+  onClose,
+  title = "Upload a video",
+  dropZoneText = "Drag & drop your video file here",
+}: VideoUploadModalProps) {
   if (!isOpen) return null;
 
   async function handleBrowse() {
@@ -33,7 +45,7 @@ export function VideoUploadModal({ isOpen, isDragActive, onFileSelected, onClose
       >
         <div className={position.header} data-construction>
           <h2 className={`${styles.title} ${position.title}`} data-construction>
-            Upload a video
+            {title}
           </h2>
           <button
             type="button"
@@ -50,7 +62,7 @@ export function VideoUploadModal({ isOpen, isDragActive, onFileSelected, onClose
           data-construction
         >
           <p className={`${styles.dropZoneText} ${position.dropZoneText}`} data-construction>
-            Drag & drop your video file here
+            {dropZoneText}
           </p>
           <p className={`${styles.orText} ${position.orText}`} data-construction>
             or

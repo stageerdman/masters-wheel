@@ -12,7 +12,7 @@ import styles from "./MainMenu.styles.module.css";
 const MENU_ITEMS: NavMenuEntry[] = [
   { id: "performance-review", label: "Performance Review" },
   { id: "analytics", label: "Analytics" },
-  { id: "training", label: "Training" },
+  { id: "training", label: "Training Room" },
   { id: "chat", label: "Chat with AI" },
   { id: "agents", label: "Agents" },
 ];
@@ -24,6 +24,8 @@ export function MainMenu() {
   function handleActivate(id: string) {
     if (id === "performance-review") {
       router.push("/performance-review");
+    } else if (id === "training") {
+      router.push("/training");
     } else if (id === "agents") {
       router.push("/agents");
     } else if (id === "chat") {

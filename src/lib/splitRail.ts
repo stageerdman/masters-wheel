@@ -96,6 +96,10 @@ export function useSplitRail<K extends string>(kinds: readonly K[], storageKey: 
   const resolvedTop = topKinds.includes(activeTop) ? activeTop : topKinds[0];
 
   function beginLineDrag(event: ReactPointerEvent) {
+    // Splitting needs at least 2 kinds — with only one, there's nothing to
+    // put on the other side of the line (e.g. Training Room's Detail
+    // today). A real single-kind rail just can't split yet.
+    if (kinds.length < 2) return;
     event.preventDefault();
     const rail = railRef.current;
     if (!rail) return;
@@ -121,6 +125,7 @@ export function useSplitRail<K extends string>(kinds: readonly K[], storageKey: 
   }
 
   function beginBadgeDrag(event: ReactPointerEvent, kind: K) {
+    if (kinds.length < 2) return;
     event.preventDefault();
     const rail = railRef.current;
     if (!rail) return;

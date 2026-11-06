@@ -1,0 +1,28 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.media {
+  width: 100%;
+  max-height: 360px;
+}
+
+.fileName {
+  text-align: center;
+}
+
+.transcriptSlot {
+  display: flex;
+  justify-content: center;
+}
+
+.generateButton {
+  padding: 0.5rem 1rem;
+}
+
+.generating {
+  padding: 0.5rem 0;
+}

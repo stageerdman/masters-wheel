@@ -493,6 +493,56 @@ between the two lists. Each page gets its own section as pages get added.
       verified so far)
 - [ ] Auth (not started — no users yet)
 
+## Training Room page
+
+A practice space, deliberately **not tracked in performance** (unlike
+Performance Review) — scalable by "training tool"; the first tool is
+**Voice Practicing**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
+
+### Built (UI shell — in-memory fake data, no disk persistence yet)
+- [x] Same 3-column layout as Performance Review (Navigation / Hero /
+      Detail), reusing (and generalizing) its shared primitives —
+      `BookmarkBadge`/`BookmarkRail`/`SplitRail`/`useSplitRail` are no
+      longer hardcoded to Performance Review's 5 content kinds.
+- [x] Navigation: pinned "Add training practice" (+) above the list, Open
+      Sessions (sorted by recency of last use) and Closed Sessions groups
+      below it. Each row: fixed type glyph (per tool type, never
+      user-adjustable), click-to-rename name, relative "last used" label
+      (`1d`/`30d`/`2mo`/`1y`, `src/lib/formatShortRelativeTime.ts`).
+      Right-click: "Close session" (green ✓) / "Reopen session", and
+      "Remove session" (destructive, native confirmation first).
+- [x] Hero (Voice Practicing): empty "Upload a clip" placeholder; once
+      clips exist, a scrollable Facebook-feed-style list (newest on top,
+      "+ Add another clip" pinned above it) — each clip is a real
+      video-or-audio element (reuses `VideoUploadModal`, no extension
+      filtering) with an optional "Generate transcript" button per clip.
+- [x] Lyrics-style synced transcript (new `LyricsTranscript` element):
+      word-by-word highlight driven by the clip's real `timeupdate`,
+      click any word to seek — built on real per-line timestamps but
+      *approximated* per-word spans (ElevenLabs' real word timings exist
+      but are currently discarded at serialize time everywhere, not just
+      here — see the wiki for why this is a shared, not Training-Room-
+      specific, gap).
+- [x] "Generate transcript" fabricates one fixed example after a short
+      delay (same no-real-AI-yet shape as Performance Review's "Generate
+      Scorecard").
+- [x] Detail: Notes, through the same generic split-rail mechanism as
+      Performance Review's Detail, seeded with a single "notes" kind for
+      now (dragging it is a no-op with only one kind — nothing to split
+      against yet).
+- [x] Dropping a file anywhere on the page appends it as a new clip to
+      the selected session's feed (Tauri native window-level drag-drop).
+
+### To build (real functionality — not started)
+- [ ] Real on-disk storage (a `training/<id>/` folder per session,
+      mirroring `records/<id>/`) — nothing here survives a reload yet.
+- [ ] Real transcript generation (ElevenLabs), and persisting real
+      per-word timestamps so the lyrics highlight is exact instead of
+      interpolated.
+- [ ] More training tools beyond Voice Practicing.
+- [ ] Wiring Performance Review's "Take it to the training ground" button
+      (still a no-op) to actually open/seed a Training Room session.
+
 ## Agents page
 
 ### Built — real backend

@@ -1,0 +1,20 @@
+.root {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.emptyStateText {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.dropOverlay {
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  border: 2px dashed var(--color-accent);
+}
+
+.dropOverlayText {
+  color: var(--color-accent);
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+}
