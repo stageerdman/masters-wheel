@@ -52,7 +52,7 @@ export function Hero({ session, onNameChange, onOpenUpload, onGenerateTranscript
           </h1>
         )}
       </div>
-      <div className={position.feedSlot} data-construction>
+      <div className={`${styles.feedSlot} ${position.feedSlot}`} data-construction>
         {session.clips.length === 0 ? (
           <button
             type="button"

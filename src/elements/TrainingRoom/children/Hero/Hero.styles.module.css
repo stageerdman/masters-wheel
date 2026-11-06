@@ -3,6 +3,16 @@
   color: var(--color-text);
 }
 
+/* The feed scrolls, but the scrollbar itself is unneeded chrome in the
+   main view — same treatment as StatSpace's scroll area. */
+.feedSlot {
+  scrollbar-width: none;
+}
+
+.feedSlot::-webkit-scrollbar {
+  display: none;
+}
+
 .title {
   font-size: var(--text-size-heading);
   font-weight: 600;
