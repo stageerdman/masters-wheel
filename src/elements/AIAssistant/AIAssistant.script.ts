@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { askAgent, onAskAgentProgress } from "@/lib/assistant/askAgent";
+import { nameChat } from "@/lib/assistant/nameChat";
 import { listAgents, type Agent } from "@/lib/agents";
 import { buildAgentTurnInput, listSessions, saveSession, deleteSessionFile } from "@/lib/chat";
 import type { ChatMessage, ChatMessageRole, ChatSession } from "@/lib/chat";
@@ -494,7 +495,34 @@ export function useAIAssistant() {
     }
 
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", text, createdAt: new Date().toISOString() };
-    appendMessageToSession(sessionIdAtSend, userMessage);
+    // A chat picked-but-not-yet-messaged (agentId set by startChatWithAgent,
+    // still isDraft) only becomes a real, persisted, in-history conversation
+    // once its first message actually sends — flipping isDraft off in the
+    // very same update that appends the message, rather than the moment an
+    // agent was picked, is what keeps an abandoned "New chat" from ever
+    // hitting disk or History at all.
+    const isFirstMessage = isDraftSession(session);
+    if (isFirstMessage) {
+      updateAndPersistSession(sessionIdAtSend, (current) => ({
+        ...current,
+        isDraft: false,
+        messages: [...current.messages, userMessage],
+      }));
+      // Auto-name the chat off its first message, the same beat Claude's
+      // own chat UI and ChatGPT do it at — a cheap one-shot call (see
+      // nameChat/name_chat), never blocking the send itself and never
+      // overriding a title the user types in later (this only ever fires
+      // once, right here, on a session's very first message).
+      void nameChat(text)
+        .then((title) => updateAndPersistSession(sessionIdAtSend, (current) => ({ ...current, title })))
+        .catch(() => {
+          // No worse off than before — keeps whichever default title
+          // (record- or agent-based, see startChatWithAgent/selectAgent)
+          // the session already had.
+        });
+    } else {
+      appendMessageToSession(sessionIdAtSend, userMessage);
+    }
     setComposerValue("");
 
     const transcriptSoFar = [...session.messages, userMessage];
@@ -504,6 +532,19 @@ export function useAIAssistant() {
     } finally {
       setIsSending(false);
     }
+  }
+
+  // The title a brand-new chat with `agent` should start with — the
+  // record "we're talking about" (whatever's tagged/suggested for the
+  // session being replaced, since that's computed off activeSessionId and
+  // this always runs while the draft/pre-pick session is still active) if
+  // there is one, else the session's own agent identity. Auto-naming (see
+  // sendMessage/nameChat) overwrites this once the first message sends —
+  // this is only what shows up until then, or if that call fails.
+  function resolveDefaultTitle(agent: Agent): string {
+    const recordId = visibleTags[0]?.recordId;
+    const record = recordId ? recordSummaries.find((candidate) => candidate.id === recordId) : undefined;
+    return record?.title || `Chat with ${agent.name}`;
   }
 
   // Picking an agent from the sidebar strip switches to the one dedicated
@@ -520,7 +561,7 @@ export function useAIAssistant() {
     const now = new Date().toISOString();
     const session: ChatSession = {
       id: crypto.randomUUID(),
-      title: `Chat with ${agent.name}`,
+      title: resolveDefaultTitle(agent),
       createdAt: now,
       updatedAt: now,
       messages: [],
@@ -536,27 +577,32 @@ export function useAIAssistant() {
   }
 
   // AgentPicker's handler, always called with the active session being
-  // the current draft (it only renders for one — see isDraftSession).
-  // Deliberately distinct from selectAgent: starting a *new* chat with an
-  // agent should always create another independent conversation with
-  // them, even if you already have one or more past chats with that same
-  // agent — reusing an existing one here was the bug where "New chat" +
-  // picking an agent you'd talked to before just reopened the old chat
-  // instead of starting a fresh one. Converts the draft in place (keeps
-  // its id) rather than creating a separate session and abandoning the
-  // draft as an orphan.
+  // the current draft (it only renders for one — see the agentId check in
+  // AIAssistantWindow). Deliberately distinct from selectAgent: starting a
+  // *new* chat with an agent should always create another independent
+  // conversation with them, even if you already have one or more past
+  // chats with that same agent — reusing an existing one here was the bug
+  // where "New chat" + picking an agent you'd talked to before just
+  // reopened the old chat instead of starting a fresh one. Converts the
+  // draft in place (keeps its id) rather than creating a separate session
+  // and abandoning the draft as an orphan.
+  //
+  // Deliberately leaves `isDraft: true` and never calls saveSession —
+  // picking an agent only switches the chat column's view (AgentPicker →
+  // Composer, driven by `agentId` now being set), it isn't "real" enough
+  // yet to hit disk or show in History. That only happens once a message
+  // actually sends (see sendMessage) — otherwise navigating away and back
+  // (or just closing the window) would leave a zero-message "Chat with X"
+  // behind forever.
   function startChatWithAgent(agentId: string) {
     const agent = agents.find((candidate) => candidate.id === agentId);
     if (!agent) return;
     const draftId = activeSessionId;
-    setSessions((current) => {
-      const draft = current.find((session) => session.id === draftId);
-      if (!draft) return current;
-      const now = new Date().toISOString();
-      const session: ChatSession = { ...draft, title: `Chat with ${agent.name}`, agentId, updatedAt: now, isDraft: false };
-      void saveSession(session);
-      return current.map((candidate) => (candidate.id === draftId ? session : candidate));
-    });
+    setSessions((current) =>
+      current.map((session) =>
+        session.id === draftId ? { ...session, title: resolveDefaultTitle(agent), agentId } : session,
+      ),
+    );
   }
 
   // Right-click "Delete chat" in HistoryList. If the deleted session was
@@ -579,6 +625,17 @@ export function useAIAssistant() {
     });
   }
 
+  // Right-click "Rename" in HistoryList, committed from HistoryListItem's
+  // own inline edit (same click-to-edit idiom as Hero's record title).
+  // Plain text replacement through the same persist funnel as every other
+  // mutation — a blank/whitespace-only submission is a no-op rather than
+  // leaving a session with an empty title.
+  function renameSession(id: string, title: string) {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    updateAndPersistSession(id, (session) => ({ ...session, title: trimmed }));
+  }
+
   return {
     phase,
     open,
@@ -590,6 +647,7 @@ export function useAIAssistant() {
     selectSession,
     startNewChat,
     deleteSession,
+    renameSession,
     composerValue,
     setComposerValue,
     sendMessage,

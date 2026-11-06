@@ -20,6 +20,7 @@ export function AIAssistant() {
     selectSession,
     startNewChat,
     deleteSession,
+    renameSession,
     composerValue,
     setComposerValue,
     sendMessage,
@@ -84,10 +85,12 @@ export function AIAssistant() {
           activeOverride={presetOverrides[dockState]}
           isSideMenuOpen={isSideMenuOpen}
           onToggleSideMenu={toggleSideMenu}
+          onCloseSideMenu={closeSideMenu}
           sessions={sessions}
           onSelectSession={selectSession}
           onNewChat={startNewChat}
           onDeleteSession={deleteSession}
+          onRenameSession={renameSession}
           agents={agents}
           agentsByRecency={agentsByRecency}
           onSelectAgent={handleSelectAgent}

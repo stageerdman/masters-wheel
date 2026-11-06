@@ -195,3 +195,36 @@ as "This page couldn't load." Fixed by passing the tuple form instead —
 `[remarkMentions, agents]` — so unified calls `remarkMentions(agents)`
 itself and gets the transformer back correctly. The `.glassShell` change
 stays (still reasonable defensively), it just wasn't the actual bug.
+
+## Follow-up pass — AI-named chats, draft timing, rename, responsive collapse, full-screen chat page
+Five related upgrades, dictated together:
+
+1. **AI names a chat after its first message**, the same beat Claude/
+   ChatGPT do it at — a cheap, one-shot, non-persona Rust call
+   (`name_chat`), separate from `ask_agent` entirely (no `--resume`, no
+   MCP, no persona system prompt), triggered once per session right after
+   the first user message sends.
+2. **A picked-but-not-yet-messaged chat shouldn't appear in history or
+   hit disk yet.** Today `startChatWithAgent` flips `isDraft: false` and
+   saves the moment an agent is picked, before any message exists — this
+   delays that until the first real `sendMessage` call, so picking an
+   agent only switches the chat column's view (picker → composer),
+   nothing is persisted or shows in History until something's actually
+   said.
+3. **Right-click → Rename**, inline-edit like `Hero`'s record-title
+   pattern. Default titles also get smarter: a chat started while a
+   record is tagged/suggested defaults to that record's own title
+   ("the client we're talking about") instead of "Chat with {agent}".
+4. **Auto-collapse the sidebar** on selecting a chat or starting a new
+   one, but only in the already-existing narrow/overlay breakpoint
+   (`@container window-content (max-width: 480px)`) where the sidebar
+   covers the whole chat column — untouched in the normal side-by-side
+   layout.
+5. **A full-screen universal chat page** at `/chat`, wired to the Main
+   Menu's existing (previously unwired) "Chat with AI" item — reuses
+   `useAIAssistant()` and the same `Sidebar`/`AgentPicker`/`TagBar`/
+   `MessageList`/`Composer` children as the floating widget, just laid
+   out full-screen with a persistent, default-open sidebar covering
+   every chat in the active Space. The floating widget hides itself on
+   this route (two independent `useAIAssistant()` instances visible at
+   once would drift out of sync).

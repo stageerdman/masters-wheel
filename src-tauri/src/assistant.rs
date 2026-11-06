@@ -344,3 +344,69 @@ pub async fn ask_agent(
     .await
     .map_err(|e| format!("Internal error talking to Claude ({e})."))?
 }
+
+// Auto-titling a chat after its first message — the same beat Claude's
+// own chat UI and ChatGPT do it at. Deliberately NOT ask_agent: no
+// persona system prompt, no --resume (one-shot, no session to continue),
+// no --mcp-config/--allowedTools, run from temp_dir same as ask_agent so
+// this repo's own CLAUDE.md never leaks in. `.output()` (not the manual
+// stdout/stderr-draining dance ask_agent uses) is fine here — a short
+// non-streaming reply is small enough that `Command::output()`'s own
+// internal draining can't deadlock the way reading one pipe to
+// completion while the other fills up could on a long streamed reply.
+const NAME_CHAT_SYSTEM_PROMPT: &str = "You generate short chat titles. Reply with ONLY a concise 3-6 word title summarizing the user's message below. No quotes, no trailing punctuation, no explanation — just the title.";
+
+const NAME_CHAT_MAX_LEN: usize = 60;
+
+#[tauri::command]
+pub async fn name_chat(message: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        let binary = resolve_binary("claude");
+        let output = Command::new(&binary)
+            .current_dir(temp_dir())
+            .arg("-p")
+            .arg(&message)
+            .arg("--output-format")
+            .arg("json")
+            .arg("--system-prompt")
+            .arg(NAME_CHAT_SYSTEM_PROMPT)
+            .arg("--permission-mode")
+            .arg("dontAsk")
+            .arg("--tools")
+            .arg("")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .map_err(|e| format!("The Claude Code CLI isn't available ({e})."))?;
+
+        if !output.status.success() {
+            let stderr_text = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(if stderr_text.is_empty() { "Couldn't name the chat.".to_string() } else { stderr_text });
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let event: serde_json::Value =
+            serde_json::from_str(stdout.trim()).map_err(|e| format!("Couldn't parse title response: {e}"))?;
+        let is_error = event.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false);
+        let result = event.get("result").and_then(|v| v.as_str()).unwrap_or_default();
+        // Defensive cleanup in case the model wraps the title in quotes or
+        // adds a stray second line anyway — only the first line, trimmed
+        // of quote characters, and capped, is ever trusted as the title.
+        let title: String = result
+            .lines()
+            .next()
+            .unwrap_or("")
+            .trim_matches(|c: char| c == '"' || c == '\'')
+            .trim()
+            .chars()
+            .take(NAME_CHAT_MAX_LEN)
+            .collect();
+
+        if is_error || title.is_empty() {
+            return Err("No title generated.".to_string());
+        }
+        Ok(title)
+    })
+    .await
+    .map_err(|e| format!("Internal error naming chat ({e})."))?
+}
