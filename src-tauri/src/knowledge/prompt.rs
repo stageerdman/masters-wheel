@@ -65,11 +65,21 @@ pub fn build_tagged_context(tagged_records: &[(String, String)]) -> String {
 // anything the user did in the UI. Found by hand to be a real, live gap:
 // with no equivalent of build_tagged_context, the model had zero textual
 // hint a roleplay transcript existed at all, so "how would you continue
-// here?" got answered as if there were nothing to refer to — its only
-// path to that content was deciding, completely unprompted, to call a
-// tool TOOL_USE_RULE never even mentions. This both names the tool and
-// anchors "here"/"this call"/"this conversation" to it, the same anchoring
-// job build_tagged_context does for Performance Review records.
+// here?" got answered as if there were nothing to refer to.
+//
+// The first version of this fix (just naming the tool + anchoring "here")
+// turned out to be only half the fix — confirmed by hand with the real
+// CLI against the real MCP server: the model would say something like
+// "Mrknu se na přepis..." ("Let me check the transcript...") and then
+// just stop, `num_turns: 1`, no tool_use content block at all — narrating
+// intent instead of actually calling the tool. TOOL_USE_RULE above
+// already has the exact fix for this *failure mode* for the Performance
+// Review tools ("actually invoke it... never describe or simulate the
+// call in prose instead"), but that sentence only names
+// list_performance_reviews/get_performance_review — get_roleplay_transcript
+// needs its own copy of the same instruction, which is what turned this
+// into a real tool call in the repro (`num_turns: 2`, a real transcript-
+// grounded answer).
 pub fn build_training_context(training_session_id: Option<&str>) -> String {
     if training_session_id.is_none() {
         return String::new();
@@ -78,9 +88,12 @@ pub fn build_training_context(training_session_id: Option<&str>) -> String {
      there is exactly one roleplay transcript you could possibly mean. You have a tool, \
      get_roleplay_transcript, that reads it (optionally including each turn's private \"thought\"); it's \
      always available, no permission needed. If the trainee refers to \"here\"/\"this call\"/\"this \
-     conversation\"/\"what just happened\" without pasting anything, call get_roleplay_transcript yourself \
-     before answering — never claim you have no context or ask them to paste the transcript; you already \
-     have access to it.\n\n"
+     conversation\"/\"what just happened\" without pasting anything, you must actually call \
+     get_roleplay_transcript through the real tool-calling mechanism in this same turn before writing your \
+     answer — never say things like \"let me check\" or \"I'll look at the transcript\" without immediately \
+     actually calling the tool in that same response; a sentence announcing intent is never a substitute for \
+     really invoking it. Never write out what a tool call would look like as your actual reply either. Never \
+     claim you have no context or ask them to paste the transcript — you already have access to it.\n\n"
         .to_string()
 }
 
@@ -195,6 +208,21 @@ mod tests {
         assert!(block.contains("get_roleplay_transcript"));
         assert!(block.to_lowercase().contains("here"));
         assert!(block.to_lowercase().contains("no context"));
+    }
+
+    #[test]
+    fn training_context_forbids_narrating_intent_instead_of_actually_calling_the_tool() {
+        // Regression check for a live bug, confirmed by hand against the
+        // real CLI + the real MCP server: the first version of this block
+        // named the tool but didn't forbid *announcing* a tool call
+        // instead of making one, so the model would say "let me check
+        // the transcript" and then stop — num_turns: 1, no tool_use block
+        // at all. Reproduced, fixed, and reproduced again as num_turns: 2
+        // with a real transcript-grounded answer once this language was
+        // added.
+        let block = build_training_context(Some("session-123"));
+        assert!(block.to_lowercase().contains("let me check"));
+        assert!(block.to_lowercase().contains("same turn"));
     }
 
     #[test]

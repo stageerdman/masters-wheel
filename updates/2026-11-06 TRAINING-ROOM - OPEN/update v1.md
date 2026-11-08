@@ -673,3 +673,35 @@ were conflating two different things. Re-split:
 - [x] `npm run build` / `lint` / `tsc --noEmit` clean; `cargo check` /
       `cargo test` clean (34 passing); `.app` rebuilt and reinstalled.
 
+### Phase 28 — Fix: AI Trainer narrates "let me check" and stops instead of calling the tool (2026-11-08)
+User-reported, reproduced and fixed by hand against the real CLI + the
+real MCP server binary (not just reasoned about) — see the harness below.
+Root cause: Phase 22's `build_training_context` fix named the tool and
+told the model to use it, but never told it *not to just announce
+intent* — `TOOL_USE_RULE` already has that exact sentence for the
+Performance Review tools ("actually invoke it... never describe or
+simulate the call in prose instead"), but that sentence only names
+`list_performance_reviews`/`get_performance_review`, so
+`get_roleplay_transcript` got none of that protection.
+- Repro harness: a fake `training/<id>/session.json` with a real round
+  of turns, a real generated `--mcp-config` pointing at the actual
+  release binary re-exec'd as the MCP server (`MASTERS_WHEEL_MCP_SERVER=1`
+  + `MASTERS_WHEEL_TRAINING_SESSION_PATH` set to that fake session), and
+  the exact system prompt `build_augmented_system_prompt` would produce.
+  First run against the pre-fix wording: `num_turns: 1`, no `tool_use`
+  content block at all, `result` = "Mrknu se na přepis tohoto rozhovoru,
+  abych viděl, kde jsme skončili..." ("Let me check the transcript...")
+  — a verbatim reproduction of the reported bug, not a guess.
+- [x] `build_training_context` gained the same "actually call it through
+  the real tool-calling mechanism in this same turn... a sentence
+  announcing intent is never a substitute for really invoking it... never
+  write out what a tool call would look like" language `TOOL_USE_RULE`
+  already had for the other tools. Re-ran the identical harness against
+  the fix: `num_turns: 2` (a real tool call happened), and the final
+  answer genuinely quoted the fake transcript's actual lines back —
+  confirmed twice, including once in Czech, matching how the user
+  actually talks to the Trainer.
+- [x] New regression test
+  (`training_context_forbids_narrating_intent_instead_of_actually_calling_the_tool`);
+  35 Rust tests passing. `.app` rebuilt and reinstalled.
+
