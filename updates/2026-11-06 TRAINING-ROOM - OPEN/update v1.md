@@ -327,7 +327,7 @@ Foundation for Phase 17's grounding — independent of everything else below.
 - [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
       reinstalled.
 
-### Phase 16 — Rust roleplay backend module (not started)
+### Phase 16 — Rust roleplay backend module (2026-11-08)
 New `src-tauri/src/roleplay.rs`, same "shell out to `claude -p`" family as
 `assistant.rs`/`transcribe.rs`/`transcode.rs`, but deliberately **not**
 built on `ask_agent`: these are fixed internal personas (scenario designer,
@@ -343,39 +343,51 @@ parsing, and that's also what the research pass (below) found most
 roleplay/structured-output writeups converge on for a flat two-field
 payload. Every parse is defensive: a missing label never errors the
 turn, it falls back to treating the whole response as the primary field.
-- [ ] `generate_setup_reply(message, resume_session_id, business_description) -> SetupReply`
+- [x] `generate_setup_reply(message, resume_session_id, business_description) -> SetupReply`
       — scenario-designer persona; either asks a clarifying question or
-      emits a structured proposal (`TITLE:`/`META:`/`ASSUMPTIONS:` bullet
-      list) once enough is known; reads `business_description` (from
-      Phase 15) so a proposal reflects what this Space actually sells.
-      One continuous `--resume`d session across the whole setup phase.
-- [ ] `generate_roleplay_turn(message, system_context, resume_session_id) -> RoleplayTurnReply { thought, reply, session_id }`
-      — the prospect persona. System prompt per round: persona + scenario
-      + locked assumptions + this round's carried-forward adjustment
-      phrase (if any) + the reasoning-before-speaking + output-contract
-      instructions from `wiki.md`'s research section, including one
-      worked few-shot example (not just a schema description — the
-      research flagged this as the single biggest reliability lever).
-      `--resume` carries continuity *within* one round; "Next Session"
-      starts a fresh call with no `--resume`, since the transcript is
-      meant to reset — only the adjustment phrase (plain text, re-fed
-      into the system prompt) carries forward, never raw session memory.
-      **Enforced by this command's own signature, not a runtime check**:
-      it takes `message: String`, never a second "thought" field — the
-      frontend physically cannot pass the human's private thought into
-      this call (resolves TODO #7).
-- [ ] `generate_insight(input_text, kind: "adjustment" | "round_report" | "final_report") -> String`
-      — one shared one-shot command, three system-prompt variants keyed
-      by `kind`. `input_text` for `adjustment`/`round_report` is that
-      round's turns rendered speaker-labeled, **text only, never
-      thoughts**; for `final_report` it's the already-generated per-round
-      reports + adjustment phrases concatenated, so the final report is a
-      real synthesis (trends across sessions), not just a re-stitch of
-      strings TS already had.
-- [ ] Unit coverage for the parsers (label-extraction + fallback-to-whole-
+      emits a structured proposal (`KIND:`/`TITLE:`/`META:`/`ASSUMPTIONS:`
+      bullet list) once enough is known; reads `business_description`
+      (from Phase 15) so a proposal reflects what this Space actually
+      sells. One continuous `--resume`d session across the whole setup
+      phase.
+- [x] `generate_roleplay_turn(message, scenario_title, scenario_meta,
+      locked_assumptions, adjustment_phrase, resume_session_id) ->
+      RoleplayTurnReply { thought, reply, sessionId }` — the prospect
+      persona. **Refined from the original signature sketch**: takes the
+      scenario as structured fields rather than a pre-built
+      `system_context` string, and builds the full system prompt
+      (persona + scenario + locked assumptions + this round's
+      carried-forward adjustment phrase + the reasoning-before-speaking
+      + output-contract instructions, including one worked few-shot
+      example) inside Rust — same "prompt construction lives on the Rust
+      side" shape `assistant.rs`'s `knowledge::prompt` module already
+      uses, not left to the frontend to assemble. `message: Option<String>`
+      (`None` = persona opens the scene unprompted) — `--resume` carries
+      continuity *within* one round; "Next Session" starts a fresh call
+      with no `--resume`, since the transcript is meant to reset — only
+      the adjustment phrase (plain text, re-fed into the system prompt)
+      carries forward, never raw session memory. **Enforced by this
+      command's own signature, not a runtime check**: there is no second
+      "thought" parameter at all — the frontend physically cannot pass
+      the human's private thought into this call (resolves TODO #7).
+- [x] `generate_insight(input_text, kind: "adjustment" | "round_report" |
+      "final_report") -> String` — one shared one-shot command, three
+      system-prompt variants keyed by `kind`. `input_text` for
+      `adjustment`/`round_report` is that round's turns rendered
+      speaker-labeled, **text only, never thoughts**; for `final_report`
+      it's the already-generated per-round reports + adjustment phrases
+      concatenated, so the final report is a real synthesis (trends
+      across sessions), not just a re-stitch of strings TS already had.
+- [x] Unit coverage for the parsers (label-extraction + fallback-to-whole-
       text-on-missing-label), same spirit as `mcp/bridge.rs`'s existing
-      `#[cfg(test)]` block.
-- [ ] `cargo check` clean.
+      `#[cfg(test)]` block — 7 tests, all passing.
+- [x] `cargo check` clean. Empirically verified against the real `claude`
+      CLI (not just unit-tested): a hand-run `generate_roleplay_turn`-shaped
+      call returned clean `THOUGHT:`/`REPLY:` lines with reply tone
+      visibly tracking the reasoned emotional state, and a `--resume`d
+      follow-up correctly referenced the first turn ("he still hasn't
+      told me what he actually does") — real escalating continuity, not
+      just independently-correct single turns.
 
 ### Phase 17 — Wire the setup conversation to `generate_setup_reply` (not started)
 - [ ] `ChatRoleplaySession.script.ts`'s `submitSetupMessage` calls the real

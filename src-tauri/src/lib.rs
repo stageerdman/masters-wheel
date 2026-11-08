@@ -3,6 +3,7 @@ mod avatar;
 mod knowledge;
 mod media_server;
 pub mod mcp;
+mod roleplay;
 mod spaces;
 mod transcode;
 mod transcribe;
@@ -55,6 +56,9 @@ pub fn run() {
       avatar::read_image_as_data_url,
       mcp::bridge::sync_mcp_tags,
       mcp::bridge::respond_to_mcp_permission,
+      roleplay::generate_setup_reply,
+      roleplay::generate_roleplay_turn,
+      roleplay::generate_insight,
       spaces::migrate_legacy_data_to_default_space,
       spaces::switch_space_media_root,
       transcode::transcode_to_mp4
