@@ -17,11 +17,12 @@ import {
   PERSONA_OPENING_LINE,
   PERSONA_REPLY_POOL,
   REFINED_META,
+  ROUND_REPORT_FLAVOR_POOL,
   SETUP_OPENING_MESSAGE,
   type AssumptionRow,
   type LockedAssumption,
   type ProposalCardData,
-  type RoleplayTurn,
+  type SessionRound,
   type SetupBlock,
 } from "./ChatRoleplaySession.data";
 
@@ -29,6 +30,29 @@ let nextId = 1;
 function makeId(prefix: string): string {
   nextId += 1;
   return `${prefix}-${Date.now()}-${nextId}`;
+}
+
+function freshRound(roundNumber: number, adjustmentPhrase: string | null): SessionRound {
+  return {
+    id: makeId("round"),
+    roundNumber,
+    turns: [
+      {
+        id: makeId("turn"),
+        speaker: "persona",
+        text: PERSONA_OPENING_LINE,
+        thought: { author: PERSONA_OPENING.author, text: PERSONA_OPENING.text },
+      },
+    ],
+    adjustmentPhrase,
+    report: null,
+  };
+}
+
+function reportFor(round: SessionRound): string {
+  const replies = round.turns.filter((turn) => turn.speaker === "user").length;
+  const flavor = ROUND_REPORT_FLAVOR_POOL[(round.roundNumber - 1) % ROUND_REPORT_FLAVOR_POOL.length];
+  return `${replies} repl${replies === 1 ? "y" : "ies"} exchanged. ${flavor}`;
 }
 
 export function useChatRoleplaySession() {
@@ -41,21 +65,20 @@ export function useChatRoleplaySession() {
   const [editingAssumptionRowId, setEditingAssumptionRowId] = useState<string | null>(null);
   const [isAddingAssumptionRow, setIsAddingAssumptionRow] = useState(false);
 
-  // Frozen at confirmation, generated once from the whole setup
-  // conversation — nothing in this prototype round ever rewrites it
-  // (only the assumptions below are amendable post-lock).
-  const heroSummary = HERO_SUMMARY;
+  const [heroSummary] = useState(HERO_SUMMARY);
   const [lockedAssumptions, setLockedAssumptions] = useState<LockedAssumption[]>([]);
   const [editingLockedRowId, setEditingLockedRowId] = useState<string | null>(null);
-  const [heroPopoverOpen, setHeroPopoverOpen] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [finalReport, setFinalReport] = useState<string | null>(null);
 
-  const [turns, setTurns] = useState<RoleplayTurn[]>([]);
+  const [rounds, setRounds] = useState<SessionRound[]>([]);
+  const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
   const [thoughtsVisible, setThoughtsVisible] = useState(false);
   const [replyCursor, setReplyCursor] = useState(0);
 
-  const [sessionRound, setSessionRound] = useState(1);
-  const [adjustmentPhrases, setAdjustmentPhrases] = useState<string[]>([]);
-  const [nextSessionNotice, setNextSessionNotice] = useState<string | null>(null);
+  const liveRound = rounds[rounds.length - 1] ?? null;
+  const activeRound = rounds.find((round) => round.id === activeRoundId) ?? liveRound;
+  const isViewingLiveRound = Boolean(activeRound && liveRound && activeRound.id === liveRound.id);
 
   function findCard(cardId: string): ProposalCardData | undefined {
     for (const block of setupThread) {
@@ -161,22 +184,17 @@ export function useChatRoleplaySession() {
       );
       setSetupThread((blocks) => [...blocks, { id: makeId("blk"), kind: "divider", label: "Roleplay begins" }]);
       window.setTimeout(() => {
+        const round = freshRound(1, null);
+        setRounds([round]);
+        setActiveRoundId(round.id);
         setPhase("live");
-        setTurns([
-          {
-            id: makeId("turn"),
-            speaker: "persona",
-            text: PERSONA_OPENING_LINE,
-            thought: { author: PERSONA_OPENING.author, text: PERSONA_OPENING.text },
-          },
-        ]);
         setIsBeginning(false);
       }, 260);
     }, 260);
   }
 
-  function toggleHeroPopover() {
-    setHeroPopoverOpen((open) => !open);
+  function toggleDetailsExpanded() {
+    setDetailsExpanded((expanded) => !expanded);
   }
 
   function startEditLockedAssumption(rowId: string) {
@@ -199,40 +217,95 @@ export function useChatRoleplaySession() {
     setThoughtsVisible((visible) => !visible);
   }
 
+  function selectRound(roundId: string) {
+    setActiveRoundId(roundId);
+  }
+
+  function removeRound(roundId: string) {
+    setRounds((current) => {
+      if (current.length <= 1) return current;
+      if (liveRound && roundId === liveRound.id) return current;
+      return current.filter((round) => round.id !== roundId);
+    });
+    if (activeRoundId === roundId) setActiveRoundId(liveRound?.id ?? null);
+  }
+
   // One send, one turn: the reply and its optional attached private
   // thought go out together — the thought never reaches the roleplay AI
   // (there's no payload here that would even carry it anywhere; once a
-  // real model call exists, only `text` belongs in that request).
+  // real model call exists, only `text` belongs in that request). Only
+  // ever acts on the live round — the composer that could call this is
+  // hidden while viewing a past, read-only round (see RoleplayChat).
   function sendTurn(text: string, thoughtText: string) {
     const trimmedText = text.trim();
-    if (!trimmedText) return;
+    if (!trimmedText || !liveRound) return;
     const trimmedThought = thoughtText.trim();
-    setTurns((current) => [
-      ...current,
-      {
-        id: makeId("turn"),
-        speaker: "user",
-        text: trimmedText,
-        thought: trimmedThought ? { author: "user", text: trimmedThought } : undefined,
-      },
-    ]);
+    const liveRoundId = liveRound.id;
+    setRounds((current) =>
+      current.map((round) =>
+        round.id === liveRoundId
+          ? {
+              ...round,
+              turns: [
+                ...round.turns,
+                {
+                  id: makeId("turn"),
+                  speaker: "user",
+                  text: trimmedText,
+                  thought: trimmedThought ? { author: "user", text: trimmedThought } : undefined,
+                },
+              ],
+            }
+          : round,
+      ),
+    );
     const reply = PERSONA_REPLY_POOL[replyCursor % PERSONA_REPLY_POOL.length];
     setReplyCursor((cursor) => cursor + 1);
     window.setTimeout(() => {
-      setTurns((current) => [
-        ...current,
-        { id: makeId("turn"), speaker: "persona", text: reply.text, thought: { author: "ai", text: reply.thought } },
-      ]);
+      setRounds((current) =>
+        current.map((round) =>
+          round.id === liveRoundId
+            ? {
+                ...round,
+                turns: [
+                  ...round.turns,
+                  { id: makeId("turn"), speaker: "persona", text: reply.text, thought: { author: "ai", text: reply.thought } },
+                ],
+              }
+            : round,
+        ),
+      );
     }, 650);
   }
 
   function nextSession() {
-    const phrase = ADJUSTMENT_PHRASE_POOL[sessionRound % ADJUSTMENT_PHRASE_POOL.length];
-    setAdjustmentPhrases((phrases) => [...phrases, phrase]);
-    setSessionRound((round) => round + 1);
-    setTurns([{ id: makeId("turn"), speaker: "persona", text: PERSONA_OPENING_LINE, thought: PERSONA_OPENING }]);
-    setNextSessionNotice(phrase);
-    window.setTimeout(() => setNextSessionNotice(null), 3500);
+    if (!liveRound) return;
+    const finishedRoundId = liveRound.id;
+    const phrase = ADJUSTMENT_PHRASE_POOL[rounds.length % ADJUSTMENT_PHRASE_POOL.length];
+    const newRound = freshRound(rounds.length + 1, phrase);
+    setRounds((current) => [
+      ...current.map((round) => (round.id === finishedRoundId ? { ...round, report: reportFor(round) } : round)),
+      newRound,
+    ]);
+    setActiveRoundId(newRound.id);
+  }
+
+  function generateFinalReport() {
+    const totalRounds = rounds.length;
+    // Every round gets a real report at this point, including the still-
+    // live one — generating the final report doesn't end it, it just
+    // means there's nothing left unreported when looking back.
+    const withReports = rounds.map((round) => (round.report ? round : { ...round, report: reportFor(round) }));
+    setRounds(withReports);
+    const improvementLines = withReports
+      .filter((round) => round.adjustmentPhrase)
+      .map((round) => `Session ${round.roundNumber}: ${round.adjustmentPhrase}`);
+    const lines = [
+      `Trained: cold-call opener against Marcus Webb (skeptical, impatient IT Director).`,
+      `${totalRounds} session${totalRounds === 1 ? "" : "s"} completed.`,
+      improvementLines.length > 0 ? improvementLines.join(" ") : "No adjustments were carried between sessions.",
+    ];
+    setFinalReport(lines.join(" "));
   }
 
   return {
@@ -253,19 +326,21 @@ export function useChatRoleplaySession() {
     heroSummary,
     lockedAssumptions,
     editingLockedRowId,
-    heroPopoverOpen,
-    toggleHeroPopover,
+    detailsExpanded,
+    toggleDetailsExpanded,
     startEditLockedAssumption,
     commitEditLockedAssumption,
+    finalReport,
+    generateFinalReport,
 
-    turns,
+    rounds,
+    activeRound,
+    isViewingLiveRound,
+    selectRound,
+    removeRound,
     thoughtsVisible,
     toggleThoughtsVisible,
     sendTurn,
-
-    sessionRound,
-    adjustmentPhrases,
-    nextSessionNotice,
     nextSession,
   };
 }

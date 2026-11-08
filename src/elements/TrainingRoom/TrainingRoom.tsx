@@ -63,6 +63,7 @@ export function TrainingRoom() {
             session={selected}
             notes={selected.notes}
             onNotesChange={(value) => onNotesChange(selected.id, value)}
+            onNameChange={(name) => renameSession(selected.id, name)}
           />
         ) : (
           <>

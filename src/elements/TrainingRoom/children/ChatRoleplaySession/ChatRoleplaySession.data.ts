@@ -40,6 +40,22 @@ export type RoleplayTurn = {
   thought?: Thought;
 };
 
+// One roleplay attempt. Only the latest round in `rounds` is ever live/
+// interactive — every earlier one is permanently read-only the moment
+// "Next Session" creates the next one (the user asked for this
+// explicitly: "user cannot continue chatting in previous session, only
+// observe it"). `report` is this round's own AI summary, generated the
+// moment it stops being live; `adjustmentPhrase` is the single carried-
+// forward note it *started* with (null for round 1, which has nothing to
+// carry forward yet).
+export type SessionRound = {
+  id: string;
+  roundNumber: number;
+  turns: RoleplayTurn[];
+  adjustmentPhrase: string | null;
+  report: string | null;
+};
+
 export type AssumptionAmendment = { text: string; at: number };
 
 export type LockedAssumption = {
@@ -81,8 +97,6 @@ export const HERO_SUMMARY =
   "five minutes between meetings, who has already said no to vendors like us before. Goal: earn real " +
   "attention fast and secure a next step, without pitching features early.";
 
-export const HERO_NAME = "Marcus Webb — Skeptical IT Director";
-
 export const PERSONA_OPENING: Thought & { text: string } = {
   author: "ai",
   text: "Testing whether the rep sounds rehearsed — giving a short, impatient window to see if they waste it.",
@@ -115,4 +129,14 @@ export const ADJUSTMENT_PHRASE_POOL: string[] = [
   "Try opening with a direct question instead of a stat this time.",
   "Let his pushback sit a beat longer before responding.",
   "Lead with a proof point he can verify, not another claim.",
+];
+
+// A round's own AI report, generated the moment it stops being live —
+// mocked here (cycling flavor text layered onto the real reply count) the
+// same way ADJUSTMENT_PHRASE_POOL is, until something real writes it
+// from the actual transcript.
+export const ROUND_REPORT_FLAVOR_POOL: string[] = [
+  "Held composure under pushback and didn't retreat into features.",
+  "Opened with specifics but let the clock pressure rush the close.",
+  "Recovered well after an objection landed, but confirmed the next step late.",
 ];

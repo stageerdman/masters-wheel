@@ -248,3 +248,21 @@ with several deliberate changes from the Artifact.
 - [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
       reinstalled.
 - [x] `FEATURES.md` updated for this discipline.
+
+### Phase 12 — Chat Roleplay revisions: collapsed Hero, session rounds, final report (2026-11-08, same day)
+Full reasoning in `wiki.md`'s "round 2 revisions" section.
+- [x] Hero collapses to one line (green `--color-reviewed` dot + the
+      scenario name, now literally `TrainingSession.name` — shared and
+      editable from either Navigation or here) — expands only on
+      clicking that whole line, same precedent as Performance Review's
+      `Hero`/`MetaPanel`.
+- [x] Replaced the flat turns/round-counter state with real
+      `SessionRound[]` — only the latest round is live; every earlier one
+      is permanently observe-only (`RoleplayChat`'s composer drops
+      entirely, replaced by a "Viewing Session N — read-only" bar).
+- [x] Expanded panel: description/report, assumptions, a clickable,
+      removable **Sessions** list (each round's adjustment phrase + its
+      own generated report), **Next Session**, and a green **Generate
+      final report** button beneath it (visible only while expanded).
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+      reinstalled.

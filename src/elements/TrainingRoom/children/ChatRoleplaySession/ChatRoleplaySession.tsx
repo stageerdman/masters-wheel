@@ -13,6 +13,7 @@ type ChatRoleplaySessionProps = {
   session: TrainingSession;
   notes: string;
   onNotesChange: (value: string) => void;
+  onNameChange: (value: string) => void;
 };
 
 // Replaces the generic Hero/Detail pair for the Chat Roleplay discipline —
@@ -20,7 +21,7 @@ type ChatRoleplaySessionProps = {
 // discipline" section for the full dictated spec. Mounted with
 // `key={session.id}` by TrainingRoom.tsx, so switching sessions is a
 // fresh mount rather than needing a manual multi-field state reset.
-export function ChatRoleplaySession({ session, notes, onNotesChange }: ChatRoleplaySessionProps) {
+export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChange }: ChatRoleplaySessionProps) {
   const {
     phase,
     setupThread,
@@ -38,19 +39,24 @@ export function ChatRoleplaySession({ session, notes, onNotesChange }: ChatRolep
     heroSummary,
     lockedAssumptions,
     editingLockedRowId,
-    heroPopoverOpen,
-    toggleHeroPopover,
+    detailsExpanded,
+    toggleDetailsExpanded,
     startEditLockedAssumption,
     commitEditLockedAssumption,
-    turns,
+    finalReport,
+    generateFinalReport,
+    rounds,
+    activeRound,
+    isViewingLiveRound,
+    selectRound,
+    removeRound,
     thoughtsVisible,
     toggleThoughtsVisible,
     sendTurn,
-    sessionRound,
-    adjustmentPhrases,
-    nextSessionNotice,
     nextSession,
   } = useChatRoleplaySession();
+
+  const liveRound = rounds[rounds.length - 1] ?? null;
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
@@ -72,25 +78,36 @@ export function ChatRoleplaySession({ session, notes, onNotesChange }: ChatRolep
       ) : (
         <>
           <RoleplayHero
+            sessionName={session.name}
+            onNameChange={onNameChange}
             summary={heroSummary}
+            finalReport={finalReport}
             lockedAssumptions={lockedAssumptions}
-            popoverOpen={heroPopoverOpen}
             editingRowId={editingLockedRowId}
-            sessionRound={sessionRound}
-            adjustmentPhrases={adjustmentPhrases}
-            nextSessionNotice={nextSessionNotice}
-            onTogglePopover={toggleHeroPopover}
+            expanded={detailsExpanded}
+            onToggleExpanded={toggleDetailsExpanded}
             onStartEdit={startEditLockedAssumption}
             onCommitEdit={commitEditLockedAssumption}
+            rounds={rounds}
+            activeRoundId={activeRound?.id ?? null}
+            liveRoundId={liveRound?.id ?? null}
+            onSelectRound={selectRound}
+            onRemoveRound={removeRound}
             onNextSession={nextSession}
+            onGenerateFinalReport={generateFinalReport}
           />
           <div className={position.liveBody} data-construction>
-            <RoleplayChat
-              turns={turns}
-              thoughtsVisible={thoughtsVisible}
-              onToggleThoughts={toggleThoughtsVisible}
-              onSend={sendTurn}
-            />
+            {activeRound && (
+              <RoleplayChat
+                turns={activeRound.turns}
+                thoughtsVisible={thoughtsVisible}
+                onToggleThoughts={toggleThoughtsVisible}
+                onSend={sendTurn}
+                isReadOnly={!isViewingLiveRound}
+                roundNumber={activeRound.roundNumber}
+                onJumpToLive={() => liveRound && selectRound(liveRound.id)}
+              />
+            )}
             <RoleplayDetail sessionId={session.id} notes={notes} onNotesChange={onNotesChange} />
           </div>
         </>

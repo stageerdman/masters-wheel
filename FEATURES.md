@@ -570,11 +570,30 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       this one discipline): a setup chat (AI asks clarifying questions,
       proposes an editable **Proposal Card** — title, meta, an
       accept/reject/edit/add assumptions checklist) with a sticky "Not
-      set up yet" indicator, confirming locks the scenario and hands off
-      into a scenario **Hero** (name + a click-to-open "N assumptions"
-      disclosure showing the full AI-generated description — post-lock
-      edits are recorded as amendments, old value kept, not overwritten)
-      and the live roleplay transcript.
+      set up yet" indicator; confirming locks the scenario and hands off
+      into the live roleplay.
+- [x] Once confirmed, the Hero collapses to one line — a green "set up"
+      dot and the scenario's name, which is literally the same
+      `TrainingSession.name` Navigation shows and lets you rename (editing
+      either place renames both). Clicking that line is the only way to
+      expand it; the panel underneath holds the AI-generated description
+      (or the final report, once generated — see below), the locked
+      assumptions (post-lock edits are amendments, old value kept, never
+      overwritten), a clickable **Sessions** list, **Next Session**, and
+      **Generate final report**.
+- [x] "Sessions" are real rounds (`SessionRound[]`), not a reset-in-place
+      counter: only the latest round is live; every earlier one is
+      permanently observe-only the moment "Next Session" creates the next
+      one — its composer disappears entirely, replaced by a "Viewing
+      Session N — read-only" bar with a one-click way back to the live
+      round. Each round carries the single adjustment phrase it started
+      with and gets its own generated report once it's no longer live.
+      Non-live, non-last rounds can be removed from the list.
+- [x] **Generate final report** (a green button, visible only while the
+      panel is expanded) replaces the description with a generated
+      summary — session count, each round's carried-forward adjustment —
+      and back-fills a report for any round (including the still-live
+      one) that didn't already have one.
 - [x] The roleplay transcript has a second, hidden-by-default layer:
       private "thoughts" (the roleplay AI's own inner monologue, or the
       user's own private annotation) attached to, and sent together
@@ -584,14 +603,11 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       thought at once (a message with a hidden thought still shows a
       tiny closed-eye marker). The roleplay AI itself never receives any
       thought, by construction (there's no payload path that would).
-- [x] "Next Session": ends the current roleplay attempt and starts a
-      fresh one under the identical locked scenario/assumptions plus one
-      carried-forward adjustment phrase (mocked pool this round, not
-      real-AI-distilled yet); past phrases accumulate in the Hero's
-      details popover alongside the assumptions.
 - [x] All of the above is scripted/local state — one running example
       (a cold-call opener against "Marcus Webb"), no real model call
-      drives any of it.
+      drives any of it, including every round's report and the final
+      report (both deterministic text built from turn counts + a small
+      canned flavor pool).
 
 ### Built (real functionality — Chat Roleplay's Detail sidebar, 2026-11-08)
 - [x] The sidebar's top pane is the real AI Assistant, not a mock: a
@@ -616,8 +632,9 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
 - [ ] The two still-locked disciplines (Voice Roleplay, Mindset Shifting)
       — DisciplinePicker already lists them, nothing behind them yet.
 - [ ] Chat Roleplay: a real model call behind the setup conversation, the
-      roleplay persona's dialogue/thoughts, and the Next Session
-      adjustment phrase (currently scripted/mocked — see
+      roleplay persona's dialogue/thoughts, the Next Session adjustment
+      phrase, each round's own report, and the final report (all
+      currently scripted/mocked — see
       `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`).
 - [ ] Wiring Performance Review's "Take it to the training ground" button
       (still a no-op) to actually open/seed a Training Room session.

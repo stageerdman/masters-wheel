@@ -1,80 +1,107 @@
 "use client";
 
 import { useState } from "react";
-import { HERO_NAME, type LockedAssumption } from "@/elements/TrainingRoom/children/ChatRoleplaySession/ChatRoleplaySession.data";
+import type { LockedAssumption, SessionRound } from "@/elements/TrainingRoom/children/ChatRoleplaySession/ChatRoleplaySession.data";
 import position from "./RoleplayHero.position.module.css";
 import styles from "./RoleplayHero.styles.module.css";
 
 type RoleplayHeroProps = {
+  sessionName: string;
+  onNameChange: (name: string) => void;
   summary: string;
+  finalReport: string | null;
   lockedAssumptions: LockedAssumption[];
-  popoverOpen: boolean;
   editingRowId: string | null;
-  sessionRound: number;
-  adjustmentPhrases: string[];
-  nextSessionNotice: string | null;
-  onTogglePopover: () => void;
+  expanded: boolean;
+  onToggleExpanded: () => void;
   onStartEdit: (rowId: string) => void;
   onCommitEdit: (rowId: string, value: string) => void;
+  rounds: SessionRound[];
+  activeRoundId: string | null;
+  liveRoundId: string | null;
+  onSelectRound: (roundId: string) => void;
+  onRemoveRound: (roundId: string) => void;
   onNextSession: () => void;
+  onGenerateFinalReport: () => void;
 };
 
-// "The Plaque": at rest, just the scenario name and a 2-line summary — the
-// assumptions (and, now, the accumulated Next Session adjustments) stay
-// behind a quiet click-to-open disclosure rather than permanently eating
-// vertical space from the chat below. This is the part the user asked
-// for explicitly — "clickable details... so I click on that and I can
-// see the session description."
+// Collapsed, this is one line: a green "set up" dot and the scenario's
+// name — the same name as the session's own row in Navigation, editable
+// from either place (both write through the same onNameChange). Clicking
+// anywhere on that line is the only way to expand it; everything else —
+// the description/report, assumptions, the list of past sessions, Next
+// Session, Generate final report — lives in the panel underneath, never
+// permanently stealing space from the chat below it.
 export function RoleplayHero({
+  sessionName,
+  onNameChange,
   summary,
+  finalReport,
   lockedAssumptions,
-  popoverOpen,
   editingRowId,
-  sessionRound,
-  adjustmentPhrases,
-  nextSessionNotice,
-  onTogglePopover,
+  expanded,
+  onToggleExpanded,
   onStartEdit,
   onCommitEdit,
+  rounds,
+  activeRoundId,
+  liveRoundId,
+  onSelectRound,
+  onRemoveRound,
   onNextSession,
+  onGenerateFinalReport,
 }: RoleplayHeroProps) {
+  const [isEditingName, setIsEditingName] = useState(false);
   const [draftValue, setDraftValue] = useState("");
 
   return (
     <section className={`${styles.root} ${position.root}`} data-construction>
-      <div className={position.row1} data-construction>
-        <span className={`${styles.dot} ${position.dot}`} data-construction />
-        <span className={`${styles.name} ${position.name}`} data-construction>
-          {HERO_NAME}
-        </span>
-        {sessionRound > 1 && (
-          <span className={`${styles.roundBadge} ${position.roundBadge}`} data-construction>
-            Session {sessionRound}
+      <button
+        type="button"
+        className={`${styles.bar} ${position.bar}`}
+        data-construction
+        onClick={onToggleExpanded}
+        aria-expanded={expanded}
+        aria-label={expanded ? "Collapse session details" : "Expand session details"}
+      >
+        <span className={`${styles.dot} ${position.dot}`} data-construction aria-hidden="true" />
+        {isEditingName ? (
+          <input
+            className={`${styles.nameInput} ${position.nameInput}`}
+            data-construction
+            value={sessionName}
+            autoFocus
+            onClick={(event) => event.stopPropagation()}
+            onChange={(event) => onNameChange(event.target.value)}
+            onBlur={() => setIsEditingName(false)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
+            }}
+            aria-label="Session name"
+          />
+        ) : (
+          <span
+            className={`${styles.name} ${position.name}`}
+            data-construction
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsEditingName(true);
+            }}
+            title="Click to rename"
+          >
+            {sessionName}
           </span>
         )}
-        <button type="button" className={`${styles.footnote} ${position.footnote}`} data-construction onClick={onTogglePopover}>
-          {lockedAssumptions.length} assumption{lockedAssumptions.length === 1 ? "" : "s"}
-        </button>
-        <button type="button" className={`${styles.nextButton} ${position.nextButton}`} data-construction onClick={onNextSession}>
-          Next Session
-        </button>
-      </div>
-      <p className={`${styles.summary} ${position.summary}`} data-construction>
-        {summary}
-      </p>
-      {nextSessionNotice && (
-        <div className={`${styles.notice} ${position.notice}`} data-construction>
-          Starting Session {sessionRound} — adjustment: “{nextSessionNotice}”
-        </div>
-      )}
-      {popoverOpen && (
-        <div className={`${styles.popover} ${position.popover}`} data-construction>
-          <h3 className={position.popoverHeading} data-construction>
-            Scenario
-          </h3>
-          <p className={`${styles.fullSummary} ${position.fullSummary}`} data-construction>
-            {summary}
+        <span className={`${styles.chevron} ${position.chevron}`} data-construction aria-hidden="true">
+          {expanded ? "⌃" : "⌄"}
+        </span>
+      </button>
+      {expanded && (
+        <div className={`${styles.panel} ${position.panel}`} data-construction>
+          <p className={`${styles.summary} ${position.summary} ${finalReport ? styles.finalReportText : ""}`} data-construction>
+            {finalReport ?? summary}
           </p>
+
           <div className={position.assumptions} data-construction>
             {lockedAssumptions.map((row) => (
               <div key={row.id} className={position.lockRow} data-construction>
@@ -120,20 +147,77 @@ export function RoleplayHero({
               </div>
             ))}
           </div>
-          {adjustmentPhrases.length > 0 && (
-            <div className={position.adjustments} data-construction>
-              <h4 className={position.adjustmentsHeading} data-construction>
-                Session adjustments
-              </h4>
-              <ul className={position.adjustmentsList} data-construction>
-                {adjustmentPhrases.map((phrase, index) => (
-                  <li key={index} className={`${styles.adjustmentItem} ${position.adjustmentItem}`} data-construction>
-                    Session {index + 2}: {phrase}
+
+          <div className={position.rounds} data-construction>
+            <h4 className={`${styles.roundsHeading} ${position.roundsHeading}`} data-construction>
+              Sessions
+            </h4>
+            <ul className={position.roundsList} data-construction>
+              {rounds.map((round) => {
+                const isActive = round.id === activeRoundId;
+                const isLive = round.id === liveRoundId;
+                return (
+                  <li
+                    key={round.id}
+                    className={`${position.roundRow} ${isActive ? styles.roundRowActive : ""}`}
+                    data-construction
+                  >
+                    <button
+                      type="button"
+                      className={`${styles.roundButton} ${position.roundButton}`}
+                      data-construction
+                      onClick={() => onSelectRound(round.id)}
+                    >
+                      <span className={styles.roundLabel} data-construction>
+                        Session {round.roundNumber}
+                        {isLive && (
+                          <span className={`${styles.liveBadge} ${position.liveBadge}`} data-construction>
+                            {" "}
+                            · Live
+                          </span>
+                        )}
+                      </span>
+                      {round.adjustmentPhrase && (
+                        <span className={`${styles.roundMeta} ${position.roundMeta}`} data-construction>
+                          Adjustment: {round.adjustmentPhrase}
+                        </span>
+                      )}
+                      {round.report && (
+                        <span className={`${styles.roundMeta} ${position.roundMeta}`} data-construction>
+                          {round.report}
+                        </span>
+                      )}
+                    </button>
+                    {!isLive && rounds.length > 1 && (
+                      <button
+                        type="button"
+                        className={`${styles.roundDelete} ${position.roundDelete}`}
+                        data-construction
+                        aria-label={`Remove Session ${round.roundNumber}`}
+                        onClick={() => onRemoveRound(round.id)}
+                      >
+                        ×
+                      </button>
+                    )}
                   </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                );
+              })}
+            </ul>
+          </div>
+
+          <div className={position.actions} data-construction>
+            <button type="button" className={`${styles.nextButton} ${position.nextButton}`} data-construction onClick={onNextSession}>
+              Next Session
+            </button>
+            <button
+              type="button"
+              className={`${styles.reportButton} ${position.reportButton}`}
+              data-construction
+              onClick={onGenerateFinalReport}
+            >
+              Generate final report
+            </button>
+          </div>
         </div>
       )}
     </section>

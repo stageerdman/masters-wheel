@@ -370,6 +370,66 @@ as the Artifact. No real model call drives any of that yet; the real
 reuse of the already-real Assistant engine, not new roleplay-specific
 model logic.
 
+## Chat Roleplay discipline — round 2 revisions (2026-11-08, same day)
+
+Seen live, the first pass's always-expanded Hero ("3 assumptions" footnote
++ summary + Next Session button all permanently visible) got replaced
+with a single collapsed line, following the exact precedent Performance
+Review's `Hero`/`MetaPanel` already set (a "•••" toggle + a panel that
+only exists while expanded) — Chat Roleplay's version collapses to just
+a **green dot + the scenario's name**, and *only* clicking that whole
+line expands it. Specific decisions:
+
+- **One shared name, not two.** The scenario's displayed name is now
+  literally `TrainingSession.name` — the same field Navigation's
+  `SessionListItem` already renders and lets you rename. Renaming from
+  either place calls the same `onNameChange`/`renameSession`, so they can
+  never drift. The Hero's own name span mirrors `SessionListItem`'s exact
+  click-to-rename shape (a plain `<span onClick={stopPropagation →
+  edit mode}>`, not a nested button) so clicking it doesn't also toggle
+  the row's expand/collapse. The standalone `HERO_NAME` fixture constant
+  was deleted outright once this landed — there was no other consumer.
+- **The green dot reuses `--color-reviewed`** (already the app's "this
+  has been handled/confirmed" green, used for Performance Review's
+  reviewed flag) rather than a new token — same reasoning as every other
+  category-color decision in this file: an existing color that already
+  means "good/confirmed" fits this exactly.
+- **Sessions became real rounds, not a reset-in-place counter.** The
+  first pass's `turns`/`sessionRound`/`adjustmentPhrases` flat state
+  couldn't represent "go back and look at an earlier attempt" — replaced
+  with `rounds: SessionRound[]` (each with its own `turns`, the one
+  `adjustmentPhrase` it started with, and a `report` generated the moment
+  it stops being live) plus `activeRoundId` (which round is currently
+  *displayed*, independent of which one is *live*). Only the last round
+  in the array is ever live/interactive — dictated explicitly: "each time
+  new session is created user cannot continue chatting in previous
+  session, only observe it." `RoleplayChat` now takes `isReadOnly` and
+  drops its composer entirely for any non-live round, showing a
+  "Viewing Session N — read-only" bar with a "Jump to live session"
+  button instead.
+- **The expanded panel, top to bottom:** description (or the final
+  report once generated, in its place — see below), the locked
+  assumptions (unchanged from round 1: amend-not-overwrite edits), a
+  **Sessions** list (one row per round — label, its carried-forward
+  adjustment phrase if any, its report once generated, a "· Live" marker
+  on the current one, a remove button on every *other* row as long as
+  more than one round exists — the live round and the last remaining
+  round can't be removed), then **Next Session** and, directly beneath
+  it, a green **Generate final report** button. Both buttons only exist
+  while the panel is expanded, per the dictated spec.
+- **Generate final report** swaps the panel's description text for a
+  generated summary (session count + each round's carried-forward
+  adjustment, scripted/mocked the same way everything else here is) and
+  back-fills a `report` for any round that didn't already have one
+  (including the still-live round) — generating the report doesn't end
+  the live round, it just means nothing is left unreported when looking
+  back over the list. Clicking it again regenerates idempotently.
+- **Still explicitly scripted:** a round's own report and the final
+  report are both deterministic text built from turn counts and a small
+  canned flavor-line pool (`ROUND_REPORT_FLAVOR_POOL`) — real per-round
+  and final-report generation from the actual transcript is backend work
+  for later, same as everything else flagged in the section above.
+
 ## Element decisions
 - Fake session fixture lives in `TrainingRoom.data.ts`, same pattern as
   `PerformanceReview.data.ts`'s original fixture before real records

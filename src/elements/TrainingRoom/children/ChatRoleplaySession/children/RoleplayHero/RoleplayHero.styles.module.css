@@ -4,79 +4,48 @@
   color: var(--color-text);
 }
 
+.bar {
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.bar:hover {
+  background: color-mix(in srgb, var(--color-text) 4%, var(--color-surface));
+}
+
 .dot {
-  background: var(--color-discipline-chat-roleplay);
+  background: var(--color-reviewed);
 }
 
 .name {
-  font-size: var(--text-size-heading);
-  font-weight: 650;
-}
-
-.roundBadge {
-  font-size: var(--text-size-micro);
-  color: var(--color-discipline-chat-roleplay);
-  border: 1px solid color-mix(in srgb, var(--color-discipline-chat-roleplay) 55%, var(--color-border));
-  border-radius: 999px;
-  padding: 0.1rem 0.5rem;
-}
-
-.footnote {
-  font-size: var(--text-size-micro);
-  color: var(--color-text-muted);
-  background: none;
-  border: none;
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.footnote:hover {
-  color: var(--color-text);
-}
-
-.nextButton {
-  margin-left: auto;
-  font-size: var(--text-size-micro);
+  font-size: var(--text-size-label);
   font-weight: 600;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 7px;
-  padding: 0.25rem 0.6rem;
-  cursor: pointer;
 }
 
-.nextButton:hover {
-  background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface));
+.nameInput {
+  background: transparent;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  border: none;
+  border-bottom: 1px solid var(--color-accent);
+}
+
+.chevron {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
 }
 
 .summary {
   font-size: var(--text-size-label);
   color: var(--color-text-muted);
-  margin-top: 0.3rem;
-  max-width: 72ch;
-  line-height: 1.45;
 }
 
-.notice {
-  background: color-mix(in srgb, var(--color-discipline-chat-roleplay) 12%, var(--color-surface));
-  color: var(--color-discipline-chat-roleplay);
-  font-size: var(--text-size-micro);
-  font-weight: 600;
-}
-
-.popover {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
-}
-
-.fullSummary {
-  font-size: var(--text-size-label);
-  color: var(--color-text-muted);
-  line-height: 1.5;
+.finalReportText {
+  color: var(--color-text);
 }
 
 .lockText {
@@ -115,15 +84,77 @@
   color: var(--color-text);
 }
 
-.adjustments {
-  border-top: 1px solid var(--color-border);
-}
-
-.adjustmentsHeading {
+.roundsHeading {
+  font-size: var(--text-size-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--color-text-muted);
 }
 
-.adjustmentItem {
+.roundRowActive .roundButton {
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+}
+
+.roundButton {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.roundButton:hover {
+  background: color-mix(in srgb, var(--color-text) 4%, var(--color-surface));
+}
+
+.roundLabel {
+  font-size: var(--text-size-label);
+  font-weight: 600;
+}
+
+.liveBadge {
+  color: var(--color-reviewed);
+  font-weight: 650;
+}
+
+.roundMeta {
   font-size: var(--text-size-micro);
   color: var(--color-text-muted);
+}
+
+.roundDelete {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.roundDelete:hover {
+  color: var(--color-text);
+}
+
+.nextButton {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nextButton:hover {
+  background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface));
+}
+
+.reportButton {
+  background: var(--color-reviewed);
+  color: var(--color-on-chip);
+  border: none;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reportButton:hover {
+  filter: brightness(1.08);
 }

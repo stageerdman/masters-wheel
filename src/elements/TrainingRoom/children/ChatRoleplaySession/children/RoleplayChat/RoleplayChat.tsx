@@ -10,6 +10,9 @@ type RoleplayChatProps = {
   thoughtsVisible: boolean;
   onToggleThoughts: () => void;
   onSend: (text: string, thought: string) => void;
+  isReadOnly: boolean;
+  roundNumber: number;
+  onJumpToLive: () => void;
 };
 
 // The dual-layer transcript: ordinary in-character dialogue, plus a
@@ -18,8 +21,18 @@ type RoleplayChatProps = {
 // not two separate actions). A thought always renders above its message,
 // under the speaker's name. One eye icon shows/hides every thought at
 // once — deliberately not the 3-state toggle the Artifact prototype had;
-// that was explicitly called out as more UI than this needs.
-export function RoleplayChat({ turns, thoughtsVisible, onToggleThoughts, onSend }: RoleplayChatProps) {
+// that was explicitly called out as more UI than this needs. Viewing a
+// past session (isReadOnly) drops the composer entirely — "Next Session"
+// permanently retires every earlier round to observe-only.
+export function RoleplayChat({
+  turns,
+  thoughtsVisible,
+  onToggleThoughts,
+  onSend,
+  isReadOnly,
+  roundNumber,
+  onJumpToLive,
+}: RoleplayChatProps) {
   const [replyValue, setReplyValue] = useState("");
   const [thoughtValue, setThoughtValue] = useState("");
   const [isThoughtExpanded, setIsThoughtExpanded] = useState(false);
@@ -109,62 +122,76 @@ export function RoleplayChat({ turns, thoughtsVisible, onToggleThoughts, onSend 
           );
         })}
       </div>
-      <div className={`${styles.composer} ${position.composer}`} data-construction>
-        <div className={position.sayRow} data-construction>
-          <input
-            type="text"
-            className={`${styles.input} ${position.input}`}
-            data-construction
-            placeholder="Reply to Marcus…"
-            value={replyValue}
-            onChange={(event) => setReplyValue(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") handleSend();
-            }}
-          />
-          <button
-            type="button"
-            className={`${styles.send} ${position.send}`}
-            data-construction
-            onClick={handleSend}
-            disabled={replyValue.trim().length === 0}
-            aria-label="Send"
-          >
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-              <path d="M8 2 L8 13 M3 7 L8 2 L13 7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+      {isReadOnly ? (
+        <div className={`${styles.readOnlyBar} ${position.readOnlyBar}`} data-construction>
+          <span>Viewing Session {roundNumber} — read-only</span>
+          <button type="button" className={`${styles.jumpToLive} ${position.jumpToLive}`} data-construction onClick={onJumpToLive}>
+            Jump to live session
           </button>
         </div>
-        <div className={`${position.seam} ${isThoughtExpanded ? styles.seamActive : styles.seam}`} data-construction />
-        {isThoughtExpanded ? (
-          <div className={`${styles.thinkRow} ${position.thinkRow}`} data-construction>
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" className={styles.padlock}>
-              <rect x="3.5" y="7" width="9" height="6" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.3" />
-            </svg>
+      ) : (
+        <div className={`${styles.composer} ${position.composer}`} data-construction>
+          <div className={position.sayRow} data-construction>
             <input
               type="text"
-              className={`${styles.thinkInput} ${position.thinkInput}`}
+              className={`${styles.input} ${position.input}`}
               data-construction
-              autoFocus
-              placeholder="Think something…"
-              value={thoughtValue}
-              onChange={(event) => setThoughtValue(event.target.value)}
+              placeholder="Reply to Marcus…"
+              value={replyValue}
+              onChange={(event) => setReplyValue(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") handleSend();
-                if (event.key === "Escape") {
-                  setThoughtValue("");
-                  setIsThoughtExpanded(false);
-                }
               }}
             />
+            <button
+              type="button"
+              className={`${styles.send} ${position.send}`}
+              data-construction
+              onClick={handleSend}
+              disabled={replyValue.trim().length === 0}
+              aria-label="Send"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path d="M8 2 L8 13 M3 7 L8 2 L13 7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
-        ) : (
-          <button type="button" className={`${styles.thinkToggle} ${position.thinkToggle}`} data-construction onClick={() => setIsThoughtExpanded(true)}>
-            ✎ Think something
-          </button>
-        )}
-      </div>
+          <div className={`${position.seam} ${isThoughtExpanded ? styles.seamActive : styles.seam}`} data-construction />
+          {isThoughtExpanded ? (
+            <div className={`${styles.thinkRow} ${position.thinkRow}`} data-construction>
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" className={styles.padlock}>
+                <rect x="3.5" y="7" width="9" height="6" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.3" />
+              </svg>
+              <input
+                type="text"
+                className={`${styles.thinkInput} ${position.thinkInput}`}
+                data-construction
+                autoFocus
+                placeholder="Think something…"
+                value={thoughtValue}
+                onChange={(event) => setThoughtValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleSend();
+                  if (event.key === "Escape") {
+                    setThoughtValue("");
+                    setIsThoughtExpanded(false);
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.thinkToggle} ${position.thinkToggle}`}
+              data-construction
+              onClick={() => setIsThoughtExpanded(true)}
+            >
+              ✎ Think something
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
