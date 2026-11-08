@@ -58,10 +58,37 @@ pub fn build_tagged_context(tagged_records: &[(String, String)]) -> String {
     )
 }
 
+// AITrainerPane's only context channel — unlike a tagged Performance
+// Review record, there's no ambiguity to resolve (a Trainer pane is
+// always embedded in exactly one training session), so this fires
+// whenever `training_session_id` is `Some` at all, not conditionally on
+// anything the user did in the UI. Found by hand to be a real, live gap:
+// with no equivalent of build_tagged_context, the model had zero textual
+// hint a roleplay transcript existed at all, so "how would you continue
+// here?" got answered as if there were nothing to refer to — its only
+// path to that content was deciding, completely unprompted, to call a
+// tool TOOL_USE_RULE never even mentions. This both names the tool and
+// anchors "here"/"this call"/"this conversation" to it, the same anchoring
+// job build_tagged_context does for Performance Review records.
+pub fn build_training_context(training_session_id: Option<&str>) -> String {
+    if training_session_id.is_none() {
+        return String::new();
+    }
+    "You are the AI Trainer embedded inside one specific Chat Roleplay training session right now — \
+     there is exactly one roleplay transcript you could possibly mean. You have a tool, \
+     get_roleplay_transcript, that reads it (optionally including each turn's private \"thought\"); it's \
+     always available, no permission needed. If the trainee refers to \"here\"/\"this call\"/\"this \
+     conversation\"/\"what just happened\" without pasting anything, call get_roleplay_transcript yourself \
+     before answering — never claim you have no context or ask them to paste the transcript; you already \
+     have access to it.\n\n"
+        .to_string()
+}
+
 pub fn build_augmented_system_prompt(
     persona_instructions: &str,
     chunks: &[RetrievedChunk],
     tagged_records: &[(String, String)],
+    training_session_id: Option<&str>,
 ) -> String {
     let knowledge_block = if chunks.is_empty() {
         String::new()
@@ -75,9 +102,10 @@ pub fn build_augmented_system_prompt(
         format!("<knowledge>\n{excerpts}\n</knowledge>\n\n")
     };
     let tagged_block = build_tagged_context(tagged_records);
+    let training_block = build_training_context(training_session_id);
 
     format!(
-        "{CORE_RULE}\n\n{TOOL_USE_RULE}\n\n{tagged_block}{knowledge_block}<persona>\n{persona_instructions}\n</persona>\n\n{CORE_RULE}"
+        "{CORE_RULE}\n\n{TOOL_USE_RULE}\n\n{training_block}{tagged_block}{knowledge_block}<persona>\n{persona_instructions}\n</persona>\n\n{CORE_RULE}"
     )
 }
 
@@ -143,6 +171,7 @@ mod tests {
             "Be a helpful coach.",
             &[],
             &[("abc-123".to_string(), "Jordan Blake".to_string())],
+            None,
         );
         let tagged_index = prompt.find("Jordan Blake").expect("tagged context present");
         let persona_index = prompt.find("<persona>").expect("persona block present");
@@ -151,7 +180,28 @@ mod tests {
 
     #[test]
     fn augmented_prompt_with_no_tags_has_no_leftover_empty_block() {
-        let prompt = build_augmented_system_prompt("Be a helpful coach.", &[], &[]);
+        let prompt = build_augmented_system_prompt("Be a helpful coach.", &[], &[], None);
         assert!(!prompt.contains("currently has these Performance Review"));
+    }
+
+    #[test]
+    fn no_training_session_id_produces_no_training_context_block() {
+        assert_eq!(build_training_context(None), "");
+    }
+
+    #[test]
+    fn a_training_session_id_names_the_transcript_tool_and_anchors_here() {
+        let block = build_training_context(Some("session-123"));
+        assert!(block.contains("get_roleplay_transcript"));
+        assert!(block.to_lowercase().contains("here"));
+        assert!(block.to_lowercase().contains("no context"));
+    }
+
+    #[test]
+    fn augmented_prompt_includes_training_context_ahead_of_the_persona_block() {
+        let prompt = build_augmented_system_prompt("Be a helpful coach.", &[], &[], Some("session-123"));
+        let training_index = prompt.find("get_roleplay_transcript").expect("training context present");
+        let persona_index = prompt.find("<persona>").expect("persona block present");
+        assert!(training_index < persona_index, "training context must come before the persona block");
     }
 }

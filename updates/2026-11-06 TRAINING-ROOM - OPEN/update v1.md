@@ -544,3 +544,120 @@ Decline/Allow card.
       existing suite — nothing else regressed); `.app` rebuilt and
       reinstalled.
 
+### Phase 22 — Fix: AI Trainer claims "no context" (2026-11-08)
+Root cause confirmed by investigation, not assumed: Training Room never
+touches `src/lib/mcp/activeRecord.ts`, so the Trainer's system prompt gets
+zero textual hint a roleplay transcript exists — unlike a tagged
+Performance Review record, which `build_tagged_context` names explicitly.
+The Trainer's only path to that content was deciding, completely
+unprompted, to call `get_roleplay_transcript`, and `TOOL_USE_RULE` never
+even mentions that tool.
+- [x] New `knowledge/prompt.rs::build_training_context(training_session_id:
+      Option<&str>)` — same job `build_tagged_context` does for Performance
+      Review records, but unconditional on `Some` rather than keyed to
+      anything the user did in the UI (a Trainer pane is always exactly
+      one training session, no ambiguity to resolve). Names
+      `get_roleplay_transcript`, anchors "here"/"this call"/"this
+      conversation", and explicitly forbids claiming no context exists.
+- [x] `build_augmented_system_prompt` gains a `training_session_id`
+      param, threaded through from `ask_agent`'s existing
+      `training_session_id`. 4 new unit tests.
+- [x] `cargo test` (30 passing) / `npm run build` / `lint` / `tsc
+      --noEmit` clean; `.app` rebuilt and reinstalled.
+
+### Phase 23-27 — Persona/assumptions redesign + real-transcript grounding (2026-11-08)
+User-dictated correction after using Phase 17-19's first pass: Assumptions
+were conflating two different things. Re-split:
+- **Persona** (hidden from the trainee entirely — not shown anywhere in
+  the UI): who they are, their background/situation, and *how* they tend
+  to communicate — response length (short/closed vs long/open), emotional
+  openness, language style, and limiting beliefs (some they're aware of,
+  some they aren't). Built once, grounded in a real past call when
+  possible rather than invented from nothing.
+- **Assumptions** (trainee-visible/editable, unchanged UI): facts about
+  *this call*, not the persona — "we've already built trust," "they came
+  in from a Facebook ad," "they know why they're on this call," "they're
+  coming in fairly open." Technical/situational, not personality.
+- **Hero's description** stops being persona bio — it's a training
+  objective reminder (what we're practicing and why), since the persona
+  is deliberately invisible.
+- **Thoughts** stop being the persona's own first-person voice — they're
+  the roleplay AI's third-person *meta*-analysis: given this persona's
+  known patterns, how would they likely respond right now, and what do
+  they probably feel. Never the character's own internal monologue.
+- **"Next Session"** can now actually adjust the persona (difficulty,
+  characteristics, conversation direction) to target what the trainee
+  needs to practice, not just emit a flavor phrase on top of a frozen
+  persona.
+- A visible "thinking" indicator while waiting on a reply (there was
+  none before — the composer just silently disabled).
+
+#### Phase 23 — Data model
+- [ ] New `Persona` type (`ChatRoleplaySession.data.ts`): `name`,
+      `background`, `responseLength: "short"|"long"|"mixed"`,
+      `emotionalOpenness: "guarded"|"moderate"|"open"`, `languageStyle`,
+      `limitingBeliefs: string[]`, `sourceRecordId: string | null` (which
+      real Performance Review record it was grounded in, if any).
+- [ ] `RoleplayState` gains `persona: Persona | null`, `trainingObjective:
+      string`, `difficulty: "easy" | "medium" | "hard" | null`.
+- [ ] `ProposalCardData` gains `objective` (shown to the trainee — what
+      we're training and why) and `difficulty`; `meta` stays a one-line
+      *setting* string with no persona name in it anymore.
+
+#### Phase 24 — Real-transcript-grounded persona + meta-thought rewrite
+- [ ] New `generate_persona` Tauri command (`roleplay.rs`), takes
+      `app`/`active_space_folder` (like `ask_agent`, unlike the other
+      three roleplay.rs commands, since it needs to read real records):
+      picks a real Performance Review record with a transcript —
+      `difficulty: "hard"` → a `"failed"` call, else → a `"closed"` call
+      (most recent match; `list_performance_reviews::list()` refactored
+      to take a `root: &Path` param instead of always resolving the
+      MCP-subprocess-only env var, so this main-process call can pass
+      `spaces::records_dir` directly) — then one model call extracts
+      `name`/`background`/`responseLength`/`emotionalOpenness`/
+      `languageStyle`/`limitingBeliefs` from a bounded excerpt of that
+      real transcript. No matching record at all → same call falls back
+      to inventing a persona consistent with the objective/difficulty,
+      explicitly told so in the prompt (never silently fabricated as if
+      it were real).
+- [ ] `generate_setup_reply`'s proposal contract gains `OBJECTIVE:` and
+      `DIFFICULTY:` labeled fields (parsed into the new `ProposalFields`).
+- [ ] `generate_roleplay_turn` restructured: takes a `Persona` (plus
+      call-context assumptions, not scenario title/meta) instead of
+      `scenario_title`/`scenario_meta`. Its system prompt now explicitly
+      separates "facts about this call" from "who this persona is and how
+      they communicate," and the `THOUGHT` instruction changes from
+      first-person persona voice to third-person meta-analysis: predict
+      how this persona would respond *given their known patterns*, and
+      what they'd probably feel — never the character's own private
+      monologue.
+- [ ] `beginRoleplay` calls `generate_persona` once, right when the
+      scenario locks, then opens round 1 with the real persona.
+
+#### Phase 25 — "Next Session" can adjust the persona
+- [ ] New `generate_session_adjustment` command: given the finishing
+      round's transcript + the training objective + the persona's current
+      fields, returns both the trainee-facing phrase (unchanged meaning)
+      *and* a persona (same shape as `generate_persona`'s output) — most
+      fields usually unchanged, but free to shift difficulty/
+      characteristics/conversation direction toward what the trainee
+      needs next.
+- [ ] `nextSession()` replaces the current persona with the returned one
+      before opening the new round — prior rounds' turns are historical
+      record either way, unaffected by a persona change going forward.
+
+#### Phase 26 — Frontend wiring + hide the persona
+- [ ] `ChatRoleplaySession.script.ts` updated end-to-end for the above;
+      `heroSummary` becomes `trainingObjective`, never persona text;
+      nothing in the UI ever renders `persona` directly.
+- [ ] `ProposalCard` shows `objective`/`difficulty` instead of implying a
+      persona bio.
+
+#### Phase 27 — Visible "thinking" state
+- [ ] `RoleplayChat`/`SetupThread` show a lightweight animated indicator
+      while a reply is in flight, instead of just disabling the composer
+      silently.
+
+- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` / `cargo
+      test` clean; `.app` rebuilt and reinstalled.
+

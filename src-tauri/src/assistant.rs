@@ -207,10 +207,10 @@ pub async fn ask_agent(
         // the persona (see this update's wiki.md for the repro).
         let system_prompt = match &agent_id {
             Some(id) => match knowledge::commands::retrieve_for_agent(&app, &agent_space_folder, id, &message, RETRIEVAL_TOP_K) {
-                Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks, &tagged_records),
-                Err(_) => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records),
+                Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks, &tagged_records, training_session_id.as_deref()),
+                Err(_) => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records, training_session_id.as_deref()),
             },
-            None => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records),
+            None => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records, training_session_id.as_deref()),
         };
 
         // --mcp-config points the CLI at this app's own MCP server (a
