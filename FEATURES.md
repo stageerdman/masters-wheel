@@ -576,11 +576,16 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       dot and the scenario's name, which is literally the same
       `TrainingSession.name` Navigation shows and lets you rename (editing
       either place renames both). Clicking that line is the only way to
-      expand it; the panel underneath holds the AI-generated description
-      (or the final report, once generated — see below), the locked
-      assumptions (post-lock edits are amendments, old value kept, never
-      overwritten), a clickable **Sessions** list, **Next Session**, and
-      **Generate final report**.
+      expand it; the panel underneath — an internally-scrolling, bounded-
+      height area, so a long sessions list or report can never push its
+      own buttons off-screen — holds the AI-generated description (or the
+      final report, once generated — see below) under an "Assumptions"
+      title, the locked assumptions themselves (post-lock edits are
+      amendments, old value kept, never overwritten), and a clickable
+      **Sessions** list under a matching title. **Next Session** and
+      **Generate final report** sit outside that scroll area entirely, in
+      their own pinned column — Next Session stays reachable even while
+      collapsed, Generate final report joins it once expanded.
 - [x] "Sessions" are real rounds (`SessionRound[]`), not a reset-in-place
       counter: only the latest round is live; every earlier one is
       permanently observe-only the moment "Next Session" creates the next
@@ -591,9 +596,13 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       Non-live, non-last rounds can be removed from the list.
 - [x] **Generate final report** (a green button, visible only while the
       panel is expanded) replaces the description with a generated
-      summary — session count, each round's carried-forward adjustment —
-      and back-fills a report for any round (including the still-live
-      one) that didn't already have one.
+      report — real markdown (headings/bold/bullet lists), rendered via
+      `react-markdown` (already a dependency, same one `MessageList`'s
+      `Message.tsx` renders real AI replies with), every heading mapped
+      to the same shared title style "Assumptions"/"Sessions" use rather
+      than a separate look — covering session count and each round's
+      carried-forward adjustment, and back-fills a report for any round
+      (including the still-live one) that didn't already have one.
 - [x] The roleplay transcript has a second, hidden-by-default layer:
       private "thoughts" (the roleplay AI's own inner monologue, or the
       user's own private annotation) attached to, and sent together

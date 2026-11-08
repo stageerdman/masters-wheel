@@ -266,3 +266,24 @@ Full reasoning in `wiki.md`'s "round 2 revisions" section.
       final report** button beneath it (visible only while expanded).
 - [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
       reinstalled.
+
+### Phase 13 — Chat Roleplay fixes: bounded scroll, pinned actions, markdown report (2026-11-08, same day)
+Full reasoning in `wiki.md`'s "round 3 revisions" section.
+- [x] Fixed a real bug: the Hero's panel grew without bound as sessions
+      accumulated, eventually pushing its own action buttons (and the
+      chat below) off-screen. The description/assumptions/sessions list
+      now scrolls inside a bounded `max-height` area; Next Session and
+      Generate final report moved out of it entirely, into their own
+      pinned column beside the bar+panel — Next Session stays reachable
+      even collapsed, Generate final report joins it once expanded, and
+      neither can ever scroll away.
+- [x] The final report is now real markdown (headings/bold/bullet lists
+      per session), rendered via `react-markdown` (already a dependency,
+      same one `Message.tsx` uses) — every heading maps to the one shared
+      title style "Assumptions"/"Sessions" already use, not a separate
+      look.
+- [x] Added an "Assumptions" section title above the assumptions list,
+      reusing that same shared heading style (renamed from
+      `roundsHeading` to `sectionHeading` now that three things use it).
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+      reinstalled.

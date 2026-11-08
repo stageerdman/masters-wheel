@@ -430,6 +430,42 @@ line expands it. Specific decisions:
   and final-report generation from the actual transcript is backend work
   for later, same as everything else flagged in the section above.
 
+## Chat Roleplay discipline — round 3 revisions (2026-11-08, same day)
+
+Two real problems surfaced from actually using round 2's build, plus a
+styling request:
+
+1. **The panel grew without bound.** Every "Next Session"/removed-round
+   change grew the Sessions list, and the Hero had no height limit — long
+   enough, it pushed the Next Session/Generate final report buttons (and
+   eventually the whole chat below) off-screen with no way to scroll back
+   to them. Fixed two ways at once: the buttons moved *out* of the
+   scrolling content entirely, into their own pinned column (see #2
+   below), and the remaining content (report/summary, assumptions,
+   sessions list) now sits in one `max-height: min(340px, 42vh)`,
+   `overflow-y: auto` scroll area — it scrolls internally instead of
+   growing the Hero itself without bound.
+2. **Next Session / Generate final report moved to a pinned right-hand
+   column**, sitting beside (not inside) the collapsible bar+panel. Next
+   Session is visible even while the Hero is collapsed; Generate final
+   report joins underneath it only once expanded. Because this column is
+   a sibling of the scrolling panel, not inside it, neither button can
+   ever scroll out of reach regardless of how long the sessions list
+   grows.
+3. **The final report is now real markdown**, not a flat sentence —
+   generated as literal markdown (`##` headings, `**bold**`,
+   `- ` bullet lists per session) and rendered through `react-markdown`,
+   the exact same library `MessageList`'s `Message.tsx` already renders
+   real AI replies with (no new dependency, no hand-rolled parser).
+   Every heading level (`h1`/`h2`/`h3`) is deliberately mapped to the
+   *same* `sectionHeading` style the static "Assumptions"/"Sessions"
+   titles above it already use — the report isn't allowed a second,
+   different title style, per the user's own instruction. That shared
+   style previously lived only on the "Sessions" label (`roundsHeading`);
+   renamed to `sectionHeading` and reused for a new "Assumptions" label
+   above the assumptions list too, once there were three consumers of the
+   same look instead of one.
+
 ## Element decisions
 - Fake session fixture lives in `TrainingRoom.data.ts`, same pattern as
   `PerformanceReview.data.ts`'s original fixture before real records

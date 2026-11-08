@@ -44,8 +44,9 @@
   color: var(--color-text-muted);
 }
 
-.finalReportText {
-  color: var(--color-text);
+.reportList {
+  font-size: var(--text-size-label);
+  color: var(--color-text-muted);
 }
 
 .lockText {
@@ -84,11 +85,12 @@
   color: var(--color-text);
 }
 
-.roundsHeading {
+.sectionHeading {
   font-size: var(--text-size-micro);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-muted);
+  font-weight: 650;
 }
 
 .roundRowActive .roundButton {

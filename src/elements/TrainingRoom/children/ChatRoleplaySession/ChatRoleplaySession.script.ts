@@ -290,6 +290,11 @@ export function useChatRoleplaySession() {
     setActiveRoundId(newRound.id);
   }
 
+  // Real markdown — bold, blank-line paragraphs, a heading or two —
+  // rendered by RoleplayHero via react-markdown, same library
+  // MessageList's Message.tsx already uses. Every heading here maps to
+  // the one shared "Assumptions"/"Sessions" title style; this is
+  // deliberately the only title format the report is allowed to use.
   function generateFinalReport() {
     const totalRounds = rounds.length;
     // Every round gets a real report at this point, including the still-
@@ -297,15 +302,25 @@ export function useChatRoleplaySession() {
     // means there's nothing left unreported when looking back.
     const withReports = rounds.map((round) => (round.report ? round : { ...round, report: reportFor(round) }));
     setRounds(withReports);
-    const improvementLines = withReports
+
+    const adjustmentLines = withReports
       .filter((round) => round.adjustmentPhrase)
-      .map((round) => `Session ${round.roundNumber}: ${round.adjustmentPhrase}`);
-    const lines = [
-      `Trained: cold-call opener against Marcus Webb (skeptical, impatient IT Director).`,
-      `${totalRounds} session${totalRounds === 1 ? "" : "s"} completed.`,
-      improvementLines.length > 0 ? improvementLines.join(" ") : "No adjustments were carried between sessions.",
+      .map((round) => `- **Session ${round.roundNumber}** — ${round.adjustmentPhrase}`);
+    const reportLines = withReports.map(
+      (round) => `- **Session ${round.roundNumber}${round.id === liveRound?.id ? " (current)" : ""}** — ${round.report}`,
+    );
+
+    const sections = [
+      "## Training Report",
+      `Trained a cold-call opener against **Marcus Webb**, a skeptical, impatient enterprise IT director.`,
+      `**${totalRounds} session${totalRounds === 1 ? "" : "s"} completed.**`,
     ];
-    setFinalReport(lines.join(" "));
+    if (adjustmentLines.length > 0) {
+      sections.push("## What Changed Each Session", adjustmentLines.join("\n"));
+    }
+    sections.push("## Session Reports", reportLines.join("\n"));
+
+    setFinalReport(sections.join("\n\n"));
   }
 
   return {
