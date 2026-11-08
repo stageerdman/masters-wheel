@@ -25,3 +25,15 @@ pub fn records_root() -> PathBuf {
 pub fn record_dir(record_id: &str) -> PathBuf {
     records_root().join(record_id)
 }
+
+// Only set for an AITrainerPane call — see assistant.rs's `ask_agent` and
+// mcp/config.rs::write_config_file. Unlike records_root() above, there's
+// no reasonable fallback default: a training-session-scoped tool call
+// with no session to scope to should fail cleanly, not silently read
+// some other session's data.
+pub fn training_session_path() -> Option<PathBuf> {
+    std::env::var(crate::mcp::config::TRAINING_SESSION_PATH_ENV)
+        .ok()
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+}

@@ -495,7 +495,14 @@ same `useNarrowContainer` + auto-close-on-select wiring `ChatPage` uses.
 
 Collected here (not scattered across the sections above) specifically so
 nothing dictated across this whole feature's design process gets lost.
-None of this is built — everything below is UI-only or scripted today.
+
+**Status (2026-11-08): all 7 resolved**, across Phases 15-21 in
+`update v1.md`. Left here as the historical record of what was dictated
+and why, not as an open list anymore — #6 was a confirmed assumption
+rather than a change (the AI Trainer's storage is scoped per training
+*session*, not per round, via `trainerChatsDir(sessionId)`, so its
+history — and Notes — already persist across "Next Session" resets
+without any extra work).
 
 1. **Scope the AI Trainer's chat history to the training session.**
    Right now `AITrainerPane` is a plain `useAIAssistant()` instance, so

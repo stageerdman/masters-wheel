@@ -28,6 +28,9 @@ const AGENT_ID_ENV: &str = "MASTERS_WHEEL_AGENT_ID";
 // file's doc comment) — this is the only channel it has to learn which
 // Space's records root the active chat is using.
 pub const RECORDS_ROOT_ENV: &str = "MASTERS_WHEEL_RECORDS_ROOT";
+// Only set for an AITrainerPane call (see assistant.rs's `ask_agent`) —
+// read back by mcp/paths.rs::training_session_path().
+pub const TRAINING_SESSION_PATH_ENV: &str = "MASTERS_WHEEL_TRAINING_SESSION_PATH";
 
 /// Every tool name this server currently exposes, in the
 /// `mcp__<server name>__<tool name>` shape `--allowedTools` expects —
@@ -39,26 +42,42 @@ pub const ALLOWED_TOOLS: &[&str] = &[
     "mcp__masters_wheel__get_performance_review",
 ];
 
+/// Only ever added on top of ALLOWED_TOOLS for an AITrainerPane call —
+/// every ordinary ask_agent call (the floating widget, /chat, a
+/// dedicated agent chat) never declares this tool's schema at all, since
+/// it's meaningless outside one specific training session.
+pub const TRAINING_ALLOWED_TOOLS: &[&str] = &["mcp__masters_wheel__get_roleplay_transcript"];
+
 // chat_session_id/agent_id/records_root flow into the mcp_server
 // subprocess's env so mcp/permission.rs knows which chat (for
 // tag/always-allow lookups) and which agent (shown on the permission
 // card) a tool call is answering for, and mcp/paths.rs knows which
 // Space's records to read — the subprocess has no other way to know any
-// of these.
-pub fn write_config_file(chat_session_id: &str, agent_id: &str, records_root: &str) -> io::Result<PathBuf> {
+// of these. `training_session_path` is only ever `Some` for an
+// AITrainerPane call (see assistant.rs's `ask_agent`).
+pub fn write_config_file(
+    chat_session_id: &str,
+    agent_id: &str,
+    records_root: &str,
+    training_session_path: Option<&str>,
+) -> io::Result<PathBuf> {
     let current_exe = std::env::current_exe()?;
+    let mut env = serde_json::json!({
+        MCP_SERVER_ENV: "1",
+        BRIDGE_PORT_ENV: bridge::PORT.to_string(),
+        CHAT_SESSION_ID_ENV: chat_session_id,
+        AGENT_ID_ENV: agent_id,
+        RECORDS_ROOT_ENV: records_root,
+    });
+    if let Some(path) = training_session_path {
+        env[TRAINING_SESSION_PATH_ENV] = serde_json::Value::String(path.to_string());
+    }
     let config = serde_json::json!({
         "mcpServers": {
             "masters_wheel": {
                 "command": current_exe.to_string_lossy(),
                 "args": [],
-                "env": {
-                    MCP_SERVER_ENV: "1",
-                    BRIDGE_PORT_ENV: bridge::PORT.to_string(),
-                    CHAT_SESSION_ID_ENV: chat_session_id,
-                    AGENT_ID_ENV: agent_id,
-                    RECORDS_ROOT_ENV: records_root,
-                }
+                "env": env
             }
         }
     });

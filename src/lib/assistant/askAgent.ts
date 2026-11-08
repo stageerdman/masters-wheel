@@ -27,6 +27,10 @@ export async function askAgent(
   chatSessionId: string,
   agentSpaceFolder: string,
   activeSpaceFolder: string,
+  // Only ever passed by AITrainerPane — grants get_roleplay_transcript
+  // for this one call (see roleplay.rs/mcp::config::TRAINING_ALLOWED_TOOLS).
+  // Every ordinary chat passes undefined.
+  trainingSessionId?: string,
 ): Promise<AgentReply> {
   return invoke<AgentReply>("ask_agent", {
     jobId,
@@ -37,6 +41,7 @@ export async function askAgent(
     chatSessionId,
     agentSpaceFolder,
     activeSpaceFolder,
+    trainingSessionId: trainingSessionId ?? null,
   });
 }
 

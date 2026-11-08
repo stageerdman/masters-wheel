@@ -122,8 +122,10 @@ export function orderAgentsByRecency(agents: Agent[], sessions: ChatSession[]): 
 // whole Space's chats/ dir — undefined everywhere except AITrainerPane
 // (see src/lib/training's trainerChatsDir), which passes its own training
 // session's folder so its history never mixes with the floating widget/
-// ChatPage's, or another training session's.
-export function useAIAssistant(storageRoot?: string) {
+// ChatPage's, or another training session's. `trainingSessionId` is the
+// same AITrainerPane-only case, threaded into every real model call so
+// it alone gets get_roleplay_transcript access (see askAgent.ts).
+export function useAIAssistant(storageRoot?: string, trainingSessionId?: string) {
   const [phase, setPhase] = useState<AssistantPhase>("closed");
   const [agents, setAgents] = useState<Agent[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([makeNewSession()]);
@@ -467,6 +469,7 @@ export function useAIAssistant(storageRoot?: string) {
         sessionId,
         agent.homeSpaceFolder,
         activeSpace?.folderName ?? agent.homeSpaceFolder,
+        trainingSessionId,
       );
       // The streamed-in text above is provisional (deltas could in theory
       // drop or reorder); the CLI's final `result` text is authoritative,

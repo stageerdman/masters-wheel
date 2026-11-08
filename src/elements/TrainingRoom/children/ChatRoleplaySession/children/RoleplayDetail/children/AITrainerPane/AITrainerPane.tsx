@@ -55,7 +55,7 @@ export function AITrainerPane({ sessionId }: AITrainerPaneProps) {
     selectAgent,
     startChatWithAgent,
     respondToPermission,
-  } = useAIAssistant(trainerChatsDir(sessionId));
+  } = useAIAssistant(trainerChatsDir(sessionId), sessionId);
 
   useEffect(() => {
     if (phase !== "open") open();

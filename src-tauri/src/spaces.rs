@@ -45,6 +45,10 @@ pub fn records_dir(app: &AppHandle, space_folder: &str) -> Result<PathBuf, Strin
     Ok(space_dir(app, space_folder)?.join("records"))
 }
 
+pub fn training_dir(app: &AppHandle, space_folder: &str) -> Result<PathBuf, String> {
+    Ok(space_dir(app, space_folder)?.join("training"))
+}
+
 // Renames when possible (an O(1) metadata operation on the same volume,
 // not a byte-copy — safe even for large video files); falls back to a
 // recursive copy + delete-source only on a genuine cross-device move

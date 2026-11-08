@@ -167,6 +167,12 @@ pub async fn ask_agent(
     // records a chat's tools can reach are always the Space the user is
     // actually sitting in, regardless of which Space the agent lives in.
     active_space_folder: String,
+    // Only ever passed by AITrainerPane's call site — the training
+    // session (folder name == session id, see src/lib/training) this
+    // chat is embedded in. When present, grants get_roleplay_transcript
+    // for this call only (see mcp/config.rs::TRAINING_ALLOWED_TOOLS);
+    // every ordinary chat passes None and never declares that tool at all.
+    training_session_id: Option<String>,
 ) -> Result<AgentReply, String> {
     // Cloned out of the State wrapper (cheap — Bridge is just an Arc)
     // before moving into spawn_blocking: tauri::State's own lifetime
@@ -233,12 +239,25 @@ pub async fn ask_agent(
         // needing a separate discovery round-trip first. See this
         // update's wiki.md for the full repro.
         let records_root = crate::spaces::records_dir(&app, &active_space_folder)?;
+        let training_session_path = match &training_session_id {
+            Some(id) => Some(crate::spaces::training_dir(&app, &active_space_folder)?.join(id).to_string_lossy().into_owned()),
+            None => None,
+        };
         let mcp_config_path = crate::mcp::config::write_config_file(
             &chat_session_id,
             agent_id.as_deref().unwrap_or(""),
             &records_root.to_string_lossy(),
+            training_session_path.as_deref(),
         )
         .map_err(|e| format!("Couldn't prepare MCP tools: {e}"))?;
+
+        // get_roleplay_transcript is only ever declared for this one
+        // call when it's actually scoped to a training session — every
+        // ordinary chat's --allowedTools stays exactly ALLOWED_TOOLS.
+        let mut allowed_tools: Vec<&str> = crate::mcp::config::ALLOWED_TOOLS.to_vec();
+        if training_session_path.is_some() {
+            allowed_tools.extend_from_slice(crate::mcp::config::TRAINING_ALLOWED_TOOLS);
+        }
 
         let binary = resolve_binary("claude");
         let mut command = Command::new(&binary);
@@ -258,7 +277,7 @@ pub async fn ask_agent(
             .arg(&mcp_config_path)
             .arg("--strict-mcp-config")
             .arg("--allowedTools")
-            .arg(crate::mcp::config::ALLOWED_TOOLS.join(","))
+            .arg(allowed_tools.join(","))
             .arg("--tools")
             .arg("")
             .stdout(Stdio::piped())

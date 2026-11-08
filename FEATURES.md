@@ -676,6 +676,15 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       Trainer pane right above it. Both panes go through the same real
       `SplitRail`/`useSplitRail` every other Detail column in the app
       uses (`DetailContentKind` extended to `"notes" | "trainer"`).
+- [x] The Trainer can actually read the roleplay transcript it's coaching
+      on: a new, deliberately **ungated** MCP tool
+      `get_roleplay_transcript` (Phase 21, 2026-11-08) — no Decline/Allow
+      card, since this pane is already scoped to exactly one training
+      session, unlike the general AI Assistant's tag-gated
+      `get_performance_review`. Supports reading any past round or the
+      live one, optionally including each turn's private "thought" (the
+      Trainer's own access — unrelated to the separate guarantee that a
+      trainee's thought never reaches the *roleplay* AI).
 
 ### To build (real functionality — not started)
 - [ ] Real transcript generation (ElevenLabs), and persisting real

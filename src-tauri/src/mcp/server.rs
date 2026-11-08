@@ -21,7 +21,7 @@ use rmcp::{
 };
 
 use crate::mcp::permission::{self, Access};
-use crate::mcp::tools::{get_performance_review, list_performance_reviews};
+use crate::mcp::tools::{get_performance_review, get_roleplay_transcript, list_performance_reviews};
 
 #[derive(Clone)]
 pub struct MastersWheelServer {
@@ -76,6 +76,22 @@ impl MastersWheelServer {
             )])),
         }
     }
+
+    #[tool(
+        description = "Read the roleplay transcript of the training session you're embedded in as the AI Trainer coach. Always safe to call, no permission needed — you're already scoped to exactly one training session. Omit round_number for the latest (current) round. Long transcripts come back in chunks: if has_more is true, call again with the same round_number/with_thoughts and offset = this response's offset + content.length to keep reading."
+    )]
+    async fn get_roleplay_transcript(
+        &self,
+        Parameters(input): Parameters<get_roleplay_transcript::GetRoleplayTranscriptInput>,
+    ) -> Result<CallToolResult, McpError> {
+        match get_roleplay_transcript::read(&input) {
+            Ok(content) => {
+                let json = serde_json::to_string_pretty(&content).map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
+            }
+            Err(message) => Ok(CallToolResult::success(vec![ContentBlock::text(message)])),
+        }
+    }
 }
 
 #[tool_handler]
@@ -83,7 +99,7 @@ impl ServerHandler for MastersWheelServer {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build()).with_instructions(
             "Tools for seeing the user's Performance Review records (saved sales-call review \
-             sessions) inside Master's Wheel."
+             sessions) and Training Room roleplay transcripts inside Master's Wheel."
                 .to_string(),
         )
     }

@@ -4,4 +4,5 @@
 // nothing else.
 
 pub mod get_performance_review;
+pub mod get_roleplay_transcript;
 pub mod list_performance_reviews;

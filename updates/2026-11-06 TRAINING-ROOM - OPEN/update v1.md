@@ -498,28 +498,49 @@ every other chat uses).
       `.app` rebuilt and
       reinstalled.
 
-### Phase 21 — Give the AI Trainer real access to the roleplay transcript (not started)
+### Phase 21 — Give the AI Trainer real access to the roleplay transcript (2026-11-08)
 Resolves backend TODO #2, decided (not left open) per `wiki.md`'s
 reasoning: **ungated**, unlike `get_performance_review` — a Trainer pane
 is already scoped to exactly one training session (unlike the general AI
 Assistant, which roams across many records in a Space), so there is no
 "which record" ambiguity for a tag/permission UI to resolve. No new
 Decline/Allow card.
-- [ ] New MCP tool `get_roleplay_transcript` (own file under
+- [x] New MCP tool `get_roleplay_transcript` (own file under
       `mcp/tools/`, same shape as `get_performance_review.rs`): params
       `round_number` (omit = latest/live round), `with_thoughts: bool`,
-      `offset`/`limit` (same char-indexed pagination). Reads from a
-      training-session path the subprocess learns via a new env var
-      (`MASTERS_WHEEL_TRAINING_SESSION_PATH_ENV`), same channel
-      `RECORDS_ROOT_ENV` already uses — not a tag lookup.
-- [ ] `mcp/config.rs`'s `write_config_file` gains an optional training-
-      session-path argument; when present, adds this one tool to that
-      call's `--allowedTools` and writes the env var. Absent for every
+      `offset`/`limit` (same char-indexed pagination). Reads
+      `session.json` directly from a training-session path the
+      subprocess learns via a new env var
+      (`MASTERS_WHEEL_TRAINING_SESSION_PATH`), same channel
+      `RECORDS_ROOT_ENV` already uses — not a tag lookup. Walks the raw
+      JSON by the same camelCase field names
+      `ChatRoleplaySession.data.ts`'s `RoleplayState` uses, since neither
+      side of the Rust/TS boundary has a typed model of that shape (same
+      "opaque to this module" stance as `src/lib/training`'s own
+      `roleplay: unknown` field).
+- [x] `mcp/config.rs`'s `write_config_file` gains an optional
+      `training_session_path` argument; when present, writes the env var
+      into that one call's generated MCP config. New
+      `TRAINING_ALLOWED_TOOLS` constant (just this one tool) is only
+      appended to `ALLOWED_TOOLS` by `assistant.rs`'s `ask_agent` when a
+      training session was actually passed in — absent for every
       ordinary `ask_agent` call (floating widget, `/chat`, a dedicated
-      agent chat) — this tool only ever exists for a Trainer-pane call.
-- [ ] `assistant.rs`'s `ask_agent` gains an optional
-      `training_session_path: Option<String>` param, passed through only
-      by `AITrainerPane`'s call site.
-- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
-      `.app` rebuilt and reinstalled.
+      agent chat), so that tool's schema is never even declared outside
+      a Trainer-pane call.
+- [x] New `spaces::training_dir()` (mirrors the existing
+      `records_dir()`/`agents_dir()` helpers). `assistant.rs`'s
+      `ask_agent` gains an optional `training_session_id: Option<String>`
+      param (just the session id — the folder name, per
+      `src/lib/training`'s own convention — not a full path) and resolves
+      it to an absolute path itself via `training_dir`, the same place
+      `records_root` is already resolved for every other call.
+- [x] Threaded end-to-end: `askAgent.ts` gains `trainingSessionId?`;
+      `useAIAssistant()` gains a second optional param carrying it into
+      every `dispatchAgentReply` call; `AITrainerPane` passes its own
+      `sessionId` (the same one `trainerChatsDir` already uses for
+      storage scoping).
+- [x] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean —
+      `cargo test` also run (27 tests, all passing, including every
+      existing suite — nothing else regressed); `.app` rebuilt and
+      reinstalled.
 
