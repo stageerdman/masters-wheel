@@ -195,3 +195,17 @@ Two decisions made with the user before starting (2026-11-06):
       instead of a naive `.grid:hover` rule.
 - [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
       reinstalled.
+
+### Phase 10 — Fix WebM clips not playing (2026-11-08)
+- [x] Root cause confirmed empirically (not assumed): WKWebView/Safari on
+      macOS has never supported WebM's codecs (VP8/VP9 video, Opus/Vorbis
+      audio) — the file stored and resolved to a playable URL correctly,
+      the `<video>` element just couldn't decode it, showing its native
+      broken-media icon. See `wiki.md` for how this was verified.
+- [x] New `src-tauri/src/transcode.rs` (`transcode_to_mp4`, shelled out to
+      ffmpeg, same pattern as `transcribe.rs`) re-encodes to H.264/AAC MP4.
+      `storeClipFile` (`src/lib/training`) now transcodes instead of
+      copying when the source extension is webm/mkv/avi/flv/wmv; mp4/mov/
+      m4v are untouched.
+- [x] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
+      `.app` rebuilt and reinstalled.

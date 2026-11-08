@@ -4,6 +4,7 @@ mod knowledge;
 mod media_server;
 pub mod mcp;
 mod spaces;
+mod transcode;
 mod transcribe;
 mod util;
 
@@ -55,7 +56,8 @@ pub fn run() {
       mcp::bridge::sync_mcp_tags,
       mcp::bridge::respond_to_mcp_permission,
       spaces::migrate_legacy_data_to_default_space,
-      spaces::switch_space_media_root
+      spaces::switch_space_media_root,
+      transcode::transcode_to_mp4
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {

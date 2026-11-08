@@ -523,7 +523,12 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       (`src/lib/training`, a `training/<sessionId>/` folder) before
       playback — a picked path is almost never inside Tauri's asset
       protocol scope on its own, so playing it directly silently failed
-      until this fix (see wiki).
+      until this fix (see wiki). WebM clips (and other WKWebView-hostile
+      containers — mkv/avi/flv/wmv) are transcoded to H.264/AAC MP4 at
+      import time (`src-tauri/src/transcode.rs`, shelled out to ffmpeg)
+      instead of being copied as-is, since Safari/WebKit's `<video>`
+      can't decode WebM's VP8/VP9/Opus at all — it loaded as a real file
+      but showed the native "can't play this" icon until this fix.
 - [x] Lyrics-style synced transcript (new `LyricsTranscript` element):
       word-by-word highlight driven by the clip's real `timeupdate`,
       click any word to seek — built on real per-line timestamps but

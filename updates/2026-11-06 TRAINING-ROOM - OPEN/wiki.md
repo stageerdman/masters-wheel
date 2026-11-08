@@ -207,6 +207,31 @@ Worth defaulting to the `:has()` form for this pattern from now on, not
 the simpler one that happens to look right until you move the mouse into
 a gap.
 
+## WebM clips showed the native "can't play this" icon (2026-11-08)
+Reported as "I uploaded webm and it doesn't play, shows a crossed play
+button" — that crossed-out icon is WKWebView's own broken-media glyph, not
+anything this app renders. Root cause confirmed empirically (synthesized a
+real VP9/Opus `.webm` with `ffmpeg -f lavfi` and `ffprobe`'d it): Safari/
+WebKit on macOS plays `<video>` entirely through AVFoundation's OS-level
+codec support, which has never included WebM's codecs (VP8/VP9 video,
+Opus/Vorbis audio) — unlike Chrome/Firefox, which bundle their own
+decoders. The file storage/playback-URL path (`storeClipFile`,
+`convertFileSrc`) was working correctly the whole time; this was never a
+bug in that pipeline, it's a platform codec gap.
+
+Fixed by re-encoding at import time instead of trying to make WebM play:
+`storeClipFile` (`src/lib/training/index.ts`) checks the source
+extension against `TRANSCODE_EXTENSIONS` (webm/mkv/avi/flv/wmv — the
+other classic non-web-friendly containers, not just webm) and, if it
+matches, calls the new `transcode_to_mp4` Tauri command
+(`src-tauri/src/transcode.rs`, same shelled-out-ffmpeg shape as
+`transcribe.rs`) instead of `copyFile`, producing an H.264/AAC `.mp4`
+that WKWebView can always play. Verified the actual ffmpeg invocation
+against a real VP9/Opus test file before wiring it in — in → out codecs
+confirmed via `ffprobe`, not assumed from the command string. Everyday
+formats (mp4/mov/m4v) are untouched, so the common case isn't paying a
+transcode cost it doesn't need.
+
 ## Element decisions
 - Fake session fixture lives in `TrainingRoom.data.ts`, same pattern as
   `PerformanceReview.data.ts`'s original fixture before real records

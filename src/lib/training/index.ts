@@ -21,6 +21,7 @@
 
 import { copyFile, mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
 import { documentDir, join } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
 import { BASE_DIR, spaceTrainingDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
 import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 
@@ -176,17 +177,41 @@ export async function deleteSession(id: string): Promise<void> {
 
 export type StoredClip = { absolutePath: string; fileName: string; displayName: string };
 
-// Copies `sourcePath` into this session's real storage folder and returns
+// Containers WKWebView's <video> element can't actually decode — chiefly
+// WebM (VP8/VP9 + Opus), which loads fine as a file but renders as the
+// native "can't play this" icon, since Safari/WebKit on macOS has never
+// shipped those codecs the way Chrome/Firefox do. Re-encoded to H.264/AAC
+// MP4 at import time instead (see src-tauri/src/transcode.rs) rather than
+// trying to make the original format play.
+const TRANSCODE_EXTENSIONS = new Set(["webm", "mkv", "avi", "flv", "wmv"]);
+
+function extensionOf(fileName: string): string {
+  return fileName.split(".").pop()?.toLowerCase() ?? "";
+}
+
+// Copies `sourcePath` into this session's real storage folder — or, for a
+// format WKWebView can't play, transcodes it there instead — and returns
 // its new absolute path (for convertFileSrc), the stored file's on-disk
 // name (for persisting in StoredClipMeta.fileName, to rebuild the absolute
-// path on a later load), and the original file's display name (kept
-// separate since the on-disk copy is timestamp-prefixed to avoid
-// collisions).
+// path on a later load), and a display name (kept separate from the
+// on-disk name since that's timestamp-prefixed to avoid collisions, and
+// may have had its extension changed by a transcode).
 export async function storeClipFile(sessionId: string, sourcePath: string): Promise<StoredClip> {
   const dir = sessionDir(sessionId);
   await mkdir(dir, { baseDir: BASE_DIR, recursive: true });
 
-  const displayName = sourcePath.split(/[/\\]/).pop() ?? "clip";
+  const originalName = sourcePath.split(/[/\\]/).pop() ?? "clip";
+
+  if (TRANSCODE_EXTENSIONS.has(extensionOf(originalName))) {
+    const baseName = originalName.replace(/\.[^.]+$/, "");
+    const displayName = `${baseName}.mp4`;
+    const fileName = `${Date.now()}-${displayName}`;
+    const absolutePath = await clipAbsolutePath(sessionId, fileName);
+    await invoke("transcode_to_mp4", { sourcePath, destPath: absolutePath });
+    return { absolutePath, fileName, displayName };
+  }
+
+  const displayName = originalName;
   const fileName = `${Date.now()}-${displayName}`;
   await copyFile(sourcePath, `${dir}/${fileName}`, { toPathBaseDir: BASE_DIR });
 
