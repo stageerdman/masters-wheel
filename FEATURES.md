@@ -545,16 +545,19 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       session folder, same meta.json-per-folder shape as Performance
       Review's `src/lib/records`) — reload/restart no longer wipes the
       session list.
-- [x] `DisciplinePicker`: a full-bleed "Ironwork Portraits" cabinet-select
+- [x] `DisciplinePicker`: a full-bleed gilded-trading-card cabinet-select
       takeover (Navigation's "Add a discipline" row opens it instead of
-      creating a session directly). Riveted metal frames, a torch per
-      discipline — lit-and-flickering for Voice Training (the only real
-      one), dead wick for the three locked disciplines (Chat Roleplay,
-      Voice Roleplay, Mindset Shifting). Locked/available/hovered/
-      confirming are all real CSS states; Esc or a click on blank space
-      closes it, selecting Voice Training plays a brief "ignite"
-      confirmation before creating the session and returning to Training
-      Room.
+      creating a session directly). Each `DisciplineFrame` is a real 3D
+      object — hovering flips the whole card to its back face to show the
+      discipline's description, not just an inner pane inside a static
+      frame. Antique bronze/pewter metal with a cream accent, an icon
+      medallion + gold-text name pill on the front. Locked/available/
+      hovered/confirming are all real CSS states (locked cards still flip,
+      just can't be selected); hovering the grid dims every other card as
+      a group, correctly scoped to only fire when a real card — not the
+      gaps between them — is hovered. Esc or a click on blank space closes
+      it; selecting Voice Training plays a brief gold confirm flash before
+      creating the session and returning to Training Room.
 
 ### To build (real functionality — not started)
 - [ ] Real transcript generation (ElevenLabs), and persisting real

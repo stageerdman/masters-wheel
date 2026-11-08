@@ -1,10 +1,6 @@
 .root {
-  background: radial-gradient(
-      ellipse 60% 40% at 50% 15%,
-      color-mix(in srgb, var(--color-action-training-ground) 12%, transparent),
-      transparent 60%
-    ),
-    linear-gradient(180deg, var(--discipline-bg-top) 0%, var(--discipline-bg-mid) 60%, var(--discipline-bg-bottom) 100%);
+  background: radial-gradient(ellipse 60% 40% at 50% 10%, color-mix(in srgb, var(--discipline-gold-2) 10%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--discipline-bg-top) 0%, var(--discipline-bg-bottom) 100%);
 }
 
 .root:focus-visible {
@@ -16,7 +12,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   text-align: center;
-  color: color-mix(in srgb, var(--discipline-text) 55%, transparent);
+  color: color-mix(in srgb, var(--discipline-cream) 55%, transparent);
 }
 
 .title {
@@ -24,13 +20,13 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--discipline-text-dim);
+  color: var(--discipline-cream);
   text-shadow: 0 1px 0 color-mix(in srgb, var(--discipline-bg-bottom) 80%, transparent),
-    0 0 18px color-mix(in srgb, var(--color-action-training-ground) 30%, transparent);
+    0 0 16px color-mix(in srgb, var(--discipline-gold-1) 30%, transparent);
 }
 
 .rule {
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--discipline-text) 50%, transparent), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--discipline-cream) 50%, transparent), transparent);
 }
 
 .rule::after {
@@ -40,7 +36,17 @@
   top: 50%;
   transform: translate(-50%, -50%);
   font-size: var(--text-size-micro);
-  color: var(--color-action-training-ground);
+  color: var(--discipline-gold-1);
   background: var(--discipline-bg-top);
   padding: 0 0.4rem;
+}
+
+/* The "other cards recede" moment — must only fire when the pointer is
+   actually over a card, not just somewhere in the grid's own box (the
+   gaps between cards are part of .grid's box too, so a naive .grid:hover
+   rule fired on empty space as well). :has(> button:hover) only matches
+   once a real card button is hovered. */
+.grid:has(> button:hover) > button:not(:hover) {
+  filter: brightness(0.6) saturate(0.6);
+  transform: scale(0.95);
 }

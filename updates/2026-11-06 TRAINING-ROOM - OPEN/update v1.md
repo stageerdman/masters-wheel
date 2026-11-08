@@ -166,3 +166,32 @@ Two decisions made with the user before starting (2026-11-06):
       with a subtle per-discipline tint, not a tile per color.
 - [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
       reinstalled.
+
+### Phase 9 — DisciplinePicker redesign: gilded 3D flip cards (2026-11-08)
+- [x] Replaced Ironwork Portraits' torch/bezel/plaque frames with gilded
+      trading cards (dictated design pass, see `wiki.md`): each
+      `DisciplineFrame` is now a full 3D object — `.flipInner` holds two
+      complete card faces (front: icon medallion + name pill; back:
+      description plaque) rotated 180° apart, so hovering spins the whole
+      card, not just an inner window inside a frame that stayed put.
+- [x] New card material: antique bronze/pewter metal with a cream
+      secondary accent (dictated from a reference medallion image),
+      replacing the old amber ironwork palette — new
+      `--discipline-gold-1/2/3`, `--discipline-cream`, `--discipline-ink`,
+      `--discipline-parchment-1/2` tokens in `globals.css`, same
+      documented-exemption pattern as `--glass-*`. The picker's backdrop
+      is now a neutral warm-black matching the app's real dark-mode
+      surface family, not the previous blue-tinted navy.
+- [x] Crests swapped to flat pictograms matching the new material
+      (speaker for Voice Training, speech bubble for Chat Roleplay; mask
+      and eye unchanged) plus new decorative symbols (corner scrollwork,
+      4-point sparkles, a lock badge, a checkmark "confirming" badge) and
+      a gold-foil `linearGradient` the icons/strokes paint with instead of
+      a flat fill.
+- [x] Fixed a real cross-card hover bug: the "other cards recede" effect
+      must only fire when the pointer is over an actual card, not
+      anywhere in the grid's own box (the gaps between cards count as
+      "inside the grid" too) — `.grid:has(> button:hover) > button:not(:hover)`
+      instead of a naive `.grid:hover` rule.
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+      reinstalled.

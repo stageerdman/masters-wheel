@@ -2,61 +2,207 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 150px;
-}
-
-.torch {
-  width: 8px;
-  height: 16px;
-  margin-bottom: 0.3rem;
-}
-
-.bezel {
+  width: 190px;
+  height: 252px;
   position: relative;
-  width: 132px;
-  height: 150px;
-  border-radius: 6px;
-  padding: 6px;
+  perspective: 1200px;
 }
 
-.cornerNw,
-.cornerSe {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-}
+/* Every element below that needs its own box (anything with width/height
+   percentages, or that absolutely-positioned children resolve `inset`
+   against) gets an explicit `display` here. A <span> left at its default
+   `display: inline` silently ignores width/height — that exact mistake
+   once collapsed every card in this flow to nothing. */
 
-.cornerNw {
-  top: 2px;
-  left: 2px;
-}
-
-.cornerSe {
-  bottom: 2px;
-  right: 2px;
-}
-
-.portrait {
+.flipInner {
+  display: block;
+  position: relative;
   width: 100%;
   height: 100%;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transform-style: preserve-3d;
 }
 
-.crest {
-  width: 52px;
-  height: 52px;
+.face {
+  display: block;
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 16px;
 }
 
-.plaque {
-  margin-top: 0.6rem;
+.faceBack {
+  transform: rotateY(180deg);
+}
+
+.goldFrame {
+  display: block;
+  position: relative;
   width: 100%;
-  padding: 0.35rem 0.6rem;
-  border-radius: 3px;
+  height: 100%;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.panel {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 11px;
+  overflow: hidden;
+}
+
+.frameLineOuter {
+  display: block;
+  position: absolute;
+  inset: 8px;
+  border-radius: 9px;
+}
+
+.frameLineInner {
+  display: block;
+  position: absolute;
+  inset: 13px;
+  border-radius: 7px;
+}
+
+.cornerTl,
+.cornerTr,
+.cornerBl,
+.cornerBr {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+}
+.cornerTl {
+  top: 9px;
+  left: 9px;
+}
+.cornerTr {
+  top: 9px;
+  right: 9px;
+  transform: scaleX(-1);
+}
+.cornerBl {
+  bottom: 9px;
+  left: 9px;
+  transform: scaleY(-1);
+}
+.cornerBr {
+  bottom: 9px;
+  right: 9px;
+  transform: scale(-1, -1);
+}
+
+.sparkle1,
+.sparkle2,
+.sparkle3 {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+}
+.sparkle1 {
+  top: 30px;
+  left: 34px;
+}
+.sparkle2 {
+  top: 42px;
+  right: 26px;
+}
+.sparkle3 {
+  bottom: 36px;
+  left: 24px;
+}
+
+.contentFront {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.1rem;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  height: 100%;
+  padding: 20px 14px 14px;
+}
+
+.contentBack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 20px 14px 14px;
+}
+
+.iconRing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.icon {
+  width: 40px;
+  height: 40px;
+}
+
+.namePill {
+  display: block;
+  margin-top: auto;
+  max-width: 92%;
+  padding: 0.38rem 0.75rem;
+  border-radius: 18px;
+}
+
+.titleText {
+  display: block;
+  max-width: 132px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.backPlaque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  border-radius: 7px;
+  padding: 0 0.4rem;
+}
+
+.backRule {
+  display: block;
+  width: 44%;
+  height: 1px;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.backStatus {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.lockBadge {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 20px;
+  height: 20px;
+  z-index: 4;
+}
+
+.confirmBadge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 27px;
+  height: 27px;
+  z-index: 4;
 }

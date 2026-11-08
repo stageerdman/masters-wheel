@@ -163,6 +163,50 @@ clears that timer if the component unmounts first (Esc / blank-space click
 mid-flash) — without that, a cancelled selection could still silently
 create a session a moment after the screen was already gone.
 
+## Ironwork Portraits replaced by gilded flip cards (2026-11-08, same day)
+Ironwork Portraits (the torch/bezel/plaque design above) shipped, then got
+replaced within the same day after seeing it live — "too digital and
+modern," wanting something closer to Hogwarts Legacy's spell-select or
+Warcraft III's race-select screens. Three more HTML mockup rounds followed
+*outside* the real app (same `updates/` "research spike" pattern as any
+new design direction) before anything got rebuilt for real:
+
+1. **Arcade Marquee / Illuminated Pillars / Coach's Playbook** — three full
+   dark takeovers. "Ironwork Portraits" (riveted metal frames, a torch per
+   discipline) won on "reads as a world, not a UI skin."
+2. **Trading cards** (a Hogwarts Legacy mod-select screenshot as the
+   reference) — square tiles with a circular icon badge and a name,
+   flipping on hover to reveal a description. First pass shipped with an
+   empty grid: the flip wrapper was a `<span>` with `width/height: 100%`,
+   which CSS ignores on non-replaced inline elements, so every card
+   collapsed to a 0×0 box. Fixed by giving every structural wrapper an
+   explicit `display` — carried forward into the real build as a hard
+   rule (see `DisciplineFrame.position.module.css`'s own comment).
+3. **Whole-card flip** — the first card build only flipped an inner
+   "window" while a static gold frame sat around it; asked to make the
+   *entire* card turn instead. Fixed by giving the front and back each
+   their own complete frame (gold border + parchment panel + corner
+   scrollwork + sparkles) and rotating both together inside one
+   `transform-style: preserve-3d` wrapper, rather than one frame with a
+   swappable content pane.
+4. **Bronze over gold** — a reference medallion image (bronze/pewter metal,
+   not bright yellow) drove a straight hex-value swap of the gold tokens;
+   no structural change.
+
+That fourth-round card design is what's real now (Phase 9) — Ironwork
+Portraits' tokens were removed from `globals.css` outright rather than
+left dangling, since nothing else in the app referenced them.
+
+**Lesson: a naive `.container:hover .child:not(:hover)` sibling-dim rule
+fires on empty space too.** `:hover` applies to an element whenever the
+pointer is anywhere inside its own painted box — including gaps between
+flex children, which belong to the container, not any child. The fix is
+`:has()`: `.grid:has(> button:hover) > button:not(:hover)` only matches
+once a `button` *descendant* is actually hovered, which gaps never are.
+Worth defaulting to the `:has()` form for this pattern from now on, not
+the simpler one that happens to look right until you move the mouse into
+a gap.
+
 ## Element decisions
 - Fake session fixture lives in `TrainingRoom.data.ts`, same pattern as
   `PerformanceReview.data.ts`'s original fixture before real records

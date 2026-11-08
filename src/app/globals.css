@@ -33,10 +33,10 @@
      reuses --color-action-training-ground above (already the accent set
      aside for this feature); these three are genuinely new categories
      dictated for Chat Roleplay / Voice Roleplay / Mindset Shifting. Kept
-     subtle and warm on purpose — each discipline's frame blends its own
-     accent into the shared --discipline-* ironwork chrome below at a low
-     mix ratio, so the picker still reads as one orange-lit world, not a
-     tile per color. */
+     subtle and warm on purpose — each card's panel/ring blends its own
+     accent into the shared --discipline-* bronze chrome below at a low
+     mix ratio, so the picker still reads as one material, not a tile per
+     color. */
   --color-discipline-chat-roleplay: #c2703f;
   --color-discipline-voice-roleplay: #b8862f;
   --color-discipline-mindset-shifting: #7a8c6b;
@@ -93,26 +93,24 @@
   /* Discipline Picker — Training Room's full-bleed "choose your
      discipline" cabinet-select takeover (see
      src/elements/TrainingRoom/children/DisciplinePicker). A deliberately
-     committed dark world — riveted metal frames, torchlight, carved
-     plaques — not meant to track the app's own light/dark theme, same
-     reasoning --glass-* above is exempt from the core-5 budget: this is
-     one specific surface's material, not chrome reused elsewhere. */
-  --discipline-bg-top: #1c150f;
-  --discipline-bg-mid: #110c08;
-  --discipline-bg-bottom: #0a0705;
-  --discipline-bezel-start: #5c4a33;
-  --discipline-bezel-end: #2a2016;
-  --discipline-bezel-available-start: #a9793a;
-  --discipline-bezel-available-end: #5c3d1b;
-  --discipline-ember-core: #ffe3a3;
-  --discipline-ember-mid: #ff9a3c;
-  --discipline-ember-edge: #c4501a;
-  --discipline-ember-unlit: #5a5048;
-  --discipline-text: #e9ddc8;
-  --discipline-text-dim: #d8c6a0;
-  --discipline-text-muted: #766c5f;
-  --discipline-plaque-bg-top: #221a12;
-  --discipline-plaque-bg-bottom: #140f0a;
+     committed dark world — gilded trading cards that flip in 3D — not
+     meant to track the app's own light/dark theme, same reasoning
+     --glass-* above is exempt from the core-5 budget: this is one
+     specific surface's material, not chrome reused elsewhere. The
+     backdrop is a neutral warm-black (not blue-tinted) to sit in the same
+     family as the app's own real dark surface (--color-surface's dark
+     value, #0a0a0a) rather than reading as an unrelated color world; the
+     metal tones are an antique bronze/pewter (dictated from a reference
+     medallion image), not bright yellow gold.*/
+  --discipline-bg-top: #171310;
+  --discipline-bg-bottom: #0a0908;
+  --discipline-gold-1: #e0c17e;
+  --discipline-gold-2: #8c7c5e;
+  --discipline-gold-3: #3a3326;
+  --discipline-cream: #cdbf9e;
+  --discipline-ink: #19140f;
+  --discipline-parchment-1: #9a9488;
+  --discipline-parchment-2: #716b60;
 
   /* Construction mode — dev-only wireframe overlay, never shipped, exempt
      from every budget above. Flip --construction-outlines to 0 to turn
