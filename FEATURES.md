@@ -496,25 +496,25 @@ between the two lists. Each page gets its own section as pages get added.
 ## Training Room page
 
 A practice space, deliberately **not tracked in performance** (unlike
-Performance Review) — scalable by "training tool"; the first tool is
-**Voice Practicing**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
+Performance Review) — scalable by "discipline"; the first is **Voice
+Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
 
 ### Built — real backend (session metadata + clip files both real storage)
 - [x] Same 3-column layout as Performance Review (Navigation / Hero /
       Detail), reusing (and generalizing) its shared primitives —
       `BookmarkBadge`/`BookmarkRail`/`SplitRail`/`useSplitRail` are no
       longer hardcoded to Performance Review's 5 content kinds.
-- [x] Navigation: pinned "Add training practice" (+) above the list, Open
+- [x] Navigation: pinned "Add a discipline" (+) above the list, Open
       Sessions (sorted by recency of last **update**, not last opened —
       selecting a session is navigation, not an edit, see wiki) and
       Closed Sessions groups below it. Each row: fixed type glyph (per
-      tool type, never user-adjustable), click-to-rename name, relative
+      discipline, never user-adjustable), click-to-rename name, relative
       "last updated" label (`1d`/`30d`/`2mo`/`1y`,
       `src/lib/formatShortRelativeTime.ts`). Right-click: "Close session"
       (green ✓) / "Reopen session", and "Remove session" (destructive,
       native confirmation first, also deletes its real clip-storage
       folder).
-- [x] Hero (Voice Practicing): empty "Upload a clip" placeholder; once
+- [x] Hero (Voice Training): empty "Upload a clip" placeholder; once
       clips exist, a scrollable Facebook-feed-style list (newest on top,
       "+ Add another clip" pinned above it) — each clip is a real
       video-or-audio element (reuses `VideoUploadModal`, no extension
@@ -545,12 +545,24 @@ Performance Review) — scalable by "training tool"; the first tool is
       session folder, same meta.json-per-folder shape as Performance
       Review's `src/lib/records`) — reload/restart no longer wipes the
       session list.
+- [x] `DisciplinePicker`: a full-bleed "Ironwork Portraits" cabinet-select
+      takeover (Navigation's "Add a discipline" row opens it instead of
+      creating a session directly). Riveted metal frames, a torch per
+      discipline — lit-and-flickering for Voice Training (the only real
+      one), dead wick for the three locked disciplines (Chat Roleplay,
+      Voice Roleplay, Mindset Shifting). Locked/available/hovered/
+      confirming are all real CSS states; Esc or a click on blank space
+      closes it, selecting Voice Training plays a brief "ignite"
+      confirmation before creating the session and returning to Training
+      Room.
 
 ### To build (real functionality — not started)
 - [ ] Real transcript generation (ElevenLabs), and persisting real
       per-word timestamps so the lyrics highlight is exact instead of
       interpolated.
-- [ ] More training tools beyond Voice Practicing.
+- [ ] The three locked disciplines (Chat Roleplay, Voice Roleplay, Mindset
+      Shifting) — DisciplinePicker already lists them, nothing behind them
+      yet.
 - [ ] Wiring Performance Review's "Take it to the training ground" button
       (still a no-op) to actually open/seed a Training Room session.
 

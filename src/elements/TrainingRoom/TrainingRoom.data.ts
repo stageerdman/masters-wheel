@@ -1,14 +1,14 @@
-// Shared types + per-tool-type glyph/color/label metadata for Training
+// Shared types + per-discipline glyph/color/label metadata for Training
 // Room. Session metadata (and clip files) are real, on-disk storage via
 // `src/lib/training` — see TrainingRoom.script.ts. See
 // `updates/2026-11-06 TRAINING-ROOM - OPEN/` for the roadmap.
 
 import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
 
-// Detail's content kinds — just Notes today (Voice Practicing's transcript
+// Detail's content kinds — just Notes today (Voice Training's transcript
 // already lives inline in the Hero feed). Still goes through the same
 // generic SplitRail/useSplitRail primitive Performance Review uses, kept
-// to a one-item kind set until a future training tool actually needs a
+// to a one-item kind set until a future discipline actually needs a
 // second one — see `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`.
 export type DetailContentKind = "notes";
 
@@ -18,25 +18,57 @@ export const DETAIL_CONTENT_KIND_META: Record<DetailContentKind, BookmarkMeta> =
   notes: { label: "NT", color: "var(--color-bookmark-notes)" },
 };
 
-export type TrainingToolType = "voicePracticing";
+// A session's discipline — picked once, up front, in DisciplinePicker
+// (see its children/DisciplineFrame). "voicePracticing" was this type's
+// original single value, renamed to "voiceTraining" once more disciplines
+// joined it — TrainingRoom.script.ts's normalizeToolType() still maps a
+// session.json written under the old name to the new one on load.
+export type TrainingToolType = "voiceTraining" | "chatRoleplay" | "voiceRoleplay" | "mindsetShifting";
 
-// Every available tool, in the order they should list — just one today,
-// scalable as more training tools get dictated.
-export const TOOL_TYPE_ORDER: TrainingToolType[] = ["voicePracticing"];
+// Every discipline, in the order DisciplinePicker lists them — Voice
+// Training first since it's the only one actually built; the rest follow
+// in the order they're expected to ship.
+export const TOOL_TYPE_ORDER: TrainingToolType[] = ["voiceTraining", "chatRoleplay", "voiceRoleplay", "mindsetShifting"];
 
-// Fixed per session, driven entirely by its tool type — never user-
-// adjustable (see Training Room's SessionListItem). Reuses
+// Fixed per session, driven entirely by its discipline — never user-
+// adjustable (see Training Room's SessionListItem). `locked` disciplines
+// still render in DisciplinePicker (shown, not hidden, like a disabled nav
+// item) but can't be selected yet. Voice Training reuses
 // --color-action-training-ground, the accent already set aside for this
-// feature (see AppHeader's "Take it to the training ground" action).
+// whole feature (see AppHeader's "Take it to the training ground" action);
+// the other three are genuinely new categories dictated for the picker —
+// see --color-discipline-* in globals.css.
 export const TOOL_TYPE_META: Record<
   TrainingToolType,
-  { glyph: string; color: string; label: string; description: string }
+  { glyph: string; color: string; label: string; description: string; locked: boolean }
 > = {
-  voicePracticing: {
+  voiceTraining: {
     glyph: "♪",
     color: "var(--color-action-training-ground)",
-    label: "Voice Practicing",
-    description: "Practice your delivery solo — upload clips, no real call attached.",
+    label: "Voice Training",
+    description: "Listen to the voice of the person you want to sound like, then repeat it back the same way.",
+    locked: false,
+  },
+  chatRoleplay: {
+    glyph: "❝",
+    color: "var(--color-discipline-chat-roleplay)",
+    label: "Chat Roleplay",
+    description: "Type your way through a conversation with an AI prospect and see how your wording lands.",
+    locked: true,
+  },
+  voiceRoleplay: {
+    glyph: "☏",
+    color: "var(--color-discipline-voice-roleplay)",
+    label: "Voice Roleplay",
+    description: "Speak live against an AI prospect that pushes back in real time, no script to lean on.",
+    locked: true,
+  },
+  mindsetShifting: {
+    glyph: "✦",
+    color: "var(--color-discipline-mindset-shifting)",
+    label: "Mindset Shifting",
+    description: "Reframe the story you tell yourself before a call, not just the words you say.",
+    locked: true,
   },
 };
 

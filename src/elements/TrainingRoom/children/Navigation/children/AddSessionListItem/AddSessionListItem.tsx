@@ -6,9 +6,10 @@ type AddSessionListItemProps = {
 };
 
 // Pinned above the Open/Closed groups, not trailing the list like
-// Performance Review's AddRecordListItem — "add a new training practice"
-// is the first thing in this column. No file picker here: a session
-// starts empty, clips get added once it's open in Hero.
+// Performance Review's AddRecordListItem — "add a new discipline" is the
+// first thing in this column. Opens DisciplinePicker rather than creating
+// a session directly (see TrainingRoom.tsx); no file picker here either
+// way — a session starts empty, clips get added once it's open in Hero.
 export function AddSessionListItem({ onAdd }: AddSessionListItemProps) {
   return (
     <button type="button" className={`${styles.root} ${position.root}`} data-construction onClick={onAdd}>
@@ -17,7 +18,7 @@ export function AddSessionListItem({ onAdd }: AddSessionListItemProps) {
       </span>
       <span className={position.textRows} data-construction>
         <span className={styles.title} data-construction>
-          Add training practice
+          Add a discipline
         </span>
       </span>
     </button>

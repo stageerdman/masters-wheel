@@ -138,3 +138,31 @@ Two decisions made with the user before starting (2026-11-06):
       rebuild each clip's `convertFileSrc` URL.
 - [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
       reinstalled.
+
+### Phase 8 — DisciplinePicker (2026-11-08)
+- [x] Renamed the "tool type" concept to **discipline** in user-facing
+      copy, and `voicePracticing` → `voiceTraining` (TrainingRoom.script.ts
+      migrates a session.json written under the old name on load). Four
+      disciplines now exist in `TOOL_TYPE_META`: **Voice Training** (real,
+      unlocked), **Chat Roleplay**, **Voice Roleplay**, **Mindset
+      Shifting** (all three locked/"coming soon").
+- [x] Clicking Navigation's "Add a discipline" row no longer creates a
+      session directly — it opens a new full-bleed `DisciplinePicker`
+      takeover (dictated design: "Ironwork Portraits" — riveted metal
+      frames, a torch per frame, carved nameplates; see `wiki.md` for the
+      design pass this replaced). Selecting Voice Training plays a brief
+      "ignite" confirmation, then creates the session and returns to
+      Training Room, same as the old direct-create flow.
+- [x] Four real states per `DisciplineFrame`: locked (dead wick, inert),
+      available-idle (lit, flickering), hovered/keyboard-focused (brighter,
+      lifts — locked frames deliberately don't react to hover at all), and
+      confirming (the ignite flash). Escape and a click on blank space both
+      close the picker without creating anything.
+- [x] New `--discipline-*` token block in `globals.css` (documented,
+      exempt from the core-5 the same way `--glass-*` already is) plus
+      three new `--color-discipline-*` category colors — each discipline's
+      own accent is blended into the shared orange ironwork chrome via
+      `color-mix()` at a low ratio, so the picker reads as one lit world
+      with a subtle per-discipline tint, not a tile per color.
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+      reinstalled.

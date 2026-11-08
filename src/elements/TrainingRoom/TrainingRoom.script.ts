@@ -25,6 +25,7 @@ import {
   type StoredClipMeta,
 } from "@/lib/training";
 import {
+  TOOL_TYPE_META,
   TOOL_TYPE_ORDER,
   type ClipKind,
   type SessionStatus,
@@ -48,6 +49,18 @@ function isToolType(value: string): value is TrainingToolType {
   return (TOOL_TYPE_ORDER as string[]).includes(value);
 }
 
+// "voicePracticing" was Voice Training's original stored name, from before
+// more disciplines existed — a session.json written under the old name
+// still has to load correctly.
+const LEGACY_TOOL_TYPE_ALIASES: Record<string, TrainingToolType> = {
+  voicePracticing: "voiceTraining",
+};
+
+function normalizeToolType(value: string): TrainingToolType {
+  if (isToolType(value)) return value;
+  return LEGACY_TOOL_TYPE_ALIASES[value] ?? TOOL_TYPE_ORDER[0];
+}
+
 function isSessionStatus(value: string): value is SessionStatus {
   return value === "open" || value === "closed";
 }
@@ -61,7 +74,7 @@ function makeId(prefix: string): string {
 // One fixed, hand-written example transcript — same reasoning as
 // generateFakeScorecard: a real-shaped result now, swappable for a real
 // transcription pass later without changing anything downstream. A
-// single "You" speaker, since Voice Practicing is solo.
+// single "You" speaker, since Voice Training is solo.
 const FAKE_TRANSCRIPT = `---
 source: fake
 ---
@@ -87,8 +100,7 @@ const WRITE_DEBOUNCE_MS = 400;
 
 function nameFor(toolType: TrainingToolType, existing: TrainingSession[]): string {
   const count = existing.filter((session) => session.toolType === toolType).length;
-  const label = toolType === "voicePracticing" ? "Voice Practicing" : toolType;
-  return `${label} #${count + 1}`;
+  return `${TOOL_TYPE_META[toolType].label} #${count + 1}`;
 }
 
 async function clipFromMeta(sessionId: string, clip: StoredClipMeta): Promise<TrainingClip> {
@@ -108,7 +120,7 @@ async function sessionFromSummary(summary: SessionSummary): Promise<TrainingSess
   const clips = await Promise.all(summary.clips.map((clip) => clipFromMeta(summary.id, clip)));
   return {
     id: summary.id,
-    toolType: isToolType(summary.toolType) ? summary.toolType : "voicePracticing",
+    toolType: normalizeToolType(summary.toolType),
     name: summary.name,
     status: isSessionStatus(summary.status) ? summary.status : "open",
     lastUpdatedAt: summary.lastUpdatedAt,
@@ -206,25 +218,34 @@ export function useTrainingRoomData() {
     setSelectedIdState(id);
   }, []);
 
-  const addSession = useCallback(() => {
-    const toolType = TOOL_TYPE_ORDER[0];
-    const id = makeId("session");
-    const name = nameFor(toolType, sessions);
-    const fresh: TrainingSession = {
-      id,
-      toolType,
-      name,
-      status: "open",
-      lastUpdatedAt: new Date().toISOString(),
-      clips: [],
-      notes: "",
-    };
-    setSessions((prev) => [fresh, ...prev]);
-    setSelectedIdState(id);
-    if (isTauri()) {
-      createSession(id, toolType, name).catch((error) => console.error("Failed to create session:", id, error));
-    }
-  }, [sessions]);
+  const addSession = useCallback(
+    (toolType: TrainingToolType) => {
+      const id = makeId("session");
+      const name = nameFor(toolType, sessions);
+      const fresh: TrainingSession = {
+        id,
+        toolType,
+        name,
+        status: "open",
+        lastUpdatedAt: new Date().toISOString(),
+        clips: [],
+        notes: "",
+      };
+      setSessions((prev) => [fresh, ...prev]);
+      setSelectedIdState(id);
+      if (isTauri()) {
+        createSession(id, toolType, name).catch((error) => console.error("Failed to create session:", id, error));
+      }
+    },
+    [sessions]
+  );
+
+  // DisciplinePicker's open/closed state — opened from Navigation's "Add a
+  // discipline" row, closed on a real selection, Esc, or a click on blank
+  // space inside the picker itself (see DisciplinePicker.script.ts).
+  const [isDisciplinePickerOpen, setIsDisciplinePickerOpen] = useState(false);
+  const openDisciplinePicker = useCallback(() => setIsDisciplinePickerOpen(true), []);
+  const closeDisciplinePicker = useCallback(() => setIsDisciplinePickerOpen(false), []);
 
   const removeSession = useCallback(
     async (id: string) => {
@@ -400,5 +421,8 @@ export function useTrainingRoomData() {
     closeUpload,
     isDragActive,
     isUploadDragActive,
+    isDisciplinePickerOpen,
+    openDisciplinePicker,
+    closeDisciplinePicker,
   };
 }

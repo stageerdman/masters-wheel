@@ -7,6 +7,7 @@ import { useTrainingRoomData } from "./TrainingRoom.script";
 import { Navigation } from "./children/Navigation/Navigation";
 import { Hero } from "./children/Hero/Hero";
 import { Detail } from "./children/Detail/Detail";
+import { DisciplinePicker } from "./children/DisciplinePicker/DisciplinePicker";
 import position from "./TrainingRoom.position.module.css";
 import styles from "./TrainingRoom.styles.module.css";
 
@@ -31,6 +32,9 @@ export function TrainingRoom() {
     closeUpload,
     isDragActive,
     isUploadDragActive,
+    isDisciplinePickerOpen,
+    openDisciplinePicker,
+    closeDisciplinePicker,
   } = useTrainingRoomData();
 
   useEffect(() => {
@@ -45,7 +49,7 @@ export function TrainingRoom() {
         closedSessions={closedSessions}
         selectedId={selectedId}
         onSelect={selectSession}
-        onAdd={addSession}
+        onAdd={openDisciplinePicker}
         onRename={renameSession}
         onRemove={removeSession}
         onClose={closeSession}
@@ -68,7 +72,7 @@ export function TrainingRoom() {
       ) : (
         <div className={position.emptyState} data-construction>
           <p className={styles.emptyStateText} data-construction>
-            No training practices yet — add one from the list on the left.
+            No disciplines practiced yet — add one from the list on the left.
           </p>
         </div>
       )}
@@ -87,6 +91,15 @@ export function TrainingRoom() {
         title="Upload a clip"
         dropZoneText="Drag & drop a video or audio file here"
       />
+      {isDisciplinePickerOpen && (
+        <DisciplinePicker
+          onClose={closeDisciplinePicker}
+          onSelect={(toolType) => {
+            addSession(toolType);
+            closeDisciplinePicker();
+          }}
+        />
+      )}
     </div>
   );
 }

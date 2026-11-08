@@ -11,7 +11,7 @@ type ClipFeedItemProps = {
   onGenerateTranscript: () => void;
 };
 
-// One feed entry: a real media element (video or audio — Voice Practicing
+// One feed entry: a real media element (video or audio — Voice Training
 // accepts either) plus whatever's below it: a "Generate transcript"
 // button, a generating indicator, or the lyrics-style synced transcript
 // once one exists. Tracks its own playhead via the element's real

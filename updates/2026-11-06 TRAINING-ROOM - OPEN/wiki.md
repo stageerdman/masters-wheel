@@ -117,6 +117,52 @@ real per-word sync later is a `generate.ts`/transcript-format change
 (stop discarding `WordTiming`), not a Training Room-specific problem —
 worth doing once, benefits any future transcript view that wants it.
 
+## DisciplinePicker: from a mockup pass to the real element (2026-11-08)
+Before building, three full-screen dark "cabinet-select" HTML mockups were
+shown for feedback — a neon arcade marquee, warm backlit pillars (closest
+to a reference screenshot the user sent), and riveted ironwork portrait
+frames with a torch per frame. **Ironwork Portraits** won on "this reads as
+a world, not a UI skin" — specifically that a lit-vs-unlit torch sells
+available/locked without any text or icon needed. That's the one built for
+real as `TrainingRoom/children/DisciplinePicker`.
+
+Four real states per `DisciplineFrame`, not three: **locked** (dead wick,
+inert — no hover reaction at all, by design, since you can't preview
+something that isn't built), **available-idle** (lit, gently flickering),
+**hovered/keyboard-focused** (brighter, lifts), and **confirming** — a
+brief "ignite" flash that plays *before* the session actually gets created,
+so the click reads as a deliberate action rather than an instant jump back
+to Training Room.
+
+Each discipline gets its own subtle accent color (new
+`--color-discipline-*` category colors in globals.css), but the brief was
+explicit: keep the shared orange ironwork chrome as the dominant read, not
+a different-colored tile per discipline. Solved with `color-mix()` — each
+frame's bezel/portrait/glow blends its own accent into the shared
+`--discipline-ember-*`/`--discipline-bezel-*` tokens at a low ratio (14–22%)
+rather than using the accent outright. Voice Training's "accent" is just
+`--color-action-training-ground` reused, not a new color — it's already the
+one real discipline's color everywhere else in Training Room.
+
+**Lesson: let the parent conditionally mount, don't self-gate on an
+`isOpen` prop, if you need to reset state on open.** The first pass had
+`DisciplinePicker` always rendered with `if (!isOpen) return null` inside
+(same shape as `VideoUploadModal`), and a `useEffect` that reset
+`confirmingToolType` to `null` whenever `isOpen` became true — React's
+`react-hooks/set-state-in-effect` lint rule correctly flagged that as a
+cascading-render risk. Fixed by having `TrainingRoom.tsx` render
+`{isDisciplinePickerOpen && <DisciplinePicker ... />}` instead: the
+component only exists while open, so `useState(null)` is already correct
+on every fresh mount and the effect no longer needs to reset anything
+itself. Worth reaching for this pattern first for any future full-takeover
+(not dimmed-content-modal) element with per-open-session state.
+
+A pending "ignite" selection is cancellable: `choose()` schedules
+`setTimeout(() => onSelect(toolType), 460)`, and the same effect's cleanup
+clears that timer if the component unmounts first (Esc / blank-space click
+mid-flash) — without that, a cancelled selection could still silently
+create a session a moment after the screen was already gone.
+
 ## Element decisions
 - Fake session fixture lives in `TrainingRoom.data.ts`, same pattern as
   `PerformanceReview.data.ts`'s original fixture before real records
