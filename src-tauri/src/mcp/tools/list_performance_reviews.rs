@@ -4,9 +4,9 @@
 // it safe to let the model call unconditionally — see
 // get_performance_review (Phase C) for the gated, real-content tool.
 
-use serde::{Deserialize, Serialize};
+use std::path::Path;
 
-use crate::mcp::paths::records_root;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
 pub struct ReviewSummary {
@@ -30,10 +30,14 @@ struct MetaJson {
     description: Option<String>,
 }
 
-pub fn list() -> Vec<ReviewSummary> {
-    let root = records_root();
+// `root` is resolved differently depending on the caller: the MCP
+// subprocess has no AppHandle, so mcp/server.rs passes
+// mcp::paths::records_root() (env-var based); roleplay.rs's
+// generate_persona runs in the main process and already has an AppHandle,
+// so it passes spaces::records_dir(...) directly instead.
+pub fn list(root: &Path) -> Vec<ReviewSummary> {
     let mut out = Vec::new();
-    let Ok(entries) = std::fs::read_dir(&root) else {
+    let Ok(entries) = std::fs::read_dir(root) else {
         return out;
     };
     for entry in entries.flatten() {

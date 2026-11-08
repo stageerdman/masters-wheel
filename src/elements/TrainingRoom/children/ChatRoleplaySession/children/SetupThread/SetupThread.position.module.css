@@ -48,6 +48,12 @@
   flex-direction: column;
 }
 
+.thinkingDot {
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+}
+
 .line {
   display: block;
 }

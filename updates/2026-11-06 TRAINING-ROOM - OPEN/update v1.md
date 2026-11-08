@@ -592,72 +592,84 @@ were conflating two different things. Re-split:
 - A visible "thinking" indicator while waiting on a reply (there was
   none before — the composer just silently disabled).
 
-#### Phase 23 — Data model
-- [ ] New `Persona` type (`ChatRoleplaySession.data.ts`): `name`,
+#### Phase 23 — Data model (2026-11-08)
+- [x] New `Persona` type (`ChatRoleplaySession.data.ts`): `name`,
       `background`, `responseLength: "short"|"long"|"mixed"`,
       `emotionalOpenness: "guarded"|"moderate"|"open"`, `languageStyle`,
       `limitingBeliefs: string[]`, `sourceRecordId: string | null` (which
       real Performance Review record it was grounded in, if any).
-- [ ] `RoleplayState` gains `persona: Persona | null`, `trainingObjective:
+- [x] `RoleplayState` gains `persona: Persona | null`, `trainingObjective:
       string`, `difficulty: "easy" | "medium" | "hard" | null`.
-- [ ] `ProposalCardData` gains `objective` (shown to the trainee — what
+- [x] `ProposalCardData` gains `objective` (shown to the trainee — what
       we're training and why) and `difficulty`; `meta` stays a one-line
       *setting* string with no persona name in it anymore.
 
-#### Phase 24 — Real-transcript-grounded persona + meta-thought rewrite
-- [ ] New `generate_persona` Tauri command (`roleplay.rs`), takes
+#### Phase 24 — Real-transcript-grounded persona + meta-thought rewrite (2026-11-08)
+- [x] New `generate_persona` Tauri command (`roleplay.rs`), takes
       `app`/`active_space_folder` (like `ask_agent`, unlike the other
-      three roleplay.rs commands, since it needs to read real records):
-      picks a real Performance Review record with a transcript —
-      `difficulty: "hard"` → a `"failed"` call, else → a `"closed"` call
-      (most recent match; `list_performance_reviews::list()` refactored
-      to take a `root: &Path` param instead of always resolving the
-      MCP-subprocess-only env var, so this main-process call can pass
-      `spaces::records_dir` directly) — then one model call extracts
-      `name`/`background`/`responseLength`/`emotionalOpenness`/
-      `languageStyle`/`limitingBeliefs` from a bounded excerpt of that
-      real transcript. No matching record at all → same call falls back
-      to inventing a persona consistent with the objective/difficulty,
-      explicitly told so in the prompt (never silently fabricated as if
-      it were real).
-- [ ] `generate_setup_reply`'s proposal contract gains `OBJECTIVE:` and
-      `DIFFICULTY:` labeled fields (parsed into the new `ProposalFields`).
-- [ ] `generate_roleplay_turn` restructured: takes a `Persona` (plus
-      call-context assumptions, not scenario title/meta) instead of
-      `scenario_title`/`scenario_meta`. Its system prompt now explicitly
-      separates "facts about this call" from "who this persona is and how
-      they communicate," and the `THOUGHT` instruction changes from
-      first-person persona voice to third-person meta-analysis: predict
-      how this persona would respond *given their known patterns*, and
-      what they'd probably feel — never the character's own private
-      monologue.
-- [ ] `beginRoleplay` calls `generate_persona` once, right when the
+      roleplay.rs commands, since it needs to read real records): picks a
+      real Performance Review record with a transcript — `difficulty:
+      "hard"` → a `"failed"` call, else → a `"closed"` call (most recent
+      match; `list_performance_reviews::list()` refactored to take a
+      `root: &Path` param instead of always resolving the MCP-subprocess-
+      only env var, so this main-process call can pass
+      `spaces::records_dir` directly, a new helper) — then one model call
+      extracts `name`/`background`/`responseLength`/`emotionalOpenness`/
+      `languageStyle`/`limitingBeliefs` from a bounded (6,000-char)
+      excerpt of that real transcript. No matching record at all → the
+      same call falls back to inventing a persona consistent with the
+      objective/difficulty, explicitly told so in the prompt. Verified
+      by hand against the real CLI with a fake transcript: the extracted
+      persona's response length/openness/beliefs genuinely tracked the
+      transcript's actual behavior ("send me something in writing, I've
+      been burned before" → `RESPONSE_LENGTH: short`, a limiting belief
+      naming exactly that burned-before pattern).
+- [x] `generate_setup_reply`'s proposal contract gains `OBJECTIVE:` and
+      `DIFFICULTY:` labeled fields (parsed into the new `ProposalFields`,
+      `DIFFICULTY` defaulting to `"medium"` if missing rather than
+      failing the whole proposal).
+- [x] `generate_roleplay_turn` restructured: takes a `PersonaFields` (plus
+      call-context assumptions) instead of `scenario_title`/
+      `scenario_meta`. The `THOUGHT` instruction changed from first-person
+      persona voice to third-person meta-analysis — verified by hand: a
+      real call against a Marcus-shaped persona returned "The trainee
+      went straight for the wound... His limiting belief (admitting the
+      mistake looks incompetent) and guarded style mean he'll deflect
+      rather than open up" — genuine third-person analysis citing the
+      specific pattern driving the prediction, not first-person feeling-
+      talk.
+- [x] `beginRoleplay` calls `generate_persona` once, right when the
       scenario locks, then opens round 1 with the real persona.
 
-#### Phase 25 — "Next Session" can adjust the persona
-- [ ] New `generate_session_adjustment` command: given the finishing
+#### Phase 25 — "Next Session" can adjust the persona (2026-11-08)
+- [x] New `generate_session_adjustment` command: given the finishing
       round's transcript + the training objective + the persona's current
       fields, returns both the trainee-facing phrase (unchanged meaning)
       *and* a persona (same shape as `generate_persona`'s output) — most
       fields usually unchanged, but free to shift difficulty/
       characteristics/conversation direction toward what the trainee
       needs next.
-- [ ] `nextSession()` replaces the current persona with the returned one
+- [x] `nextSession()` replaces the current persona with the returned one
       before opening the new round — prior rounds' turns are historical
       record either way, unaffected by a persona change going forward.
 
-#### Phase 26 — Frontend wiring + hide the persona
-- [ ] `ChatRoleplaySession.script.ts` updated end-to-end for the above;
-      `heroSummary` becomes `trainingObjective`, never persona text;
-      nothing in the UI ever renders `persona` directly.
-- [ ] `ProposalCard` shows `objective`/`difficulty` instead of implying a
-      persona bio.
+#### Phase 26 — Frontend wiring + hide the persona (2026-11-08)
+- [x] `ChatRoleplaySession.script.ts` updated end-to-end for the above;
+      `heroSummary` is now `trainingObjective` (falling back to
+      `scenarioTitle`), never persona text; nothing in the UI ever
+      renders `persona` directly — `personaLabel` (used only as
+      `RoleplayChat`'s speaker-name label, same job "You" does for the
+      trainee) is the one place `persona.name` surfaces at all.
+- [x] `ProposalCard` shows `objective` as its real description and a
+      `Difficulty: X · <setting>` line instead of implying a persona bio.
 
-#### Phase 27 — Visible "thinking" state
-- [ ] `RoleplayChat`/`SetupThread` show a lightweight animated indicator
-      while a reply is in flight, instead of just disabling the composer
-      silently.
+#### Phase 27 — Visible "thinking" state (2026-11-08)
+- [x] `RoleplayChat`/`SetupThread` show a lightweight three-dot pulsing
+      indicator bubble while a reply is in flight (`isSendingTurn`/
+      `isSendingSetup`), instead of just disabling the composer silently;
+      auto-scroll effects extended to fire on that state too so the
+      indicator is always in view.
 
-- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` / `cargo
-      test` clean; `.app` rebuilt and reinstalled.
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; `cargo check` /
+      `cargo test` clean (34 passing); `.app` rebuilt and reinstalled.
 

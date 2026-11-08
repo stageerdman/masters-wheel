@@ -21,6 +21,10 @@
   flex-shrink: 0;
 }
 
+.objective {
+  margin: 0;
+}
+
 .assumptions {
   display: flex;
   flex-direction: column;

@@ -43,7 +43,7 @@ impl MastersWheelServer {
         description = "List every Performance Review record (a saved sales-call review session) the user has in Master's Wheel. Returns each record's id, title, date, status, and description only — never the real notes/transcript/analysis content. Always safe to call, no permission needed. Use get_performance_review with a recordId from this list to actually read a specific record's content (that one may require the user's permission)."
     )]
     async fn list_performance_reviews(&self) -> Result<CallToolResult, McpError> {
-        let reviews = list_performance_reviews::list();
+        let reviews = list_performance_reviews::list(&crate::mcp::paths::records_root());
         let json = serde_json::to_string_pretty(&reviews)
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(json)]))

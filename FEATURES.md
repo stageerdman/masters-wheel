@@ -610,13 +610,15 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       carried-forward adjustment, and back-fills a report for any round
       (including the still-live one) that didn't already have one.
 - [x] The roleplay transcript has a second, hidden-by-default layer:
-      private "thoughts" (the roleplay AI's own inner monologue, or the
-      user's own private annotation) attached to, and sent together
-      with, the message they belong to — one composer, one Send, not two
-      separate actions. A thought renders above its message, under the
-      speaker's name; one eye-open/closed button shows or hides every
-      thought at once (a message with a hidden thought still shows a
-      tiny closed-eye marker). The roleplay AI itself never receives any
+      private "thoughts" (the roleplay AI's own third-person meta-
+      analysis of how/why the persona would respond this way — not the
+      persona's own inner voice, see Phase 24 below — or the trainee's
+      own private annotation) attached to, and sent together with, the
+      message they belong to — one composer, one Send, not two separate
+      actions. A thought renders above its message, under the speaker's
+      name; one eye-open/closed button shows or hides every thought at
+      once (a message with a hidden thought still shows a tiny closed-eye
+      marker). The roleplay AI itself never receives the trainee's
       thought, by construction (there's no payload path that would).
 - [x] The visual shell above is still exactly this — the UI mechanics
       didn't change. What changed in Phases 17-19 (below) is what drives
@@ -653,6 +655,46 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       → Next Session → final report in the real `.app` hasn't happened
       yet.
 
+### Built — real backend (persona/assumptions split + real-transcript grounding, 2026-11-08)
+User correction after the first pass above: "assumptions" were conflating
+persona traits with call context, and thoughts read as the persona's own
+voice instead of coaching analysis. Re-split, Phases 23-27:
+- [x] **Persona** (hidden from the trainee entirely, never rendered
+      anywhere) now exists as its own real thing: name, background, and
+      *how they communicate* — response length (short/closed vs long/
+      open), emotional openness, language style, limiting beliefs (some
+      the persona is aware of, some marked "(unaware)"). Built once by a
+      new `generate_persona` call that picks a real past Performance
+      Review call matching the chosen difficulty (a `"failed"` call for
+      hard, a `"closed"` one otherwise) and extracts these traits from
+      its real transcript — verified by hand to actually track the
+      source transcript's real behavior, not invent generic traits. Falls
+      back to inventing a persona (explicitly, never silently) when no
+      matching record with a transcript exists.
+      "assumptions" now mean strictly facts about *this call*'s
+      circumstances (trust already built, how the lead came in, whether
+      the prospect knows why they're on the call) — never personality.
+- [x] The Proposal Card's description is now a real **training
+      objective** (what's being practiced and why) plus a difficulty
+      label, not implied persona bio — the persona never surfaces in the
+      UI at all; `RoleplayChat`'s speaker label is the one place its name
+      is used, same job "You" does for the trainee.
+- [x] **Thoughts rewritten**: no longer the persona's own first-person
+      inner monologue — now the roleplay AI's third-person meta-analysis,
+      predicting how this specific persona (given their known patterns
+      and limiting beliefs) would likely respond and what they'd probably
+      feel. Verified by hand: a real call returned genuine third-person
+      analysis citing the specific pattern driving the prediction, not
+      feeling-talk in the persona's own voice.
+- [x] **"Next Session" can now actually adjust the persona** (not just
+      emit a flavor phrase) — a new `generate_session_adjustment` call
+      decides both the trainee-facing phrase and whether to shift the
+      persona's difficulty/characteristics/conversation direction to
+      target what the trainee needs to practice next.
+- [x] A visible three-dot "thinking" indicator now shows while any reply
+      is in flight (setup conversation or a live turn) — previously the
+      composer just silently disabled with no feedback at all.
+
 ### Built (real functionality — Chat Roleplay's Detail sidebar, 2026-11-08)
 - [x] The sidebar's top pane is the real AI Assistant, not a mock, and
       now the *same designed chat experience* as the floating widget —
@@ -685,6 +727,14 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       live one, optionally including each turn's private "thought" (the
       Trainer's own access — unrelated to the separate guarantee that a
       trainee's thought never reaches the *roleplay* AI).
+- [x] Fixed a real bug (Phase 22, 2026-11-08): the Trainer would claim it
+      had "no context" when asked something like "how would you continue
+      here?" — it had the tool above but nothing in its system prompt
+      ever told it the tool, or a transcript, existed at all. New
+      `build_training_context` (mirrors `build_tagged_context`'s job for
+      Performance Review records) now always names the tool and anchors
+      "here"/"this call"/"this conversation" to it whenever a Trainer
+      call is in play.
 
 ### To build (real functionality — not started)
 - [ ] Real transcript generation (ElevenLabs), and persisting real

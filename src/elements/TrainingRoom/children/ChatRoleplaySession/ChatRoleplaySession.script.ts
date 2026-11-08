@@ -2,18 +2,27 @@
 
 // Real backend for the Chat Roleplay discipline — see
 // `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`'s "Chat Roleplay
-// discipline" section for the full dictated spec, and this update's
-// Phases 17-19 for how each piece below went from scripted to real.
-// Every mutation here already only ever fires on a commit/submit action
-// (never a raw keystroke), so every change is persisted immediately via
+// discipline" section for the full dictated spec, Phases 17-19 for the
+// first real-backend pass, and Phases 23-27 for the persona/assumptions
+// split + real-transcript grounding that replaced it. Every mutation
+// here already only ever fires on a commit/submit action (never a raw
+// keystroke), so every change is persisted immediately via
 // `onRoleplayChange` — no debounce needed, unlike Notes' per-keystroke
 // autosave.
 
 import { useCallback, useState } from "react";
+import { useActiveSpace } from "@/lib/spaces";
 import { readSettings } from "@/lib/settings";
-import { generateInsight, generateRoleplayTurn, generateSetupReply } from "@/lib/roleplay";
+import {
+  generateInsight,
+  generatePersona,
+  generateRoleplayTurn,
+  generateSessionAdjustment,
+  generateSetupReply,
+} from "@/lib/roleplay";
 import {
   emptyRoleplayState,
+  type Difficulty,
   type LockedAssumption,
   type ProposalCardData,
   type RoleplayState,
@@ -32,29 +41,24 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-// Text-only, speaker-labeled transcript for a round — fed to
-// generate_insight. Never includes a thought: a coach reasoning about
-// "how did the trainee do" should judge what was actually said, not a
-// private persona feeling the trainee never saw either.
-function renderTranscript(turns: RoleplayTurn[]): string {
-  return turns.map((turn) => `${turn.speaker === "persona" ? "Persona" : "Trainee"}: ${turn.text}`).join("\n");
+function isDifficulty(value: string): value is Difficulty {
+  return value === "easy" || value === "medium" || value === "hard";
 }
 
-// Pulls a short display name out of "Persona: Marcus Webb, IT Director ·
-// ..." style meta text — falls back to the scenario title, then a plain
-// "Persona", so RoleplayChat always has *something* to label the other
-// speaker with regardless of how the designer AI phrased its proposal.
-function personaLabelFrom(scenarioMeta: string, scenarioTitle: string): string {
-  const match = scenarioMeta.match(/Persona:\s*([^,·]+)/i);
-  const name = match?.[1]?.trim();
-  if (name) return name;
-  return scenarioTitle || "Persona";
+// Text-only, speaker-labeled transcript for a round — fed to
+// generate_insight/generate_session_adjustment. Never includes a
+// thought: a coach reasoning about "how did the trainee do" should judge
+// what was actually said, not a private meta-analysis the trainee never
+// saw either.
+function renderTranscript(turns: RoleplayTurn[]): string {
+  return turns.map((turn) => `${turn.speaker === "persona" ? "Persona" : "Trainee"}: ${turn.text}`).join("\n");
 }
 
 export function useChatRoleplaySession(
   initialRoleplay: RoleplayState | null,
   onRoleplayChange: (state: RoleplayState) => void,
 ) {
+  const activeSpace = useActiveSpace();
   const [state, setState] = useState<RoleplayState>(() => initialRoleplay ?? emptyRoleplayState());
   const [activeRoundId, setActiveRoundId] = useState<string | null>(
     () => state.rounds[state.rounds.length - 1]?.id ?? null,
@@ -83,8 +87,13 @@ export function useChatRoleplaySession(
   const liveRound = state.rounds[state.rounds.length - 1] ?? null;
   const activeRound = state.rounds.find((round) => round.id === activeRoundId) ?? liveRound;
   const isViewingLiveRound = Boolean(activeRound && liveRound && activeRound.id === liveRound.id);
-  const personaLabel = personaLabelFrom(state.scenarioMeta, state.scenarioTitle);
-  const heroSummary = [state.scenarioTitle, state.scenarioMeta].filter(Boolean).join(". ");
+  // The persona is deliberately never shown to the trainee — this is the
+  // one place its name leaks through, as a plain speaker label (same job
+  // "You" does for the trainee's own turns), not as any kind of bio.
+  const personaLabel = state.persona?.name ?? "Persona";
+  // Hero's description is a training-objective reminder, never persona
+  // bio — the persona itself never renders anywhere in this UI.
+  const heroSummary = state.trainingObjective || state.scenarioTitle;
 
   function findCard(cardId: string): ProposalCardData | undefined {
     for (const block of state.setupThread) {
@@ -137,6 +146,8 @@ export function useChatRoleplaySession(
         const card: ProposalCardData = {
           id: makeId("card"),
           title: reply.proposal.title,
+          objective: reply.proposal.objective,
+          difficulty: isDifficulty(reply.proposal.difficulty) ? reply.proposal.difficulty : "medium",
           meta: reply.proposal.meta,
           assumptions: reply.proposal.assumptions.map((assumptionText) => ({
             id: makeId("a"),
@@ -213,10 +224,14 @@ export function useChatRoleplaySession(
     setIsAddingAssumptionRow(false);
   }
 
-  // One real call to open the scene — the persona speaks first, unprompted
-  // (generate_roleplay_turn's `message: null` path). Locks in the
-  // scenario's title/meta/checked assumptions as this session's permanent
-  // record even if the proposal card itself is edited again later.
+  // Locking the scenario now takes two real calls: generate_persona picks
+  // a real past call matching the difficulty (a "failed" one for hard,
+  // "closed" otherwise) and extracts a hidden persona from its real
+  // transcript when one exists, then generate_roleplay_turn opens the
+  // scene with that persona speaking first, unprompted. Locks in the
+  // scenario's title/objective/difficulty/checked assumptions as this
+  // session's permanent record even if the proposal card itself is
+  // edited again later.
   async function beginRoleplay(cardId: string) {
     const card = findCard(cardId);
     if (!card || card.frozen || isBeginning) return;
@@ -228,14 +243,9 @@ export function useChatRoleplaySession(
       block.kind === "card" && block.card.id === cardId ? { ...block, card: { ...block.card, frozen: true } } : block,
     );
     try {
-      const reply = await generateRoleplayTurn(
-        null,
-        card.title,
-        card.meta,
-        lockedAssumptions.map((a) => a.text),
-        null,
-        null,
-      );
+      if (!activeSpace) throw new Error("No active Space — try again once one has loaded.");
+      const persona = await generatePersona(activeSpace.folderName, card.objective, card.difficulty);
+      const reply = await generateRoleplayTurn(null, persona, lockedAssumptions.map((a) => a.text), null, null);
       const round: SessionRound = {
         id: makeId("round"),
         roundNumber: 1,
@@ -257,6 +267,9 @@ export function useChatRoleplaySession(
         phase: "live",
         scenarioTitle: card.title,
         scenarioMeta: card.meta,
+        trainingObjective: card.objective,
+        difficulty: card.difficulty,
+        persona,
         lockedAssumptions,
         rounds: [round],
       });
@@ -311,13 +324,14 @@ export function useChatRoleplaySession(
   // One send, one turn: the reply and its optional attached private
   // thought go out together in the UI, but only `text` is ever part of
   // the real model call's payload (generate_roleplay_turn has no
-  // "thought" parameter at all) — the thought never reaches the roleplay
-  // AI, enforced by that function's signature, not a runtime check. Only
-  // ever acts on the live round — the composer that could call this is
-  // hidden while viewing a past, read-only round (see RoleplayChat).
+  // "thought" parameter at all) — the trainee's thought never reaches
+  // the roleplay AI, enforced by that function's signature, not a
+  // runtime check. Only ever acts on the live round — the composer that
+  // could call this is hidden while viewing a past, read-only round (see
+  // RoleplayChat).
   async function sendTurn(text: string, thoughtText: string) {
     const trimmedText = text.trim();
-    if (!trimmedText || !liveRound || isSendingTurn) return;
+    if (!trimmedText || !liveRound || !state.persona || isSendingTurn) return;
     const trimmedThought = thoughtText.trim();
     const liveRoundId = liveRound.id;
     const userTurn: RoleplayTurn = {
@@ -335,8 +349,7 @@ export function useChatRoleplaySession(
     try {
       const reply = await generateRoleplayTurn(
         trimmedText,
-        state.scenarioTitle,
-        state.scenarioMeta,
+        state.persona,
         state.lockedAssumptions.map((a) => a.text),
         liveRound.adjustmentPhrase,
         liveRound.claudeSessionId,
@@ -364,26 +377,28 @@ export function useChatRoleplaySession(
     }
   }
 
-  // Ends the live round for good (a real adjustment phrase + round report,
-  // both generated from its text-only transcript) and opens the next one
-  // with a fresh CLI session — a round reset really does reset, only the
-  // plain-text adjustment phrase crosses into the new round, never raw
-  // session memory.
+  // Ends the live round for good and opens the next one with a fresh CLI
+  // session — a round reset really does reset, nothing but the persona
+  // (possibly adjusted) and the plain-text phrase cross into the new
+  // round, never raw session memory. generate_session_adjustment decides
+  // both the trainee-facing phrase *and* whether the persona itself
+  // should shift (difficulty, characteristics, conversation direction)
+  // to target what the trainee needs to practice next — most fields
+  // usually come back unchanged, but this is real, not cosmetic.
   async function nextSession() {
-    if (!liveRound || isAdvancingSession) return;
+    if (!liveRound || !state.persona || isAdvancingSession) return;
     setIsAdvancingSession(true);
     try {
       const transcriptText = renderTranscript(liveRound.turns);
-      const [phrase, report] = await Promise.all([
-        generateInsight(transcriptText, "adjustment"),
+      const [adjustment, report] = await Promise.all([
+        generateSessionAdjustment(transcriptText, state.trainingObjective, state.persona),
         generateInsight(transcriptText, "round_report"),
       ]);
       const opening = await generateRoleplayTurn(
         null,
-        state.scenarioTitle,
-        state.scenarioMeta,
+        adjustment.persona,
         state.lockedAssumptions.map((a) => a.text),
-        phrase,
+        adjustment.phrase,
         null,
       );
       const newRound: SessionRound = {
@@ -397,12 +412,13 @@ export function useChatRoleplaySession(
             thought: opening.thought ? { author: "ai", text: opening.thought } : undefined,
           },
         ],
-        adjustmentPhrase: phrase,
+        adjustmentPhrase: adjustment.phrase,
         report: null,
         claudeSessionId: opening.sessionId,
       };
       persist({
         ...state,
+        persona: adjustment.persona,
         rounds: [...state.rounds.map((round) => (round.id === liveRound.id ? { ...round, report } : round)), newRound],
       });
       setActiveRoundId(newRound.id);

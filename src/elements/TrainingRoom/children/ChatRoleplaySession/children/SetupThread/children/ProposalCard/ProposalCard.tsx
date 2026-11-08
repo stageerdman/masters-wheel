@@ -57,8 +57,11 @@ export function ProposalCard({
           </span>
         )}
       </div>
+      <p className={`${styles.objective} ${position.objective}`} data-construction>
+        {card.objective}
+      </p>
       <p className={`${styles.meta} ${position.meta}`} data-construction>
-        {card.meta}
+        {`Difficulty: ${card.difficulty.charAt(0).toUpperCase()}${card.difficulty.slice(1)}${card.meta ? ` · ${card.meta}` : ""}`}
       </p>
       <div className={position.assumptions} data-construction>
         {card.assumptions.map((row) => (

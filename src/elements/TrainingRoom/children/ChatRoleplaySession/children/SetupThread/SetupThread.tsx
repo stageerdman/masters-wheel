@@ -48,7 +48,7 @@ export function SetupThread({
   useEffect(() => {
     const list = listRef.current;
     if (list) list.scrollTop = list.scrollHeight;
-  }, [thread]);
+  }, [thread, isSending]);
 
   function handleSend() {
     if (!value.trim() || isSending) return;
@@ -101,6 +101,15 @@ export function SetupThread({
             />
           );
         })}
+        {isSending && (
+          <div className={position.row} data-construction>
+            <div className={`${styles.bubble} ${styles.thinkingBubble} ${position.bubble}`} data-construction aria-label="Composing a reply">
+              <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
+              <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
+              <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
+            </div>
+          </div>
+        )}
       </div>
       <div className={`${styles.composer} ${position.composer}`} data-construction>
         <input

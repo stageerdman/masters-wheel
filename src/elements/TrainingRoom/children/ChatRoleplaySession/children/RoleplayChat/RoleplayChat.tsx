@@ -45,7 +45,7 @@ export function RoleplayChat({
   useEffect(() => {
     const list = listRef.current;
     if (list) list.scrollTop = list.scrollHeight;
-  }, [turns]);
+  }, [turns, isSending]);
 
   const thoughtCount = turns.filter((turn) => turn.thought).length;
 
@@ -125,6 +125,18 @@ export function RoleplayChat({
             </div>
           );
         })}
+        {isSending && (
+          <div className={position.row} data-construction>
+            <span className={`${styles.speakerLabel} ${position.speakerLabel}`} data-construction>
+              {personaLabel}
+            </span>
+            <div className={`${styles.bubble} ${styles.thinkingBubble} ${position.bubble}`} data-construction aria-label={`${personaLabel} is composing a reply`}>
+              <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
+              <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
+              <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
+            </div>
+          </div>
+        )}
       </div>
       {isReadOnly ? (
         <div className={`${styles.readOnlyBar} ${position.readOnlyBar}`} data-construction>

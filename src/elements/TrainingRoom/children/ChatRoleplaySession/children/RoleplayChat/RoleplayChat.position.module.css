@@ -61,6 +61,12 @@
   border-radius: 12px;
 }
 
+.thinkingDot {
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+}
+
 .composer {
   flex-shrink: 0;
 }
