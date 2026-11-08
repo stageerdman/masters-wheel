@@ -667,10 +667,10 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       container). New `AIAssistant.context.tsx`
       (`AIAssistantVisibilityProvider`) lets this pane hide the floating
       `AIAssistant` widget while it's mounted, so the two are never both
-      on screen at once. **Not yet real:** this pane's chat history is
-      currently the user's whole AI Assistant history, not scoped to the
-      one training session it's embedded in — flagged as backend work,
-      see `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`. The bottom
+      on screen at once. Its chat history is real and scoped to this one
+      training session (`src/lib/training`'s `trainerChatsDir`), not the
+      user's whole AI Assistant history and not another training
+      session's either (Phase 20, 2026-11-08). The bottom
       pane is Notes, reusing the session's real, already-persisted
       `notes`/`onNotesChange` — never read by any AI, including the
       Trainer pane right above it. Both panes go through the same real

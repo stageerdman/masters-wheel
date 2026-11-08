@@ -234,3 +234,13 @@ export async function clipAbsolutePath(sessionId: string, fileName: string): Pro
   const docDir = await documentDir();
   return join(docDir, STORAGE_DIR_NAME, getActiveSpaceFolder(), "training", sessionId, fileName);
 }
+
+// The AI Trainer pane's own chat storage root — a training session's
+// folder, not the Space-wide chats/ dir every other `useAIAssistant()`
+// instance reads from. Passed as src/lib/chat's `root` override (see its
+// storage.ts) so a Trainer conversation started from inside one training
+// session never shows up from another, or from the floating AI Assistant/
+// ChatPage's own history.
+export function trainerChatsDir(sessionId: string): string {
+  return `${sessionDir(sessionId)}/trainerChats`;
+}

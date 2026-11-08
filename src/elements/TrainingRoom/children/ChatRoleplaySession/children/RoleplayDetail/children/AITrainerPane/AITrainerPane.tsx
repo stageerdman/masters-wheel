@@ -8,6 +8,7 @@ import { Composer } from "@/elements/Composer/Composer";
 import { MessageList } from "@/elements/MessageList/MessageList";
 import { Sidebar } from "@/elements/Sidebar/Sidebar";
 import { useNarrowContainer } from "@/lib/useNarrowContainer";
+import { trainerChatsDir } from "@/lib/training";
 import position from "./AITrainerPane.position.module.css";
 import styles from "./AITrainerPane.styles.module.css";
 
@@ -26,13 +27,16 @@ const NARROW_SIDEBAR_BREAKPOINT = 480;
 // precedent ChatPage already set (its own independent instance + the
 // exact same Sidebar/AgentPicker/MessageList/Composer, unmodified). Disk
 // is the shared source of truth between every instance, not a live link
-// between them — today that means this pane's history is the user's
-// whole real AI Assistant history, same as everywhere else; scoping it
-// to just this training session is real backend work, not done yet (see
-// `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`'s backend-TODO
-// list). While this pane is mounted, the floating widget hides itself
+// between them — now a real, scoped-away-from-everything-else storage
+// root (src/lib/training's trainerChatsDir), not the Space-wide chats/
+// dir every other `useAIAssistant()` instance reads from, so a Trainer
+// conversation started inside this training session never shows up from
+// another training session or the floating widget/ChatPage's own
+// history. While this pane is mounted, the floating widget hides itself
 // (AIAssistant.context.tsx) so the two are never both on screen.
-export function AITrainerPane() {
+type AITrainerPaneProps = { sessionId: string };
+
+export function AITrainerPane({ sessionId }: AITrainerPaneProps) {
   const { setFloatingHidden } = useAIAssistantVisibility();
   const {
     phase,
@@ -51,7 +55,7 @@ export function AITrainerPane() {
     selectAgent,
     startChatWithAgent,
     respondToPermission,
-  } = useAIAssistant();
+  } = useAIAssistant(trainerChatsDir(sessionId));
 
   useEffect(() => {
     if (phase !== "open") open();

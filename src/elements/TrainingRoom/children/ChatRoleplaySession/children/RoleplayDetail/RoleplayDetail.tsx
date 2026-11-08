@@ -29,7 +29,7 @@ export function RoleplayDetail({ sessionId, notes, onNotesChange }: RoleplayDeta
     useSplitRail(CHAT_ROLEPLAY_DETAIL_KIND_ORDER, `chat-roleplay-detail-split-${sessionId}`);
 
   function renderKind(kind: DetailContentKind) {
-    if (kind === "trainer") return <AITrainerPane />;
+    if (kind === "trainer") return <AITrainerPane sessionId={sessionId} />;
     return (
       <textarea
         className={`${styles.editableText} ${position.editableText}`}

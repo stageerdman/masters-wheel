@@ -468,21 +468,34 @@ resolved to the simpler of the two options).
       wiki.md for what a manual pass through setup → first reply →
       Next Session → final report should confirm.
 
-### Phase 20 — Scope the AI Trainer's chat history to its training session (not started)
+### Phase 20 — Scope the AI Trainer's chat history to its training session (2026-11-08)
 Resolves backend TODO #1. Generalized, not special-cased — `AITrainerPane`
 is the second real consumer of "a chat history scoped to something
 narrower than a whole Space" (the first being the Space-wide chats/ root
 every other chat uses).
-- [ ] `src/lib/chat/storage.ts`: `chatsRoot()` takes an optional root
-      override instead of always resolving `spaceChatsDir(...)`.
-- [ ] `useAIAssistant()` (`AIAssistant.script.ts`) takes an optional
-      `storageRoot` param, threaded into every storage call.
-- [ ] New `src/lib/training` helper: `trainerChatsDir(sessionId)` →
+- [x] `src/lib/chat/storage.ts`: every function (`listSessions`/
+      `saveSession`/`deleteSessionFile`/`ensureChatsRoot`) takes an
+      optional `root` override, defaulting to `spaceChatsDir(...)` when
+      omitted.
+- [x] `useAIAssistant()` (`AIAssistant.script.ts`) takes an optional
+      `storageRoot` param, threaded into every storage call site (the
+      sessions-load effect, `updateAndPersistSession`, `startChatWithAgent`'s
+      direct save, `deleteSession`).
+- [x] New `src/lib/training` helper: `trainerChatsDir(sessionId)` →
       `training/<sessionId>/trainerChats/`.
-- [ ] `AITrainerPane` passes that root into its `useAIAssistant()` call —
-      its history is now genuinely private to this one training session,
-      not the user's whole real AI Assistant history.
-- [ ] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+- [x] `AITrainerPane` now takes a `sessionId` prop (threaded from
+      `RoleplayDetail`, which already had it) and passes
+      `trainerChatsDir(sessionId)` into its `useAIAssistant()` call — its
+      history is now genuinely private to this one training session, not
+      the user's whole real AI Assistant history.
+- [x] Fixed a real lint finding this surfaced: `updateAndPersistSession`
+      now closes over `storageRoot`, which the `onMcpTagUsed` subscription
+      effect's exhaustive-deps check correctly flagged as a missing
+      dependency — matching the sibling `onMcpPermissionRequest` effect
+      right above it (same "mount once, stable in behavior" reasoning),
+      not papered over with an unexplained disable comment.
+- [x] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
+      `.app` rebuilt and
       reinstalled.
 
 ### Phase 21 — Give the AI Trainer real access to the roleplay transcript (not started)

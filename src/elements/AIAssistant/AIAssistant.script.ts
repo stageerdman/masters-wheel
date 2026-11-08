@@ -118,7 +118,12 @@ export function orderAgentsByRecency(agents: Agent[], sessions: ChatSession[]): 
 // collapsing the window back to the icon — collapsing minimizes, it
 // doesn't reset the conversation. Dock/drag/resize/placement state is a
 // separate, unrelated concern — see AIAssistant.windowDock.script.ts.
-export function useAIAssistant() {
+// `storageRoot` scopes disk reads/writes to something narrower than the
+// whole Space's chats/ dir — undefined everywhere except AITrainerPane
+// (see src/lib/training's trainerChatsDir), which passes its own training
+// session's folder so its history never mixes with the floating widget/
+// ChatPage's, or another training session's.
+export function useAIAssistant(storageRoot?: string) {
   const [phase, setPhase] = useState<AssistantPhase>("closed");
   const [agents, setAgents] = useState<Agent[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([makeNewSession()]);
@@ -178,7 +183,7 @@ export function useAIAssistant() {
   useEffect(() => {
     if (phase !== "open" || sessionsLoadStarted.current) return;
     sessionsLoadStarted.current = true;
-    listSessions().then((loaded) => {
+    listSessions(storageRoot).then((loaded) => {
       const ordered = [...loaded].sort(
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
       );
@@ -202,7 +207,7 @@ export function useAIAssistant() {
         return [draft, ...ordered];
       });
     });
-  }, [phase, activeSpace?.id]);
+  }, [phase, activeSpace?.id, storageRoot]);
 
   function open() {
     setPhase("open");
@@ -292,6 +297,13 @@ export function useAIAssistant() {
     return () => {
       void unlistenPromise.then((unlisten) => unlisten());
     };
+    // Mount once, same reasoning as the onMcpPermissionRequest subscription
+    // above — updateAndPersistSession now also closes over storageRoot
+    // (stable for this hook instance's whole lifetime; AITrainerPane
+    // remounts on session change rather than ever passing a new one in),
+    // re-subscribing whenever it's redefined would be wrong, not just
+    // unnecessary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // The Decline/Allow/Always Allow buttons on a PermissionRequest card.
@@ -372,7 +384,7 @@ export function useAIAssistant() {
         session.id === id ? updater({ ...session, updatedAt: new Date().toISOString() }) : session,
       );
       const updated = next.find((session) => session.id === id);
-      if (updated && !isDraftSession(updated)) void saveSession(updated);
+      if (updated && !isDraftSession(updated)) void saveSession(updated, storageRoot);
       return next;
     });
   }
@@ -573,7 +585,7 @@ export function useAIAssistant() {
     };
     setSessions((current) => [session, ...current]);
     setActiveSessionId(session.id);
-    void saveSession(session);
+    void saveSession(session, storageRoot);
   }
 
   // AgentPicker's handler, always called with the active session being
@@ -609,7 +621,7 @@ export function useAIAssistant() {
   // the active one, falls back to whatever is now first — the most
   // recently used remaining chat — or a fresh draft if none are left.
   function deleteSession(id: string) {
-    void deleteSessionFile(id);
+    void deleteSessionFile(id, storageRoot);
     setSessions((current) => {
       const next = current.filter((session) => session.id !== id);
       if (activeSessionId === id) {

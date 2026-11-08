@@ -8,6 +8,12 @@
 //
 //   .../<space>/chats/<id>.json
 //
+// Every function here takes an optional `root` override, defaulting to
+// the Space-wide chats/ dir above — the second real consumer of "a chat
+// history scoped to something narrower than a whole Space" is Chat
+// Roleplay's AI Trainer pane (src/lib/training's trainerChatsDir), which
+// passes its own training/<sessionId>/trainerChats/ root instead.
+//
 // Draft ("pick someone") sessions are never written here at all — see
 // AIAssistant.script.ts's isDraftSession — they aren't real conversations
 // yet, so there's nothing worth persisting.
@@ -19,16 +25,16 @@ import type { ChatSession } from "./types";
 
 const EXTENSION = ".json";
 
-function chatsRoot() {
-  return spaceChatsDir(getActiveSpaceFolder());
+function chatsRoot(root?: string) {
+  return root ?? spaceChatsDir(getActiveSpaceFolder());
 }
 
-function sessionPath(id: string) {
-  return `${chatsRoot()}/${id}${EXTENSION}`;
+function sessionPath(id: string, root?: string) {
+  return `${chatsRoot(root)}/${id}${EXTENSION}`;
 }
 
-export async function ensureChatsRoot(): Promise<void> {
-  await mkdir(chatsRoot(), { baseDir: BASE_DIR, recursive: true });
+export async function ensureChatsRoot(root?: string): Promise<void> {
+  await mkdir(chatsRoot(root), { baseDir: BASE_DIR, recursive: true });
 }
 
 function parseSession(id: string, text: string): ChatSession | null {
@@ -66,15 +72,15 @@ function parseSession(id: string, text: string): ChatSession | null {
 
 // One real past conversation per file. A file with a missing or corrupt
 // body is skipped, not a crash — same convention listAgents() uses.
-export async function listSessions(): Promise<ChatSession[]> {
-  await ensureChatsRoot();
-  const entries = await readDir(chatsRoot(), { baseDir: BASE_DIR });
+export async function listSessions(root?: string): Promise<ChatSession[]> {
+  await ensureChatsRoot(root);
+  const entries = await readDir(chatsRoot(root), { baseDir: BASE_DIR });
   const sessions: ChatSession[] = [];
   for (const entry of entries) {
     if (entry.isDirectory || !entry.name.endsWith(EXTENSION)) continue;
     const id = entry.name.slice(0, -EXTENSION.length);
     try {
-      const text = await readTextFile(sessionPath(id), { baseDir: BASE_DIR });
+      const text = await readTextFile(sessionPath(id, root), { baseDir: BASE_DIR });
       const session = parseSession(id, text);
       if (session) sessions.push(session);
     } catch {
@@ -84,14 +90,14 @@ export async function listSessions(): Promise<ChatSession[]> {
   return sessions;
 }
 
-export async function saveSession(session: ChatSession): Promise<void> {
-  await ensureChatsRoot();
-  await writeTextFile(sessionPath(session.id), JSON.stringify(session, null, 2), { baseDir: BASE_DIR });
+export async function saveSession(session: ChatSession, root?: string): Promise<void> {
+  await ensureChatsRoot(root);
+  await writeTextFile(sessionPath(session.id, root), JSON.stringify(session, null, 2), { baseDir: BASE_DIR });
 }
 
-export async function deleteSessionFile(id: string): Promise<void> {
+export async function deleteSessionFile(id: string, root?: string): Promise<void> {
   try {
-    await remove(sessionPath(id), { baseDir: BASE_DIR });
+    await remove(sessionPath(id, root), { baseDir: BASE_DIR });
   } catch {
     // Never persisted (a draft, or a session that errored before its
     // first save) — nothing to delete.
