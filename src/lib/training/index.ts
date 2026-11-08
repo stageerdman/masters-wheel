@@ -58,6 +58,12 @@ export type SessionMetaFields = {
   lastUpdatedAt: string;
   notes: string;
   clips: StoredClipMeta[];
+  // Chat Roleplay's own persisted state (setup thread, locked scenario,
+  // rounds, final report) — this module doesn't know that shape, same as
+  // it doesn't know TrainingToolType/SessionStatus/ClipKind (see this
+  // file's header). `null` for every other discipline, and for a
+  // not-yet-written Chat Roleplay session.
+  roleplay: unknown;
 };
 
 export type SessionSummary = SessionMetaFields & { id: string };
@@ -70,6 +76,7 @@ function emptyMeta(toolType: string, name: string): SessionMetaFields {
     lastUpdatedAt: new Date().toISOString(),
     notes: "",
     clips: [],
+    roleplay: null,
   };
 }
 
@@ -110,6 +117,7 @@ function parseMeta(text: string): SessionMetaFields | null {
     lastUpdatedAt: typeof candidate.lastUpdatedAt === "string" ? candidate.lastUpdatedAt : new Date().toISOString(),
     notes: typeof candidate.notes === "string" ? candidate.notes : "",
     clips,
+    roleplay: candidate.roleplay ?? null,
   };
 }
 

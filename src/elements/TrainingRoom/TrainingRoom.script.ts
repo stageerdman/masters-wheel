@@ -33,6 +33,7 @@ import {
   type TrainingSession,
   type TrainingToolType,
 } from "./TrainingRoom.data";
+import { parseRoleplayState, type RoleplayState } from "./children/ChatRoleplaySession/ChatRoleplaySession.data";
 
 const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "m4a", "aac", "ogg", "flac", "aiff"]);
 
@@ -126,6 +127,7 @@ async function sessionFromSummary(summary: SessionSummary): Promise<TrainingSess
     lastUpdatedAt: summary.lastUpdatedAt,
     clips,
     notes: summary.notes,
+    roleplay: parseRoleplayState(summary.roleplay),
   };
 }
 
@@ -230,6 +232,7 @@ export function useTrainingRoomData() {
         lastUpdatedAt: new Date().toISOString(),
         clips: [],
         notes: "",
+        roleplay: null,
       };
       setSessions((prev) => [fresh, ...prev]);
       setSelectedIdState(id);
@@ -300,6 +303,21 @@ export function useTrainingRoomData() {
   // Wheel/**), so it's copied into real Space storage first (see
   // src/lib/training) before being played back via convertFileSrc —
   // playing the picked path directly silently fails outside that scope.
+  // Chat Roleplay's own state (setup thread, locked scenario, rounds,
+  // final report) is a real content change just like notes/clips — every
+  // mutation in useChatRoleplaySession already only fires on a commit/
+  // submit action (never a raw keystroke), so this always writes
+  // immediately rather than needing its own debounce.
+  const updateRoleplay = useCallback(
+    (sessionId: string, roleplay: RoleplayState) => {
+      const lastUpdatedAt = writeNow(sessionId, { roleplay });
+      setSessions((prev) =>
+        prev.map((session) => (session.id === sessionId ? { ...session, roleplay, lastUpdatedAt } : session))
+      );
+    },
+    [writeNow]
+  );
+
   const addClip = useCallback(
     async (sessionId: string, path: string) => {
       let absolutePath = path;
@@ -414,6 +432,7 @@ export function useTrainingRoomData() {
     reopenSession: (id: string) => setSessionStatus(id, "open"),
     renameSession,
     onNotesChange,
+    updateRoleplay,
     addClip: uploadClip,
     generateTranscript,
     isUploadOpen,

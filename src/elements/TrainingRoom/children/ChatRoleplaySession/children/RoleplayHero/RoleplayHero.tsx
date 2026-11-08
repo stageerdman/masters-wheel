@@ -24,6 +24,8 @@ type RoleplayHeroProps = {
   onRemoveRound: (roundId: string) => void;
   onNextSession: () => void;
   onGenerateFinalReport: () => void;
+  isAdvancingSession: boolean;
+  isGeneratingFinalReport: boolean;
 };
 
 // The final report is real markdown (bold, blank-line paragraphs, a
@@ -68,6 +70,8 @@ export function RoleplayHero({
   onRemoveRound,
   onNextSession,
   onGenerateFinalReport,
+  isAdvancingSession,
+  isGeneratingFinalReport,
 }: RoleplayHeroProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [draftValue, setDraftValue] = useState("");
@@ -232,8 +236,14 @@ export function RoleplayHero({
         )}
       </div>
       <div className={`${styles.actions} ${position.actions}`} data-construction>
-        <button type="button" className={`${styles.nextButton} ${position.nextButton}`} data-construction onClick={onNextSession}>
-          Next Session
+        <button
+          type="button"
+          className={`${styles.nextButton} ${position.nextButton}`}
+          data-construction
+          onClick={onNextSession}
+          disabled={isAdvancingSession}
+        >
+          {isAdvancingSession ? "Starting…" : "Next Session"}
         </button>
         {expanded && (
           <button
@@ -241,8 +251,9 @@ export function RoleplayHero({
             className={`${styles.reportButton} ${position.reportButton}`}
             data-construction
             onClick={onGenerateFinalReport}
+            disabled={isGeneratingFinalReport}
           >
-            Generate final report
+            {isGeneratingFinalReport ? "Generating…" : "Generate final report"}
           </button>
         )}
       </div>

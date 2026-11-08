@@ -1,10 +1,8 @@
-// Scripted content for the Chat Roleplay prototype — see
+// Types + persisted-state shape for the Chat Roleplay discipline. See
 // `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`'s "Chat Roleplay
-// discipline" section for the full dictated spec this implements. Every
-// value here is canned/fake; nothing calls a real model. One running
-// example throughout (a cold-call opener against "Marcus Webb," a
-// skeptical, impatient enterprise IT Director), same example used in the
-// Artifact prototype this was built from.
+// discipline" section for the full dictated spec, and this update's
+// Phases 16-19 for the real-backend wiring that replaced every scripted
+// constant that used to live in this file.
 
 export type AssumptionRow = {
   id: string;
@@ -42,18 +40,22 @@ export type RoleplayTurn = {
 
 // One roleplay attempt. Only the latest round in `rounds` is ever live/
 // interactive — every earlier one is permanently read-only the moment
-// "Next Session" creates the next one (the user asked for this
-// explicitly: "user cannot continue chatting in previous session, only
-// observe it"). `report` is this round's own AI summary, generated the
-// moment it stops being live; `adjustmentPhrase` is the single carried-
-// forward note it *started* with (null for round 1, which has nothing to
-// carry forward yet).
+// "Next Session" creates the next one. `report` is this round's own AI
+// summary, generated the moment it stops being live; `adjustmentPhrase`
+// is the single carried-forward note it *started* with (null for round 1,
+// which has nothing to carry forward yet). `claudeSessionId` is this
+// round's own `--resume` id for `generate_roleplay_turn` — null until the
+// round's opening turn comes back, and deliberately never carried into
+// the *next* round (a round reset means a fresh CLI session too; only
+// the plain-text adjustment phrase crosses that boundary, not raw
+// session memory).
 export type SessionRound = {
   id: string;
   roundNumber: number;
   turns: RoleplayTurn[];
   adjustmentPhrase: string | null;
   report: string | null;
+  claudeSessionId: string | null;
 };
 
 export type AssumptionAmendment = { text: string; at: number };
@@ -64,79 +66,73 @@ export type LockedAssumption = {
   history: AssumptionAmendment[];
 };
 
-export const SETUP_OPENING_MESSAGE =
-  "Got it — a cold call scenario. A few quick things:\n" +
-  "1. Who's the prospect? (role, seniority, mood)\n" +
-  "2. How experienced should they be at pushing back?\n" +
-  "3. Anything you want to skip past — like assume rapport's already there?";
+// Everything about one Chat Roleplay session that survives a reload —
+// persisted opaquely by src/lib/training as session.json's `roleplay`
+// field (that module doesn't know this shape, same as it doesn't know
+// TrainingToolType — see its own file header).
+export type RoleplayState = {
+  phase: "setup" | "live";
+  setupThread: SetupBlock[];
+  setupSessionId: string | null;
+  scenarioTitle: string;
+  scenarioMeta: string;
+  lockedAssumptions: LockedAssumption[];
+  rounds: SessionRound[];
+  finalReport: string | null;
+};
 
-export function freshProposalCard(id: string): ProposalCardData {
+export const SETUP_OPENING_MESSAGE =
+  "What would you like to train today? Describe who you're talking to and what you're trying to practice.";
+
+export function emptyRoleplayState(): RoleplayState {
   return {
-    id,
-    title: "Cold Call — Skeptical IT Director, Hard",
-    meta: "Persona: Marcus Webb, IT Director · Difficulty: Hard · Setting: Outbound, no prior contact.",
-    assumptions: [
-      { id: `${id}-a1`, text: "You're already past the gatekeeper — this skips the switchboard.", checked: true },
-      { id: `${id}-a2`, text: "No prior outreach has happened — this is first contact.", checked: true },
-      {
-        id: `${id}-a3`,
-        text: "Marcus has been burned by vendors before — start skeptical, not neutral.",
-        checked: true,
-      },
-    ],
-    frozen: false,
-    superseded: false,
+    phase: "setup",
+    setupThread: [{ id: "opening", kind: "text", role: "ai", text: SETUP_OPENING_MESSAGE }],
+    setupSessionId: null,
+    scenarioTitle: "",
+    scenarioMeta: "",
+    lockedAssumptions: [],
+    rounds: [],
+    finalReport: null,
   };
 }
 
-export const REFINED_META =
-  "Persona: Marcus Webb, IT Director · Difficulty: Hard · Setting: Outbound, impatient — 5 minutes available.";
+function isSetupBlock(value: unknown): value is SetupBlock {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<SetupBlock>;
+  return (
+    typeof candidate.id === "string" &&
+    (candidate.kind === "text" || candidate.kind === "card" || candidate.kind === "divider")
+  );
+}
 
-export const HERO_SUMMARY =
-  "Practicing a cold-call opener against Marcus Webb, a skeptical enterprise IT Director with only " +
-  "five minutes between meetings, who has already said no to vendors like us before. Goal: earn real " +
-  "attention fast and secure a next step, without pitching features early.";
+function isSessionRound(value: unknown): value is SessionRound {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<SessionRound>;
+  return typeof candidate.id === "string" && Array.isArray(candidate.turns);
+}
 
-export const PERSONA_OPENING: Thought & { text: string } = {
-  author: "ai",
-  text: "Testing whether the rep sounds rehearsed — giving a short, impatient window to see if they waste it.",
-};
+function isLockedAssumption(value: unknown): value is LockedAssumption {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<LockedAssumption>;
+  return typeof candidate.id === "string" && typeof candidate.text === "string";
+}
 
-export const PERSONA_OPENING_LINE =
-  "*(phone picks up, clipped)* Webb. I've got five minutes — who is this and why are you calling my direct line?";
-
-export const PERSONA_REPLY_POOL: { text: string; thought: string }[] = [
-  {
-    text: "*(pause)* ...Half? Which companies. I've heard that pitch before and it didn't hold up.",
-    thought:
-      "Testing whether the rep has real specifics behind the stat or just an opener — pushing back hard per the already-said-no assumption.",
-  },
-  {
-    text: "*(checks watch)* You've got two minutes left. Convince me this isn't another vendor fishing expedition.",
-    thought: "Raising the stakes on the clock to see if the rep rushes into a pitch or stays composed.",
-  },
-  {
-    text: "Fine — say the companies. If you can't, we're done.",
-    thought: "Forcing specificity; if the rep can't back the claim, trust drops further.",
-  },
-];
-
-// "Next Session" carries forward one short adjustment phrase per round —
-// mocked here (a cycling canned pool) until something real distills it
-// from the transcript that just finished. See the wiki's "Next Session"
-// section for what's expected to persist vs. reset once this is real.
-export const ADJUSTMENT_PHRASE_POOL: string[] = [
-  "Try opening with a direct question instead of a stat this time.",
-  "Let his pushback sit a beat longer before responding.",
-  "Lead with a proof point he can verify, not another claim.",
-];
-
-// A round's own AI report, generated the moment it stops being live —
-// mocked here (cycling flavor text layered onto the real reply count) the
-// same way ADJUSTMENT_PHRASE_POOL is, until something real writes it
-// from the actual transcript.
-export const ROUND_REPORT_FLAVOR_POOL: string[] = [
-  "Held composure under pushback and didn't retreat into features.",
-  "Opened with specifics but let the clock pressure rush the close.",
-  "Recovered well after an objection landed, but confirmed the next step late.",
-];
+// Tolerant parse of the opaque blob src/lib/training hands back — missing
+// or corrupt is just "no roleplay state yet" (a fresh session), never a
+// crash, same ethos as every other storage module's parseMeta.
+export function parseRoleplayState(raw: unknown): RoleplayState | null {
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as Partial<RoleplayState>;
+  if (candidate.phase !== "setup" && candidate.phase !== "live") return null;
+  return {
+    phase: candidate.phase,
+    setupThread: Array.isArray(candidate.setupThread) ? candidate.setupThread.filter(isSetupBlock) : [],
+    setupSessionId: typeof candidate.setupSessionId === "string" ? candidate.setupSessionId : null,
+    scenarioTitle: typeof candidate.scenarioTitle === "string" ? candidate.scenarioTitle : "",
+    scenarioMeta: typeof candidate.scenarioMeta === "string" ? candidate.scenarioMeta : "",
+    lockedAssumptions: Array.isArray(candidate.lockedAssumptions) ? candidate.lockedAssumptions.filter(isLockedAssumption) : [],
+    rounds: Array.isArray(candidate.rounds) ? candidate.rounds.filter(isSessionRound) : [],
+    finalReport: typeof candidate.finalReport === "string" ? candidate.finalReport : null,
+  };
+}

@@ -618,11 +618,40 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       thought at once (a message with a hidden thought still shows a
       tiny closed-eye marker). The roleplay AI itself never receives any
       thought, by construction (there's no payload path that would).
-- [x] All of the above is scripted/local state — one running example
-      (a cold-call opener against "Marcus Webb"), no real model call
-      drives any of it, including every round's report and the final
-      report (both deterministic text built from turn counts + a small
-      canned flavor pool).
+- [x] The visual shell above is still exactly this — the UI mechanics
+      didn't change. What changed in Phases 17-19 (below) is what drives
+      it: every one of these used to be scripted/local state (one running
+      "Marcus Webb" example, canned flavor pools for reports) and is now
+      a real model call instead.
+
+### Built — real backend (Chat Roleplay's three AI roles, 2026-11-08)
+- [x] New `src-tauri/src/roleplay.rs` (shells out to `claude -p`, not
+      built on `ask_agent` — see this update's wiki.md for why) plus
+      `src/lib/roleplay`: three real calls behind the discipline's whole
+      design — `generate_setup_reply` (the scenario designer, grounded in
+      the new Settings page's business description), `generate_roleplay_turn`
+      (the prospect persona — a `THOUGHT:`/`REPLY:` labeled reply, the
+      reply's tone/length actually tracking the reasoned emotional state,
+      verified by hand), and `generate_insight` (adjustment phrases, round
+      reports, and a real cross-session final-report synthesis, not a
+      re-stitch of strings already on hand).
+- [x] The setup conversation, the persona's every line (and its private
+      thought), "Next Session"'s adjustment phrase, each round's report,
+      and the final report are all real now — nothing left scripted in
+      `ChatRoleplaySession.data.ts`. A trainee's private "thought" still
+      never reaches the persona AI, now enforced by
+      `generate_roleplay_turn`'s own signature (no thought parameter
+      exists to pass it through) rather than by there simply being no
+      model call at all.
+- [x] Every async action has a real busy state (composer/buttons disable
+      while a call is in flight) and a real failure path (an inline
+      message, not a crash, not a silently dropped action).
+- [x] **Not yet click-through verified in the running app** — this
+      project's CLAUDE.md rules out browser automation here; build/lint/
+      tsc/cargo check are clean and the model-call shape was verified by
+      hand outside the app, but a manual pass through setup → first reply
+      → Next Session → final report in the real `.app` hasn't happened
+      yet.
 
 ### Built (real functionality — Chat Roleplay's Detail sidebar, 2026-11-08)
 - [x] The sidebar's top pane is the real AI Assistant, not a mock, and
@@ -654,11 +683,6 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       interpolated.
 - [ ] The two still-locked disciplines (Voice Roleplay, Mindset Shifting)
       — DisciplinePicker already lists them, nothing behind them yet.
-- [ ] Chat Roleplay: a real model call behind the setup conversation, the
-      roleplay persona's dialogue/thoughts, the Next Session adjustment
-      phrase, each round's own report, and the final report (all
-      currently scripted/mocked — see
-      `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`).
 - [ ] Wiring Performance Review's "Take it to the training ground" button
       (still a no-op) to actually open/seed a Training Room session.
 

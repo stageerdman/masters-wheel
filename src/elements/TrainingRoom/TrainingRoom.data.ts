@@ -4,6 +4,7 @@
 // `updates/2026-11-06 TRAINING-ROOM - OPEN/` for the roadmap.
 
 import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
+import type { RoleplayState } from "./children/ChatRoleplaySession/ChatRoleplaySession.data";
 
 // Detail's content kinds. Voice Training still only ever shows "notes"
 // (its transcript already lives inline in the Hero feed) — the second
@@ -117,4 +118,7 @@ export type TrainingSession = {
   // Newest first — the scrollable feed shown in Hero.
   clips: TrainingClip[];
   notes: string;
+  // Chat Roleplay's own persisted state — null for every other discipline,
+  // and for a not-yet-set-up Chat Roleplay session.
+  roleplay: RoleplayState | null;
 };

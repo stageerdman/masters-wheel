@@ -389,56 +389,84 @@ turn, it falls back to treating the whole response as the primary field.
       told me what he actually does") — real escalating continuity, not
       just independently-correct single turns.
 
-### Phase 17 — Wire the setup conversation to `generate_setup_reply` (not started)
-- [ ] `ChatRoleplaySession.script.ts`'s `submitSetupMessage` calls the real
-      command instead of the `freshProposalCard`/`REFINED_META` canned
-      path; `SETUP_OPENING_MESSAGE` becomes the real first call's reply
-      (or a static "what are we training today?" opener before the first
-      real call — TBD at implementation time, not a backend question).
-- [ ] Setup state becomes real: `setupThread` + the setup's own
-      `claudeSessionId` persist into `session.json` via a new
-      `RoleplayMetaFields` shape in `src/lib/training` (parallel to
-      `StoredClipMeta`), so leaving and returning to a session mid-setup
-      doesn't lose the conversation.
-- [ ] Delete `ChatRoleplaySession.data.ts`'s now-dead scripted setup
-      constants (`SETUP_OPENING_MESSAGE`, `freshProposalCard`,
-      `REFINED_META`) — not grown, same fate `TrainingRoom.data.ts`'s
-      original fixture had once real storage landed.
-- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
-      `.app` rebuilt and reinstalled.
-
-### Phase 18 — Wire the roleplay itself to `generate_roleplay_turn` (not started)
-- [ ] `sendTurn` calls the real command with only `text` (the attached
-      private `thoughtText` stays local-only, never leaves this function —
-      see Phase 16's signature-level enforcement); renders the real
-      `thought`/`reply` pair back into the turn.
-- [ ] `beginRoleplay`'s `freshRound`/`PERSONA_OPENING`/`PERSONA_OPENING_LINE`
-      become a real first `generate_roleplay_turn` call (no human message
-      yet — an opening-line variant, or the persona's own cold-open
-      prompted directly); `nextSession`'s per-round reset drops
-      `--resume` on purpose per Phase 16.
-- [ ] `heroSummary` stops being the static `HERO_SUMMARY` constant —
-      derived from the locked proposal's real title/assumptions once
-      those are real (Phase 17), not a fresh AI call.
-- [ ] Each `SessionRound` gains `claudeSessionId: string | null`,
-      persisted in `session.json`'s `RoleplayMetaFields.rounds`.
-- [ ] Delete `PERSONA_OPENING`/`PERSONA_OPENING_LINE`/`PERSONA_REPLY_POOL`
-      from `ChatRoleplaySession.data.ts`.
-- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
-      `.app` rebuilt and reinstalled.
-
-### Phase 19 — Wire report generation to `generate_insight` (not started)
-- [ ] `reportFor` (round report) and `nextSession`'s adjustment-phrase pick
-      both call `generate_insight` with the real round transcript instead
-      of `ROUND_REPORT_FLAVOR_POOL`/`ADJUSTMENT_PHRASE_POOL`.
-- [ ] `generateFinalReport` calls `generate_insight(kind: "final_report")`
-      with the real per-round reports instead of hand-assembling the
-      markdown string itself in TS.
-- [ ] Delete `ROUND_REPORT_FLAVOR_POOL`/`ADJUSTMENT_PHRASE_POOL` from
-      `ChatRoleplaySession.data.ts` — every scripted constant in that file
-      is gone after this phase.
-- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
-      `.app` rebuilt and reinstalled.
+### Phases 17-19 — Wire setup, roleplay turns, and reports to real calls (2026-11-08)
+Done together in one pass — the three were tightly coupled enough (one
+combined `RoleplayState` object, one `persist` path) that splitting them
+into separate commits would have meant repeatedly touching the same
+functions. **Refined from the original plan**: no separate
+`RoleplayMetaFields` struct in `src/lib/training` — that module stays
+genuinely opaque to this discipline's shape (same "doesn't know
+TrainingToolType either" stance its file header already took), gaining
+just one new `roleplay: unknown` field on `SessionMetaFields`, validated
+only on the `ChatRoleplaySession.data.ts` side (`parseRoleplayState`).
+All three phases' scripted constants are gone from `ChatRoleplaySession.data.ts`:
+`freshProposalCard`, `REFINED_META`, `HERO_SUMMARY`, `PERSONA_OPENING`/
+`PERSONA_OPENING_LINE`/`PERSONA_REPLY_POOL`, `ADJUSTMENT_PHRASE_POOL`,
+`ROUND_REPORT_FLAVOR_POOL` are all deleted; `SETUP_OPENING_MESSAGE` stays
+as a static opener shown before the first real call (there's no user
+message yet to send the model, so the "TBD" from the original plan
+resolved to the simpler of the two options).
+- [x] One consolidated `RoleplayState` (phase, setupThread, setupSessionId,
+      scenarioTitle, scenarioMeta, lockedAssumptions, rounds, finalReport)
+      replaces the old scattered `useState` calls for everything that
+      needs to survive a reload; ephemeral UI-only state (which row is
+      mid-edit, whether the details panel is expanded, etc.) stays as
+      separate `useState` since it never persists. Every mutation already
+      only fired on a commit/submit action (never a raw keystroke), so
+      every change calls a single `persist()` that both updates state and
+      calls `onRoleplayChange` immediately — no debounce needed.
+- [x] `TrainingSession` gained `roleplay: RoleplayState | null`;
+      `TrainingRoom.script.ts` hydrates it in `sessionFromSummary` via
+      `parseRoleplayState`, and a new `updateRoleplay` writer (same
+      `writeNow`-immediate shape as clips/notes — a real content change,
+      so it bumps `lastUpdatedAt` too) threads `onRoleplayChange` down to
+      `ChatRoleplaySession`.
+- [x] `submitSetupMessage` calls `generate_setup_reply` (reading
+      `businessDescription` from the new Settings page live, every call —
+      not cached); a `question` reply appends an AI text block, a
+      `proposal` reply freezes/supersedes the prior card and appends a
+      fresh one, exactly like the old scripted flow's visual shape.
+- [x] `beginRoleplay` calls `generate_roleplay_turn` with `message: null`
+      (the opening-line variant) to get the persona's first line for
+      real, locks in `scenarioTitle`/`scenarioMeta`/`lockedAssumptions` as
+      permanent record fields, and starts round 1 with that reply's
+      `sessionId` as the round's own `claudeSessionId`.
+- [x] `sendTurn` calls `generate_roleplay_turn` with only `trimmedText` —
+      `thoughtText` never leaves this function, enforced by Phase 16's
+      command signature having no thought parameter at all, not a runtime
+      check here.
+- [x] `nextSession` now does real work: `generate_insight(kind:
+      "adjustment")` and `generate_insight(kind: "round_report")` in
+      parallel over the finishing round's text-only transcript, then one
+      more `generate_roleplay_turn(message: null, adjustmentPhrase: phrase,
+      resumeSessionId: null)` call to open the new round — a real reset,
+      no `--resume`, only the plain-text phrase carries forward.
+- [x] `generateFinalReport` backfills any round missing a report (one
+      `generate_insight` call each), then synthesizes all of them via one
+      `generate_insight(kind: "final_report")` call — a real cross-session
+      synthesis, not a re-stitch of strings already on hand.
+- [x] `heroSummary` is now `[scenarioTitle, scenarioMeta].filter(Boolean).join(". ")` —
+      derived from the locked proposal, no AI call.
+- [x] New `personaLabelFrom()` extracts a display name out of
+      `scenarioMeta`'s "Persona: Name, ..." text (falling back to the
+      scenario title, then "Persona") — `RoleplayChat`'s hardcoded
+      "Marcus"/"Reply to Marcus…" is gone, every discipline-neutral
+      scenario gets its own label.
+- [x] Every async action got a real busy flag (`isSendingSetup`,
+      `isBeginning`, `isSendingTurn`, `isAdvancingSession`,
+      `isGeneratingFinalReport`) wired into the composer/button `disabled`
+      states in `SetupThread`/`RoleplayChat`/`RoleplayHero` — the UI can
+      no longer fire a second call on top of one still in flight, which
+      the old instant-scripted version never had to guard against.
+- [x] Every failure path surfaces inline (an AI text block in the setup
+      thread, a persona-voiced turn, or a report field) rather than
+      silently dropping the trainee's action or throwing past the hook —
+      "honest error states," not a crash.
+- [x] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean.
+      Not yet click-through verified in the running app — this project's
+      CLAUDE.md rules out browser automation here; see this update's
+      wiki.md for what a manual pass through setup → first reply →
+      Next Session → final report should confirm.
 
 ### Phase 20 — Scope the AI Trainer's chat history to its training session (not started)
 Resolves backend TODO #1. Generalized, not special-cased — `AITrainerPane`

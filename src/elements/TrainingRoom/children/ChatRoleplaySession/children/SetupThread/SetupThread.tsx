@@ -11,6 +11,7 @@ type SetupThreadProps = {
   editingAssumptionRowId: string | null;
   isAddingAssumptionRow: boolean;
   isBeginning: boolean;
+  isSending: boolean;
   onSubmitMessage: (text: string) => void;
   onToggleRow: (cardId: string, rowId: string) => void;
   onStartEdit: (rowId: string) => void;
@@ -31,6 +32,7 @@ export function SetupThread({
   editingAssumptionRowId,
   isAddingAssumptionRow,
   isBeginning,
+  isSending,
   onSubmitMessage,
   onToggleRow,
   onStartEdit,
@@ -49,7 +51,7 @@ export function SetupThread({
   }, [thread]);
 
   function handleSend() {
-    if (!value.trim()) return;
+    if (!value.trim() || isSending) return;
     onSubmitMessage(value);
     setValue("");
   }
@@ -107,6 +109,7 @@ export function SetupThread({
           data-construction
           placeholder="Message…"
           value={value}
+          disabled={isSending}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") handleSend();
@@ -117,7 +120,7 @@ export function SetupThread({
           className={`${styles.send} ${position.send}`}
           data-construction
           onClick={handleSend}
-          disabled={value.trim().length === 0}
+          disabled={value.trim().length === 0 || isSending}
           aria-label="Send"
         >
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">

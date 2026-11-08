@@ -26,6 +26,7 @@ export function TrainingRoom() {
     reopenSession,
     renameSession,
     onNotesChange,
+    updateRoleplay,
     addClip,
     generateTranscript,
     isUploadOpen,
@@ -64,6 +65,7 @@ export function TrainingRoom() {
             notes={selected.notes}
             onNotesChange={(value) => onNotesChange(selected.id, value)}
             onNameChange={(name) => renameSession(selected.id, name)}
+            onRoleplayChange={(roleplay) => updateRoleplay(selected.id, roleplay)}
           />
         ) : (
           <>

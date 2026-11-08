@@ -11,6 +11,8 @@ type RoleplayChatProps = {
   onToggleThoughts: () => void;
   onSend: (text: string, thought: string) => void;
   isReadOnly: boolean;
+  isSending: boolean;
+  personaLabel: string;
   roundNumber: number;
   onJumpToLive: () => void;
 };
@@ -30,6 +32,8 @@ export function RoleplayChat({
   onToggleThoughts,
   onSend,
   isReadOnly,
+  isSending,
+  personaLabel,
   roundNumber,
   onJumpToLive,
 }: RoleplayChatProps) {
@@ -46,7 +50,7 @@ export function RoleplayChat({
   const thoughtCount = turns.filter((turn) => turn.thought).length;
 
   function handleSend() {
-    if (!replyValue.trim()) return;
+    if (!replyValue.trim() || isSending) return;
     onSend(replyValue, thoughtValue);
     setReplyValue("");
     setThoughtValue("");
@@ -91,7 +95,7 @@ export function RoleplayChat({
       </div>
       <div ref={listRef} className={position.list} data-construction>
         {turns.map((turn) => {
-          const speakerLabel = turn.speaker === "persona" ? "Marcus" : "You";
+          const speakerLabel = turn.speaker === "persona" ? personaLabel : "You";
           const showThought = Boolean(turn.thought) && thoughtsVisible;
           const showHiddenMarker = Boolean(turn.thought) && !thoughtsVisible;
           return (
@@ -136,8 +140,9 @@ export function RoleplayChat({
               type="text"
               className={`${styles.input} ${position.input}`}
               data-construction
-              placeholder="Reply to Marcus…"
+              placeholder={`Reply to ${personaLabel}…`}
               value={replyValue}
+              disabled={isSending}
               onChange={(event) => setReplyValue(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") handleSend();
@@ -148,7 +153,7 @@ export function RoleplayChat({
               className={`${styles.send} ${position.send}`}
               data-construction
               onClick={handleSend}
-              disabled={replyValue.trim().length === 0}
+              disabled={replyValue.trim().length === 0 || isSending}
               aria-label="Send"
             >
               <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">

@@ -6,6 +6,7 @@ import { RoleplayDetail } from "./children/RoleplayDetail/RoleplayDetail";
 import { RoleplayHero } from "./children/RoleplayHero/RoleplayHero";
 import { SetupThread } from "./children/SetupThread/SetupThread";
 import { useChatRoleplaySession } from "./ChatRoleplaySession.script";
+import type { RoleplayState } from "./ChatRoleplaySession.data";
 import position from "./ChatRoleplaySession.position.module.css";
 import styles from "./ChatRoleplaySession.styles.module.css";
 
@@ -14,6 +15,7 @@ type ChatRoleplaySessionProps = {
   notes: string;
   onNotesChange: (value: string) => void;
   onNameChange: (value: string) => void;
+  onRoleplayChange: (state: RoleplayState) => void;
 };
 
 // Replaces the generic Hero/Detail pair for the Chat Roleplay discipline —
@@ -21,11 +23,12 @@ type ChatRoleplaySessionProps = {
 // discipline" section for the full dictated spec. Mounted with
 // `key={session.id}` by TrainingRoom.tsx, so switching sessions is a
 // fresh mount rather than needing a manual multi-field state reset.
-export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChange }: ChatRoleplaySessionProps) {
+export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChange, onRoleplayChange }: ChatRoleplaySessionProps) {
   const {
     phase,
     setupThread,
     isBeginning,
+    isSendingSetup,
     editingAssumptionRowId,
     isAddingAssumptionRow,
     submitSetupMessage,
@@ -37,6 +40,7 @@ export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChang
     commitAddAssumption,
     beginRoleplay,
     heroSummary,
+    personaLabel,
     lockedAssumptions,
     editingLockedRowId,
     detailsExpanded,
@@ -44,6 +48,7 @@ export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChang
     startEditLockedAssumption,
     commitEditLockedAssumption,
     finalReport,
+    isGeneratingFinalReport,
     generateFinalReport,
     rounds,
     activeRound,
@@ -53,8 +58,10 @@ export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChang
     thoughtsVisible,
     toggleThoughtsVisible,
     sendTurn,
+    isSendingTurn,
     nextSession,
-  } = useChatRoleplaySession();
+    isAdvancingSession,
+  } = useChatRoleplaySession(session.roleplay, onRoleplayChange);
 
   const liveRound = rounds[rounds.length - 1] ?? null;
 
@@ -66,6 +73,7 @@ export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChang
           editingAssumptionRowId={editingAssumptionRowId}
           isAddingAssumptionRow={isAddingAssumptionRow}
           isBeginning={isBeginning}
+          isSending={isSendingSetup}
           onSubmitMessage={submitSetupMessage}
           onToggleRow={toggleAssumption}
           onStartEdit={startEditAssumption}
@@ -94,7 +102,9 @@ export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChang
             onSelectRound={selectRound}
             onRemoveRound={removeRound}
             onNextSession={nextSession}
+            isAdvancingSession={isAdvancingSession}
             onGenerateFinalReport={generateFinalReport}
+            isGeneratingFinalReport={isGeneratingFinalReport}
           />
           <div className={position.liveBody} data-construction>
             {activeRound && (
@@ -104,6 +114,8 @@ export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChang
                 onToggleThoughts={toggleThoughtsVisible}
                 onSend={sendTurn}
                 isReadOnly={!isViewingLiveRound}
+                isSending={isSendingTurn}
+                personaLabel={personaLabel}
                 roundNumber={activeRound.roundNumber}
                 onJumpToLive={() => liveRound && selectRound(liveRound.id)}
               />
