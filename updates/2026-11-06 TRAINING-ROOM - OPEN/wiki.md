@@ -466,6 +466,91 @@ styling request:
    above the assumptions list too, once there were three consumers of the
    same look instead of one.
 
+## Chat Roleplay discipline — round 4: AI Trainer gets the real chat UI (2026-11-08, same day)
+
+The AI Trainer pane was real (a genuine `useAIAssistant()` instance) from
+round 1, but visually it was just a bare message list + composer. Asked
+explicitly for "the same design as in AI Assistant" — so `AITrainerPane`
+now reuses the *same chat UI*, not just the same engine: a top bar with
+a history toggle and a "+" new chat button (identical icons/markup to
+`ChatPage`'s own top bar), and the real `Sidebar` (`AgentStrip` +
+`HistoryList`) wired in exactly like `ChatPage` does. The one deliberate
+difference from `ChatPage`: the side menu defaults **closed** here (this
+is a small docked pane you open into a chat, not a dedicated page whose
+whole point is seeing every chat at a glance — matches the floating
+widget's own default instead).
+
+Reused, not reimplemented: `Sidebar`'s existing "too narrow to split
+side-by-side, take over the whole area instead" behavior
+(`@container window-content (max-width: 480px)`) needed no new code —
+`AITrainerPane.position.module.css` just declares the same named
+container (`container: window-content / inline-size`) `AIAssistantWindow`
+and `ChatPage` already declare on their own content row, and Sidebar's
+*existing* CSS (unmodified) picks it up. Since the Detail column is a
+fixed 360px, this pane is always in that narrow/overlay mode — there's
+no side-by-side split state here, only "closed" and "full takeover,"
+same `useNarrowContainer` + auto-close-on-select wiring `ChatPage` uses.
+
+## Backend TODO — things dictated now, to come back to once a real backend exists
+
+Collected here (not scattered across the sections above) specifically so
+nothing dictated across this whole feature's design process gets lost.
+None of this is built — everything below is UI-only or scripted today.
+
+1. **Scope the AI Trainer's chat history to the training session.**
+   Right now `AITrainerPane` is a plain `useAIAssistant()` instance, so
+   its history is the user's *entire* real AI Assistant history (same
+   disk storage as the floating widget and `/chat`) — explicitly called
+   out as wrong: "when we setup the backend it must be related only to
+   this related training session." Needs a real storage scope (likely a
+   `trainingSessionId` passed into chat storage, mirroring how Spaces
+   already scope `src/lib/chat` per-Space) so a Trainer conversation
+   started from inside session A never shows up from session B.
+2. **Revisit whether the Trainer should also see the roleplay
+   transcript itself, and how.** The very first dictated spec (before
+   any code existed) wanted the Trainer able to retrieve the roleplay
+   transcript incrementally vs. in full, and with or without the user's
+   private thoughts, with that retrieval state surfaced in the UI. Once
+   "just reuse the real AI Assistant" became the direction, that
+   mechanism was dropped rather than resolved — today's Trainer has no
+   access to the roleplay transcript at all, only its own separate
+   coaching conversation. Worth a real decision later: does the Trainer
+   need transcript access (likely as an MCP tool, same pattern as
+   `get_performance_review`), and if so, does the original
+   incremental/full + with/without-thoughts design still apply?
+3. **New Main Menu page: Settings.** Holds a per-Space description of
+   "the product I'm selling or what I'm doing as a work in that
+   workspace." Nothing about this exists yet — not the nav entry, not
+   the page, not a storage field. Should almost certainly be Space-
+   scoped (one description per Space, same as everything else in
+   `src/lib/spaces`), not global.
+4. **The setup conversation's AI should read that Settings description**
+   when proposing a new roleplay scenario — e.g. a cold-call scenario
+   for someone selling enterprise security software should come out
+   differently than one for someone selling home renovation services.
+   Likely surfaces as grounding context injected into the setup chat's
+   system prompt, once the setup conversation is a real model call at
+   all (see #5).
+5. **Everything scripted/mocked across every round so far, uncollapsed
+   from the sections above for one list:** the setup conversation's
+   clarifying questions and Proposal Card content; the roleplay
+   persona's dialogue and its "thoughts"; the Next Session adjustment
+   phrase; each round's own report; the final report. All deterministic/
+   canned text today, one running example (Marcus Webb) throughout.
+6. **Session-round persistence semantics are an assumption, not a
+   confirmed decision:** rounds resetting the transcript but keeping the
+   locked scenario/assumptions is dictated; whether the AI Trainer
+   conversation and Notes persist *across* rounds (current assumption:
+   yes, they're scoped to the training session record, not one
+   roleplay attempt) was inferred, not explicitly confirmed — worth
+   double-checking before the backend bakes it in.
+7. **The "roleplay AI never sees a thought" guarantee is currently true
+   only because there's no real roleplay AI call at all** — `sendTurn`
+   in `ChatRoleplaySession.script.ts` has no payload that goes anywhere.
+   Once a real model call exists, this is a real constraint that must be
+   enforced explicitly (only `text` belongs in that request, never
+   `thought`), not just naturally true by omission.
+
 ## Element decisions
 - Fake session fixture lives in `TrainingRoom.data.ts`, same pattern as
   `PerformanceReview.data.ts`'s original fixture before real records

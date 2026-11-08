@@ -380,6 +380,12 @@ between the two lists. Each page gets its own section as pages get added.
 - [ ] Multiple Spaces (swipe/page between `StatSpace` pages, each holding
       its own Grid); live edit mode (drag to add/remove/resize/reorder
       Widgets) — see `updates/2026-10-30 ANALYTICS - OPEN`
+- [ ] A new **Settings** page/nav entry (not started — no page, no nav
+      item, no storage field yet): a per-Space description of "the
+      product I'm selling or what I'm doing as a work in that
+      workspace," which the AI should read as context when designing a
+      new Chat Roleplay session — see
+      `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`'s Backend TODO.
 
 ## Performance Review page
 
@@ -619,20 +625,28 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       canned flavor pool).
 
 ### Built (real functionality — Chat Roleplay's Detail sidebar, 2026-11-08)
-- [x] The sidebar's top pane is the real AI Assistant, not a mock: a
+- [x] The sidebar's top pane is the real AI Assistant, not a mock, and
+      now the *same designed chat experience* as the floating widget —
+      a top bar (history toggle + "+" new chat) and the real `Sidebar`
+      (`AgentStrip`/`HistoryList`), not just a bare message list: a
       second, independent, always-open `useAIAssistant()` instance (same
       real local-`claude`-CLI backend, same real agents/sessions on disk,
-      reusing `MessageList`/`Composer`/`AgentPicker` unmodified) docked
-      inline instead of floating — the exact precedent `ChatPage`
-      already set. New `AIAssistant.context.tsx`
+      reusing `Sidebar`/`MessageList`/`Composer`/`AgentPicker`
+      unmodified) docked inline instead of floating — the exact
+      precedent `ChatPage` already set, including its narrow-container
+      history-takeover behavior (reused unchanged via the same named CSS
+      container). New `AIAssistant.context.tsx`
       (`AIAssistantVisibilityProvider`) lets this pane hide the floating
       `AIAssistant` widget while it's mounted, so the two are never both
-      on screen at once. The bottom pane is Notes, reusing the session's
-      real, already-persisted `notes`/`onNotesChange` — never read by any
-      AI, including the Trainer pane right above it. Both panes go
-      through the same real `SplitRail`/`useSplitRail` every other
-      Detail column in the app uses (`DetailContentKind` extended to
-      `"notes" | "trainer"`).
+      on screen at once. **Not yet real:** this pane's chat history is
+      currently the user's whole AI Assistant history, not scoped to the
+      one training session it's embedded in — flagged as backend work,
+      see `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`. The bottom
+      pane is Notes, reusing the session's real, already-persisted
+      `notes`/`onNotesChange` — never read by any AI, including the
+      Trainer pane right above it. Both panes go through the same real
+      `SplitRail`/`useSplitRail` every other Detail column in the app
+      uses (`DetailContentKind` extended to `"notes" | "trainer"`).
 
 ### To build (real functionality — not started)
 - [ ] Real transcript generation (ElevenLabs), and persisting real

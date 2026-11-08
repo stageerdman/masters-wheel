@@ -4,3 +4,49 @@
   height: 100%;
   min-height: 0;
 }
+
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 0.4rem;
+}
+
+.topBarButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* Same named container (`window-content`) Sidebar's own CSS already
+   queries for AIAssistantWindow/ChatPage — reusing the name, not just
+   the component, is what makes Sidebar's narrow-mode takeover apply
+   here unmodified. `position: relative` scopes that takeover to this
+   row, not the whole pane (which would otherwise cover the top bar). */
+.content {
+  container: window-content / inline-size;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+}
+
+.chatColumn {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@container window-content (max-width: 480px) {
+  .chatColumnSidebarOpen {
+    display: none;
+  }
+}

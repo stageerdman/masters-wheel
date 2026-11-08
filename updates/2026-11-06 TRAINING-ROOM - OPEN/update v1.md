@@ -287,3 +287,29 @@ Full reasoning in `wiki.md`'s "round 3 revisions" section.
       `roundsHeading` to `sectionHeading` now that three things use it).
 - [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
       reinstalled.
+
+### Phase 14 — AI Trainer gets the real chat UI; backend requests logged (2026-11-08, same day)
+Full reasoning in `wiki.md`'s "round 4" and new "Backend TODO" sections —
+this phase is UI-only; no backend work landed.
+- [x] `AITrainerPane` now reuses the same designed chat experience as the
+      floating `AIAssistant`/`ChatPage` — a top bar (history toggle + "+"
+      new chat) and the real `Sidebar` (`AgentStrip`/`HistoryList`),
+      wired exactly like `ChatPage`, defaulting closed (matches the
+      floating widget's own default, not `ChatPage`'s always-open one).
+      Reuses Sidebar's existing narrow-container takeover behavior
+      unmodified via the same named CSS container, not new code.
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+      reinstalled.
+- [x] Logged every backend-deferred request from this feature's whole
+      design process (not just this phase) in `wiki.md`'s new
+      **Backend TODO** section: scoping the Trainer's chat history to
+      the training session; revisiting whether/how the Trainer should
+      see the roleplay transcript (the original incremental/full +
+      with/without-thoughts retrieval idea, dropped rather than
+      resolved once "just reuse the real AI Assistant" became the
+      direction); a new Main Menu **Settings** page holding a per-Space
+      product/business description; the setup conversation reading that
+      description when proposing a scenario; every still-scripted piece
+      of content; the session-round persistence assumptions; and making
+      the "thoughts never reach the roleplay AI" guarantee a real,
+      enforced constraint once a real model call exists.
