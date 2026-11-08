@@ -8,6 +8,7 @@ import { Navigation } from "./children/Navigation/Navigation";
 import { Hero } from "./children/Hero/Hero";
 import { Detail } from "./children/Detail/Detail";
 import { DisciplinePicker } from "./children/DisciplinePicker/DisciplinePicker";
+import { ChatRoleplaySession } from "./children/ChatRoleplaySession/ChatRoleplaySession";
 import position from "./TrainingRoom.position.module.css";
 import styles from "./TrainingRoom.styles.module.css";
 
@@ -56,19 +57,28 @@ export function TrainingRoom() {
         onReopen={reopenSession}
       />
       {selected ? (
-        <>
-          <Hero
+        selected.toolType === "chatRoleplay" ? (
+          <ChatRoleplaySession
+            key={selected.id}
             session={selected}
-            onNameChange={(name) => renameSession(selected.id, name)}
-            onOpenUpload={openUpload}
-            onGenerateTranscript={(clipId) => generateTranscript(selected.id, clipId)}
-          />
-          <Detail
-            sessionId={selected.id}
             notes={selected.notes}
             onNotesChange={(value) => onNotesChange(selected.id, value)}
           />
-        </>
+        ) : (
+          <>
+            <Hero
+              session={selected}
+              onNameChange={(name) => renameSession(selected.id, name)}
+              onOpenUpload={openUpload}
+              onGenerateTranscript={(clipId) => generateTranscript(selected.id, clipId)}
+            />
+            <Detail
+              sessionId={selected.id}
+              notes={selected.notes}
+              onNotesChange={(value) => onNotesChange(selected.id, value)}
+            />
+          </>
+        )
       ) : (
         <div className={position.emptyState} data-construction>
           <p className={styles.emptyStateText} data-construction>

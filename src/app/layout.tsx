@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AIAssistant } from "@/elements/AIAssistant/AIAssistant";
+import { AIAssistantVisibilityProvider } from "@/elements/AIAssistant/AIAssistant.context";
 import { AppHeader } from "@/elements/AppHeader/AppHeader";
 import { HeaderActionsProvider } from "@/elements/AppHeader/AppHeader.context";
 import { SpacesProvider } from "@/lib/spaces";
@@ -28,11 +29,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <SpacesProvider>
-          <HeaderActionsProvider>
-            <AppHeader />
-            {children}
-          </HeaderActionsProvider>
-          <AIAssistant />
+          <AIAssistantVisibilityProvider>
+            <HeaderActionsProvider>
+              <AppHeader />
+              {children}
+            </HeaderActionsProvider>
+            <AIAssistant />
+          </AIAssistantVisibilityProvider>
         </SpacesProvider>
       </body>
     </html>

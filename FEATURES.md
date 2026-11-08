@@ -564,13 +564,61 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       it; selecting Voice Training plays a brief gold confirm flash before
       creating the session and returning to Training Room.
 
+### Built (UI shell only — Chat Roleplay discipline, 2026-11-08)
+- [x] `DisciplinePicker`'s Chat Roleplay card is unlocked. Selecting it
+      opens `ChatRoleplaySession` (replaces the generic Hero/Detail for
+      this one discipline): a setup chat (AI asks clarifying questions,
+      proposes an editable **Proposal Card** — title, meta, an
+      accept/reject/edit/add assumptions checklist) with a sticky "Not
+      set up yet" indicator, confirming locks the scenario and hands off
+      into a scenario **Hero** (name + a click-to-open "N assumptions"
+      disclosure showing the full AI-generated description — post-lock
+      edits are recorded as amendments, old value kept, not overwritten)
+      and the live roleplay transcript.
+- [x] The roleplay transcript has a second, hidden-by-default layer:
+      private "thoughts" (the roleplay AI's own inner monologue, or the
+      user's own private annotation) attached to, and sent together
+      with, the message they belong to — one composer, one Send, not two
+      separate actions. A thought renders above its message, under the
+      speaker's name; one eye-open/closed button shows or hides every
+      thought at once (a message with a hidden thought still shows a
+      tiny closed-eye marker). The roleplay AI itself never receives any
+      thought, by construction (there's no payload path that would).
+- [x] "Next Session": ends the current roleplay attempt and starts a
+      fresh one under the identical locked scenario/assumptions plus one
+      carried-forward adjustment phrase (mocked pool this round, not
+      real-AI-distilled yet); past phrases accumulate in the Hero's
+      details popover alongside the assumptions.
+- [x] All of the above is scripted/local state — one running example
+      (a cold-call opener against "Marcus Webb"), no real model call
+      drives any of it.
+
+### Built (real functionality — Chat Roleplay's Detail sidebar, 2026-11-08)
+- [x] The sidebar's top pane is the real AI Assistant, not a mock: a
+      second, independent, always-open `useAIAssistant()` instance (same
+      real local-`claude`-CLI backend, same real agents/sessions on disk,
+      reusing `MessageList`/`Composer`/`AgentPicker` unmodified) docked
+      inline instead of floating — the exact precedent `ChatPage`
+      already set. New `AIAssistant.context.tsx`
+      (`AIAssistantVisibilityProvider`) lets this pane hide the floating
+      `AIAssistant` widget while it's mounted, so the two are never both
+      on screen at once. The bottom pane is Notes, reusing the session's
+      real, already-persisted `notes`/`onNotesChange` — never read by any
+      AI, including the Trainer pane right above it. Both panes go
+      through the same real `SplitRail`/`useSplitRail` every other
+      Detail column in the app uses (`DetailContentKind` extended to
+      `"notes" | "trainer"`).
+
 ### To build (real functionality — not started)
 - [ ] Real transcript generation (ElevenLabs), and persisting real
       per-word timestamps so the lyrics highlight is exact instead of
       interpolated.
-- [ ] The three locked disciplines (Chat Roleplay, Voice Roleplay, Mindset
-      Shifting) — DisciplinePicker already lists them, nothing behind them
-      yet.
+- [ ] The two still-locked disciplines (Voice Roleplay, Mindset Shifting)
+      — DisciplinePicker already lists them, nothing behind them yet.
+- [ ] Chat Roleplay: a real model call behind the setup conversation, the
+      roleplay persona's dialogue/thoughts, and the Next Session
+      adjustment phrase (currently scripted/mocked — see
+      `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`).
 - [ ] Wiring Performance Review's "Take it to the training ground" button
       (still a no-op) to actually open/seed a Training Room session.
 

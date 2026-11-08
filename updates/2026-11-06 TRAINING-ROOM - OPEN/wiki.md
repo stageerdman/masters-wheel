@@ -232,6 +232,144 @@ confirmed via `ffprobe`, not assumed from the command string. Everyday
 formats (mp4/mov/m4v) are untouched, so the common case isn't paying a
 transcode cost it doesn't need.
 
+## Chat Roleplay discipline — the dictated spec (2026-11-08)
+
+Built this round as a **UI-shell prototype only** (local component state,
+scripted/canned AI content, no persistence beyond what's noted below) —
+the point was to settle the UX before any backend exists. The design
+process itself: 4 parallel "UX expert" agent passes (one each for setup/
+confirmation, the hero header, the dual-layer thoughts chat, and the
+detail sidebar), a synthesis pass reconciling the seams between them, then
+a full interactive HTML Artifact prototype the user clicked through
+*before* anything was built for real — only after that did the user ask
+for this real-code pass, with several deliberate deviations from the
+Artifact (listed below). Everything here is the spec to build real backend
+behavior against later; nothing in this section describes code that
+doesn't exist yet unless marked "(real now)".
+
+### Setup → confirmation
+A session starts as a plain chat: the user describes what they want to
+train, the AI asks clarifying questions, then proposes a **Proposal
+Card** — title, a meta line (persona/difficulty/setting), and an editable
+checklist of **assumptions** (things the scenario takes as already true,
+e.g. "assume rapport is already built" — these skip process the user
+doesn't want to drill). Checkboxes accept/reject each row; row text is
+click-to-edit; rows can be deleted or added. Sending another chat message
+instead of confirming freezes the current card (labeled superseded, not
+deleted — it stays in scrollback) and produces a new one reflecting the
+refinement. A single confirm button locks it in. Before confirmation,
+the screen shows a persistent **"Not set up yet"** indicator (a sticky
+strip/banner) — the user explicitly asked for this: there must be an
+unmistakable signal that the session hasn't started yet, distinct from a
+live roleplay.
+
+### The Hero / scenario header
+Once confirmed, a header appears: the scenario's name, plus a clickable
+disclosure ("N assumptions" / "Session details") that opens a popover
+with the full AI-generated scenario description and the locked
+assumptions — click-to-edit still works post-lock, but an edit is
+recorded as an **amendment** (old value kept, not silently overwritten),
+not full CRUD. This is the part the user specifically asked to be able to
+click into after setup finishes, to review "what the AI generated out of"
+the setup conversation.
+
+### The roleplay chat — thoughts, revised twice
+"Thoughts" are a second, hidden-by-default layer in the same transcript:
+private commentary that the *roleplay* AI itself never sees, ever — not
+even when the user is the one who wrote it. Two sources: the roleplay AI's
+own inner monologue, and the user's own private annotations. The Artifact
+prototype modeled these as a physically split composer ("Say this" /
+"Think something" as two separate rows/sends) and rendered a thought
+*after* the message it was attached to. **Both of those were explicitly
+overridden once the user saw it live, in favor of:**
+
+- **One composer, one send.** There's no separate "submit a thought"
+  action — the user attaches a thought to the *same* message they're
+  about to send (one input for the reply, a small toggle that reveals a
+  second small field for the attached thought), and one Send dispatches
+  both together as a single turn. The backend implication for later: the
+  outgoing payload to the roleplay AI must carry only the reply text —
+  the attached thought travels with the turn in storage/UI but is never
+  part of what the roleplay model receives.
+- **Thought renders above the reply, under the speaker's name — for
+  both speakers.** Order per turn, when visible: speaker label → thought
+  (if any) → the actual message bubble. This replaced the Artifact's
+  reply-then-thought ordering.
+- **One single visibility control, not three.** The Artifact's 3-state
+  segmented control ("Dialogue only / +AI thoughts / +All thoughts") was
+  explicitly rejected as too much UI for what it does — replaced with one
+  eye-open/eye-closed icon button that shows or hides *all* thoughts
+  (both sources) together. A message with a hidden thought still shows a
+  tiny closed-eye glyph next to the speaker label as a quiet reminder one
+  exists.
+
+### "Next Session" — lesson carry-forward (new this round, not in the Artifact)
+A button (near the Hero) that ends the current roleplay attempt and starts
+a fresh one **under the identical locked conditions** (same scenario, same
+assumptions) plus exactly **one short adjustment phrase** distilled from
+the attempt that just ended — the dictated example: "next roleplay starts
+with the absolute same conditions with one more single phrase or note
+that can adjust the session." This round's prototype mocks the phrase
+(picked from a small canned pool) rather than generating it from the real
+transcript — that's the real-AI work for later. What resets vs. persists,
+as dictated/inferred and worth keeping consistent once real:
+- **Resets:** the roleplay transcript itself (back to the persona's
+  opening line).
+- **Persists unchanged:** the locked scenario + assumptions.
+- **Accumulates:** the list of past adjustment phrases, one per session
+  round, visible in the Hero's details popover (so the user can see the
+  whole lineage of adjustments across attempts, not just the latest).
+- **Persists independently of the roleplay reset:** the AI Trainer
+  conversation and the Notes pane (see below) — they're coaching/record
+  tools scoped to the training *session* record, not to one roleplay
+  attempt inside it. Flagged here as an assumption, not something the
+  user confirmed explicitly — worth double-checking before the backend
+  bakes it in.
+
+### Detail sidebar: real AI Assistant reuse + real Notes (real now)
+Unlike the rest of this feature, the right-hand sidebar's top pane is
+**not mocked** — it's a second, independent, always-open instance of the
+real `useAIAssistant()` engine (same real local-`claude`-CLI backend,
+same real agents/sessions on disk), docked inline instead of floating,
+following the exact precedent `ChatPage` already set (its own
+independent instance + reused `MessageList`/`Composer`/`AgentPicker`
+components, unmodified). New `AIAssistant.context.tsx`
+(`AIAssistantVisibilityProvider`/`useAIAssistantVisibility`, mirrors
+`AppHeader.context.tsx`'s shape) lets any mounted component tell the
+global floating `AIAssistant` to hide itself — `AITrainerPane` calls it
+on mount/unmount, exactly so the floating widget and this docked instance
+are never both on screen at once (the user was explicit about this: "make
+sure... I don't see the AI assistant down below when I see it on the
+top-right window"). The bottom pane is Notes, reusing the *same* real,
+already-persisted `TrainingSession.notes`/`onNotesChange` every other
+discipline's Detail already writes to disk — genuinely never readable by
+any AI, including the Trainer pane right above it, which is a real
+behavioral guarantee (not just copy) since the Trainer is a vanilla
+`useAIAssistant()` instance with no code path that reads `session.notes`
+at all.
+
+The sidebar itself reuses `useSplitRail`/`SplitRail` exactly as every
+other Detail column in the app does (drag a badge past the line to
+split, same physics, same component) — extended `DetailContentKind` from
+`"notes"` to `"notes" | "trainer"` and added a Chat-Roleplay-specific
+`CHAT_ROLEPLAY_DETAIL_KIND_ORDER = ["trainer", "notes"]` in
+`TrainingRoom.data.ts`, left Voice Training's own `DETAIL_CONTENT_KIND_ORDER`
+(`["notes"]`) untouched. No "AI Trainer" persona/identity was invented —
+it's literally whichever real Agent the user already picks, same
+`AgentPicker` flow as anywhere else in the app; "Dana" (a fictional
+trainer identity) was an Artifact-only placeholder, deliberately dropped
+once this became real.
+
+### What's still explicitly fake/scripted this round
+The setup AI's clarifying questions, the Proposal Card's content, the
+roleplay persona's dialogue + its "thoughts", and the Next Session
+adjustment phrases are all canned content — one running example (a
+cold-call opener against "Marcus Webb," a skeptical IT Director), same
+as the Artifact. No real model call drives any of that yet; the real
+`claude` CLI only powers the AI Trainer pane, because that's a straight
+reuse of the already-real Assistant engine, not new roleplay-specific
+model logic.
+
 ## Element decisions
 - Fake session fixture lives in `TrainingRoom.data.ts`, same pattern as
   `PerformanceReview.data.ts`'s original fixture before real records

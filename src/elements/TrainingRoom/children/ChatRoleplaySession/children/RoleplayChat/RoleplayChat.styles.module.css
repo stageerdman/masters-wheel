@@ -1,0 +1,130 @@
+.root {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.eyeButton {
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.eyeButton:hover,
+.eyeButton[aria-pressed="true"] {
+  color: var(--color-text);
+}
+
+.speakerLabel {
+  font-size: var(--text-size-micro);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.hiddenMarker {
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  cursor: help;
+}
+
+.thought {
+  font-style: italic;
+  font-size: var(--text-size-label);
+  line-height: 1.4;
+}
+
+.thoughtAi {
+  background: color-mix(in srgb, var(--color-bookmark-ai) 10%, var(--color-surface));
+  border-left-color: var(--color-bookmark-ai);
+  color: color-mix(in srgb, var(--color-bookmark-ai) 75%, var(--color-text));
+}
+
+.thoughtUser {
+  background: color-mix(in srgb, var(--color-bookmark-notes) 10%, var(--color-surface));
+  border-left-color: var(--color-bookmark-notes);
+  color: color-mix(in srgb, var(--color-bookmark-notes) 70%, var(--color-text));
+}
+
+.thoughtLabel {
+  font-weight: 650;
+  font-size: var(--text-size-micro);
+  letter-spacing: 0.02em;
+}
+
+.bubble {
+  background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface));
+  font-size: var(--text-size-body);
+  line-height: 1.5;
+}
+
+.bubbleUser {
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
+}
+
+.input {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-size-body);
+}
+
+.send {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.send:hover {
+  filter: brightness(1.08);
+}
+
+.send:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.seam {
+  border-top: 1px dashed var(--color-border);
+}
+
+.seamActive {
+  border-top: 1px solid var(--color-bookmark-notes);
+}
+
+.thinkToggle {
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  font-size: var(--text-size-label);
+  cursor: pointer;
+  text-align: left;
+}
+
+.thinkToggle:hover {
+  color: var(--color-text);
+}
+
+.thinkRow {
+  color: var(--color-bookmark-notes);
+}
+
+.padlock {
+  flex-shrink: 0;
+}
+
+.thinkInput {
+  background: none;
+  border: none;
+  font-size: var(--text-size-label);
+  font-style: italic;
+  color: var(--color-text);
+}
+
+.thinkInput::placeholder {
+  font-style: italic;
+  color: var(--color-text-muted);
+}

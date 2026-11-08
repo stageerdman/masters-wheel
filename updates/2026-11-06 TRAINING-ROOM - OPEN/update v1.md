@@ -209,3 +209,42 @@ Two decisions made with the user before starting (2026-11-06):
       m4v are untouched.
 - [x] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
       `.app` rebuilt and reinstalled.
+
+### Phase 11 — Chat Roleplay discipline, UI-shell prototype (2026-11-08)
+Full dictated spec in `wiki.md`'s "Chat Roleplay discipline" section —
+design process was 4 parallel UX-expert passes + a synthesis pass + a
+clickable HTML Artifact the user reviewed first, then this real-code pass
+with several deliberate changes from the Artifact.
+- [x] Unlocked `chatRoleplay` in `TOOL_TYPE_META`; `TrainingRoom.tsx`
+      branches on `toolType` to render the new `ChatRoleplaySession`
+      instead of the generic Hero/Detail for this discipline.
+- [x] `ChatRoleplaySession` (new, `TrainingRoom/children/`): setup chat +
+      editable Proposal Card + confirm → scenario Hero (clickable
+      assumptions/description popover, amend-not-overwrite edits) → the
+      roleplay transcript itself. All scripted/local state — no backend
+      call drives any of the setup/roleplay/next-session content yet.
+- [x] Dual-layer chat: one composer (reply + an optional attached private
+      "thought", sent together in one turn — not two separate composer
+      rows like the Artifact had), thought renders above the reply under
+      the speaker's name, one eye-open/closed button to show/hide every
+      thought at once (replaces the Artifact's 3-state toggle).
+- [x] "Not set up yet" sticky indicator before confirmation.
+- [x] "Next Session": resets the roleplay transcript under the same
+      locked scenario/assumptions, plus one carried-forward adjustment
+      phrase (mocked pool, not real-AI-generated yet); past phrases
+      accumulate in the Hero's details popover.
+- [x] **Real, not mocked:** new `AIAssistant.context.tsx`
+      (`AIAssistantVisibilityProvider`) lets a mounted component hide the
+      floating `AIAssistant`; `AITrainerPane` is a second, independent,
+      always-open `useAIAssistant()` instance (same real backend/agents,
+      same reused `MessageList`/`Composer`/`AgentPicker` — the exact
+      `ChatPage` precedent) docked in the Detail sidebar's top pane,
+      hiding the floating widget while mounted so the two are never both
+      on screen. `DetailContentKind` extended to `"notes" | "trainer"`;
+      new `CHAT_ROLEPLAY_DETAIL_KIND_ORDER` reuses the same real
+      `SplitRail`/`useSplitRail` every other Detail column uses. The
+      bottom pane reuses the session's real, already-persisted
+      `notes`/`onNotesChange` — genuinely never read by any AI.
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+      reinstalled.
+- [x] `FEATURES.md` updated for this discipline.

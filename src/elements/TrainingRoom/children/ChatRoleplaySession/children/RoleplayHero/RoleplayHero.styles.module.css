@@ -1,0 +1,129 @@
+.root {
+  background: color-mix(in srgb, var(--color-text) 3%, var(--color-surface));
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.dot {
+  background: var(--color-discipline-chat-roleplay);
+}
+
+.name {
+  font-size: var(--text-size-heading);
+  font-weight: 650;
+}
+
+.roundBadge {
+  font-size: var(--text-size-micro);
+  color: var(--color-discipline-chat-roleplay);
+  border: 1px solid color-mix(in srgb, var(--color-discipline-chat-roleplay) 55%, var(--color-border));
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.footnote {
+  font-size: var(--text-size-micro);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.footnote:hover {
+  color: var(--color-text);
+}
+
+.nextButton {
+  margin-left: auto;
+  font-size: var(--text-size-micro);
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.nextButton:hover {
+  background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface));
+}
+
+.summary {
+  font-size: var(--text-size-label);
+  color: var(--color-text-muted);
+  margin-top: 0.3rem;
+  max-width: 72ch;
+  line-height: 1.45;
+}
+
+.notice {
+  background: color-mix(in srgb, var(--color-discipline-chat-roleplay) 12%, var(--color-surface));
+  color: var(--color-discipline-chat-roleplay);
+  font-size: var(--text-size-micro);
+  font-weight: 600;
+}
+
+.popover {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.fullSummary {
+  font-size: var(--text-size-label);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.lockText {
+  font-size: var(--text-size-label);
+  flex: 1;
+}
+
+.editInput {
+  font-size: var(--text-size-label);
+  border: none;
+  border-bottom: 1px solid var(--color-discipline-chat-roleplay);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.amendClock {
+  color: var(--color-discipline-chat-roleplay);
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.editPencil {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.lockRow:hover .editPencil {
+  opacity: 1;
+}
+
+.editPencil:hover {
+  color: var(--color-text);
+}
+
+.adjustments {
+  border-top: 1px solid var(--color-border);
+}
+
+.adjustmentsHeading {
+  color: var(--color-text-muted);
+}
+
+.adjustmentItem {
+  font-size: var(--text-size-micro);
+  color: var(--color-text-muted);
+}

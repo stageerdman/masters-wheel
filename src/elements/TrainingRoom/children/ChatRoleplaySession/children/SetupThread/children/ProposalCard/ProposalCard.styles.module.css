@@ -1,0 +1,128 @@
+.root {
+  border: 1px solid color-mix(in srgb, var(--color-discipline-chat-roleplay) 35%, var(--color-border));
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.frozen {
+  opacity: 0.75;
+}
+
+.dot {
+  background: var(--color-discipline-chat-roleplay);
+}
+
+.microLabel {
+  font-size: var(--text-size-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-discipline-chat-roleplay);
+  font-weight: 650;
+}
+
+.title {
+  font-size: var(--text-size-label);
+  font-weight: 650;
+}
+
+.superseded {
+  margin-left: auto;
+  font-size: var(--text-size-micro);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.meta {
+  font-size: var(--text-size-micro);
+  color: var(--color-text-muted);
+}
+
+.row:hover {
+  background: color-mix(in srgb, var(--color-text) 4%, var(--color-surface));
+}
+
+.rowRejected .text {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.check {
+  border: 1.6px solid var(--color-discipline-chat-roleplay);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.check[aria-pressed="true"] {
+  background: var(--color-discipline-chat-roleplay);
+}
+
+.text {
+  font-size: var(--text-size-body);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.textInput {
+  font-size: var(--text-size-body);
+  border: none;
+  border-bottom: 1px solid var(--color-discipline-chat-roleplay);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.delete {
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.row:hover .delete {
+  opacity: 1;
+}
+
+.delete:hover {
+  color: var(--color-text);
+}
+
+.addRow {
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-muted);
+  background: none;
+  font-size: var(--text-size-label);
+  cursor: pointer;
+}
+
+.addRow:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.addInput {
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-size-body);
+  border-radius: 7px;
+}
+
+.begin {
+  background: var(--color-discipline-chat-roleplay);
+  color: var(--color-on-chip);
+  border: none;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.begin:hover {
+  filter: brightness(1.07);
+}
+
+.begin:disabled {
+  opacity: 0.7;
+  cursor: default;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useAIAssistantVisibility } from "./AIAssistant.context";
 import { AIAssistantTrigger } from "./children/AIAssistantTrigger/AIAssistantTrigger";
 import { AIAssistantWindow } from "./children/AIAssistantWindow/AIAssistantWindow";
 import { DockZoneOverlay } from "./children/DockZoneOverlay/DockZoneOverlay";
@@ -12,12 +13,18 @@ import styles from "./AIAssistant.styles.module.css";
 // The full-screen ChatPage at this route is the same chat experience,
 // just full-screen with its own independent useAIAssistant() instance —
 // showing the floating widget there too would risk two out-of-sync copies
-// of the same chat state on screen at once (see ChatPage.tsx).
+// of the same chat state on screen at once (see ChatPage.tsx). A second,
+// same-route case of this (one isolated session view embedding its own
+// independent instance inline, e.g. Training Room's AITrainerPane) can't
+// be keyed off the route at all — that goes through isFloatingHidden
+// (AIAssistant.context.tsx) instead, set/cleared by whichever component
+// is currently showing an inline instance.
 const HIDDEN_ON_ROUTES = ["/chat"];
 
 // Lives on top of every environment. Mounted once from the root layout.
 export function AIAssistant() {
   const pathname = usePathname();
+  const { isFloatingHidden } = useAIAssistantVisibility();
   const {
     phase,
     open,
@@ -67,7 +74,7 @@ export function AIAssistant() {
     closeSideMenu();
   }
 
-  if (HIDDEN_ON_ROUTES.includes(pathname)) return null;
+  if (HIDDEN_ON_ROUTES.includes(pathname) || isFloatingHidden) return null;
 
   return (
     <div id="ai-assistant-root" className={`${styles.root} ${position.root}`} data-construction>

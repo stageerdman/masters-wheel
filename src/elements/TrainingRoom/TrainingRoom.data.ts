@@ -5,17 +5,26 @@
 
 import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
 
-// Detail's content kinds — just Notes today (Voice Training's transcript
-// already lives inline in the Hero feed). Still goes through the same
-// generic SplitRail/useSplitRail primitive Performance Review uses, kept
-// to a one-item kind set until a future discipline actually needs a
-// second one — see `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`.
-export type DetailContentKind = "notes";
+// Detail's content kinds. Voice Training still only ever shows "notes"
+// (its transcript already lives inline in the Hero feed) — the second
+// kind, "trainer", exists for Chat Roleplay's own Detail
+// (ChatRoleplaySession/children/RoleplayDetail), which needs a real AI
+// Trainer pane above Notes. Both go through the same generic
+// SplitRail/useSplitRail primitive Performance Review uses — Chat
+// Roleplay is simply the "future discipline" the single-kind comment
+// below used to wait for; see
+// `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`.
+export type DetailContentKind = "notes" | "trainer";
 
+// Voice Training's Detail — unchanged, still just Notes.
 export const DETAIL_CONTENT_KIND_ORDER: DetailContentKind[] = ["notes"];
+
+// Chat Roleplay's Detail — AI Trainer pinned above Notes.
+export const CHAT_ROLEPLAY_DETAIL_KIND_ORDER: DetailContentKind[] = ["trainer", "notes"];
 
 export const DETAIL_CONTENT_KIND_META: Record<DetailContentKind, BookmarkMeta> = {
   notes: { label: "NT", color: "var(--color-bookmark-notes)" },
+  trainer: { label: "AI", color: "var(--color-bookmark-ai)" },
 };
 
 // A session's discipline — picked once, up front, in DisciplinePicker
@@ -54,7 +63,7 @@ export const TOOL_TYPE_META: Record<
     color: "var(--color-discipline-chat-roleplay)",
     label: "Chat Roleplay",
     description: "Type your way through a conversation with an AI prospect and see how your wording lands.",
-    locked: true,
+    locked: false,
   },
   voiceRoleplay: {
     glyph: "☏",
