@@ -724,3 +724,15 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       Assistant's "to build" list above, since both features now share
       one real backend
 - [ ] Auth (not started — no users yet)
+
+## Settings page
+
+### Built — real backend
+- [x] `Settings` at `/settings`: one per-Space `businessDescription` field
+      ("what are you selling, or what do you do in this workspace?"),
+      debounced-autosave textarea — see `src/lib/settings`
+      (`settings.json` alongside `agents/`/`chats/`/`records/`/`training/`
+      in each Space's real folder). Built as the grounding Chat Roleplay's
+      setup conversation will read from (see
+      `updates/2026-11-06 TRAINING-ROOM - OPEN/update v1.md`'s Phase 15),
+      not yet consumed by anything.

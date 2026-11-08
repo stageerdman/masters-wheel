@@ -15,6 +15,7 @@ const MENU_ITEMS: NavMenuEntry[] = [
   { id: "training", label: "Training Room" },
   { id: "chat", label: "Chat with AI" },
   { id: "agents", label: "Agents" },
+  { id: "settings", label: "Settings" },
 ];
 
 export function MainMenu() {
@@ -30,6 +31,8 @@ export function MainMenu() {
       router.push("/agents");
     } else if (id === "chat") {
       router.push("/chat");
+    } else if (id === "settings") {
+      router.push("/settings");
     } else if (id === "analytics") {
       setPanelContent((current) => (current === "analytics" ? null : "analytics"));
     } else {

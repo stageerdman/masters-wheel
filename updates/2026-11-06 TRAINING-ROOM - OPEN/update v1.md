@@ -313,18 +313,18 @@ this phase is UI-only; no backend work landed.
       of content; the session-round persistence assumptions; and making
       the "thoughts never reach the roleplay AI" guarantee a real,
       enforced constraint once a real model call exists.
-### Phase 15 — Settings page: per-Space business description (not started)
+### Phase 15 — Settings page: per-Space business description (2026-11-08)
 Foundation for Phase 17's grounding — independent of everything else below.
-- [ ] New `src/lib/settings` (plain TS, `settings.json` under
+- [x] New `src/lib/settings` (plain TS, `settings.json` under
       `spaceDir(folderName)`, same tolerant parse-or-default pattern as
       every other storage module): `readSettings()`/`writeSettings(partial)`,
       one field for now — `businessDescription: string`.
-- [ ] New `Settings` element + `/settings` route: one labeled textarea
+- [x] New `Settings` element + `/settings` route: one labeled textarea
       ("What are you selling, or what do you do in this workspace?"),
       debounced autosave, same precedent as Notes' autosave.
-- [ ] `MainMenu.tsx`: new nav entry `{ id: "settings", label: "Settings" }`
+- [x] `MainMenu.tsx`: new nav entry `{ id: "settings", label: "Settings" }`
       → `router.push("/settings")`.
-- [ ] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
       reinstalled.
 
 ### Phase 16 — Rust roleplay backend module (not started)
