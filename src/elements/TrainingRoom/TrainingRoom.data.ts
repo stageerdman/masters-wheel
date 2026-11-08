@@ -1,7 +1,7 @@
 // Shared types + per-tool-type glyph/color/label metadata for Training
-// Room. Fake in-memory fixture only this phase — no disk persistence yet,
-// same starting point Performance Review had before `src/lib/records`
-// existed. See `updates/2026-11-06 TRAINING-ROOM - OPEN/` for the roadmap.
+// Room. Session metadata (and clip files) are real, on-disk storage via
+// `src/lib/training` — see TrainingRoom.script.ts. See
+// `updates/2026-11-06 TRAINING-ROOM - OPEN/` for the roadmap.
 
 import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
 
@@ -47,10 +47,15 @@ export type ClipKind = "video" | "audio";
 export type TrainingClip = {
   id: string;
   kind: ClipKind;
-  // Playable URL (asset:// or blob: this phase — nothing copied into app
-  // storage yet) and the original file's display name.
+  // Playable convertFileSrc URL, built from the clip's real on-disk copy
+  // (see src/lib/training).
   src: string;
+  // The original file's display name, shown in the UI.
   fileName: string;
+  // The on-disk, timestamp-prefixed name of the stored copy inside this
+  // session's training/<id>/ folder — needed to rebuild `src` when a
+  // persisted session is reloaded from disk. Not shown anywhere in the UI.
+  storedFileName: string;
   // Raw transcript.md-shaped text, or null until "Generate transcript" has
   // been run for this clip. Parsed on demand (src/lib/transcript), same as
   // Performance Review's transcriptRaw.

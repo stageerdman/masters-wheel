@@ -499,7 +499,7 @@ A practice space, deliberately **not tracked in performance** (unlike
 Performance Review) — scalable by "training tool"; the first tool is
 **Voice Practicing**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
 
-### Built (UI shell — session metadata is in-memory fake data; clip files are real)
+### Built — real backend (session metadata + clip files both real storage)
 - [x] Same 3-column layout as Performance Review (Navigation / Hero /
       Detail), reusing (and generalizing) its shared primitives —
       `BookmarkBadge`/`BookmarkRail`/`SplitRail`/`useSplitRail` are no
@@ -540,12 +540,13 @@ Performance Review) — scalable by "training tool"; the first tool is
       against yet).
 - [x] Dropping a file anywhere on the page appends it as a new clip to
       the selected session's feed (Tauri native window-level drag-drop).
+- [x] Session metadata (name, status, notes, which clips belong to it) is
+      real on-disk storage too (`src/lib/training`'s `session.json` per
+      session folder, same meta.json-per-folder shape as Performance
+      Review's `src/lib/records`) — reload/restart no longer wipes the
+      session list.
 
 ### To build (real functionality — not started)
-- [ ] Real on-disk storage for session *metadata* (name, status, notes,
-      which clips belong to it) — clip files themselves are already real
-      (`training/<sessionId>/`), but the session list is still in-memory
-      and resets on reload/restart.
 - [ ] Real transcript generation (ElevenLabs), and persisting real
       per-word timestamps so the lyrics highlight is exact instead of
       interpolated.

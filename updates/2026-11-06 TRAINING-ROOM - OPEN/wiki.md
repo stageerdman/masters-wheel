@@ -50,7 +50,30 @@ persistence) moved to `src/lib/splitRail.ts`, parameterized by
 `kinds`/`storageKey`/`defaultActive` so each page's layout persists
 independently under its own key.
 
-## Clip files are real storage; session metadata still isn't
+## Session metadata is now real storage too (2026-11-08)
+Phase 7 closed the gap the previous section describes: each session's
+`training/<id>/` folder (already real for clip files) now also holds
+`session.json`, written by the new `src/lib/training` functions
+(`listSessions`/`createSession`/`writeSessionMeta`/`deleteSession`) — the
+exact same meta.json-per-folder shape `src/lib/records` uses for
+Performance Review records, down to the "missing/corrupt file is just
+absent, not a crash" tolerance in `parseMeta`. `TrainingRoom.script.ts`
+dropped its `INITIAL_SESSIONS` fixture entirely and now loads real sessions
+on mount, same empty-start behavior Performance Review already has.
+
+Writes split the same way Performance Review's script does: `renameSession`
+and `onNotesChange` debounce (typing shouldn't hit disk or reorder the
+Navigation list every keystroke), while status changes, clip adds, and
+transcript generation write immediately since they're discrete events, not
+continuous edits.
+
+A clip's on-disk filename is timestamp-prefixed (to avoid collisions) and
+differs from its display name, so `TrainingClip` gained a `storedFileName`
+field (not shown anywhere in the UI) purely so a reloaded session can
+rebuild each clip's `convertFileSrc` URL via `clipAbsolutePath` — the
+display `fileName` alone isn't enough to find the file again.
+
+## Clip files are real storage (2026-11-06)
 Phase 1 shipped with clip playback going straight through
 `convertFileSrc(pickedPath)` — and it silently didn't work. Root cause:
 Tauri's asset protocol (what `convertFileSrc` needs to actually serve a
@@ -73,13 +96,11 @@ specifically to stream multi-gigabyte call recordings past
 `convertFileSrc`'s whole-file-buffering limit; practice clips are expected
 to be far smaller, so that tradeoff doesn't bite here.
 
-What's still fake: the *session list itself* (name, status, notes, which
-clips belong to it) is still plain in-memory React state — reloading the
-page or restarting the app resets it to `INITIAL_SESSIONS`, same as before.
-Only the clip *files* on disk are now real and will outlive a reload even
-though the session that references them won't (yet) remember they're
-there. Removing a session now also deletes its real `training/<id>/`
-folder (`removeSessionStorage`), so clip files don't orphan on disk.
+At the time this fix shipped, the *session list itself* (name, status,
+notes, which clips belong to it) was still plain in-memory React state —
+see the "Session metadata is now real storage too" section above for how
+that gap was closed. Removing a session deletes its real `training/<id>/`
+folder, so clip files don't orphan on disk.
 
 ## Why the word-by-word highlight is real UI built on fake timing
 This isn't faked at the interaction level — it's a real `<video>`/`<audio>`

@@ -119,3 +119,22 @@ Two decisions made with the user before starting (2026-11-06):
       files) before building its playback URL — see `wiki.md`. Session
       *metadata* (the list itself) is still in-memory only; only the clip
       *files* are real now.
+
+### Phase 7 — Real session-metadata persistence (2026-11-08)
+- [x] New `src/lib/training` exports (`listSessions`/`createSession`/
+      `writeSessionMeta`/`deleteSession`/`clipAbsolutePath`), same
+      meta.json-per-folder shape as `src/lib/records`: each session's
+      folder (`training/<id>/`, already real for clip files) now also
+      holds `session.json` (toolType, name, status, lastUpdatedAt, notes,
+      clip metadata).
+- [x] `TrainingRoom.script.ts` loads real sessions on mount (dropped
+      `INITIAL_SESSIONS`, same empty-until-real-data starting point
+      Performance Review had before `src/lib/records`), debounces
+      name/notes writes, writes immediately on status change/clip
+      add/transcript generation, and deletes the whole session folder on
+      remove (superseding the old clip-only `removeSessionStorage`).
+- [x] `TrainingClip` gained `storedFileName` (the on-disk timestamped copy
+      name) alongside the display `fileName`, so a reloaded session can
+      rebuild each clip's `convertFileSrc` URL.
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+      reinstalled.
