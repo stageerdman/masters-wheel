@@ -313,3 +313,160 @@ this phase is UI-only; no backend work landed.
       of content; the session-round persistence assumptions; and making
       the "thoughts never reach the roleplay AI" guarantee a real,
       enforced constraint once a real model call exists.
+### Phase 15 — Settings page: per-Space business description (not started)
+Foundation for Phase 17's grounding — independent of everything else below.
+- [ ] New `src/lib/settings` (plain TS, `settings.json` under
+      `spaceDir(folderName)`, same tolerant parse-or-default pattern as
+      every other storage module): `readSettings()`/`writeSettings(partial)`,
+      one field for now — `businessDescription: string`.
+- [ ] New `Settings` element + `/settings` route: one labeled textarea
+      ("What are you selling, or what do you do in this workspace?"),
+      debounced autosave, same precedent as Notes' autosave.
+- [ ] `MainMenu.tsx`: new nav entry `{ id: "settings", label: "Settings" }`
+      → `router.push("/settings")`.
+- [ ] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+      reinstalled.
+
+### Phase 16 — Rust roleplay backend module (not started)
+New `src-tauri/src/roleplay.rs`, same "shell out to `claude -p`" family as
+`assistant.rs`/`transcribe.rs`/`transcode.rs`, but deliberately **not**
+built on `ask_agent`: these are fixed internal personas (scenario designer,
+the prospect, a coach), not a user-facing Agent, and none of them need
+knowledge retrieval, tags, or MCP tool access — `ask_agent`'s whole reason
+to exist. Blocking `.output()` calls (like `name_chat`), not streaming —
+a thought+reply pair is short enough that streaming buys nothing here.
+Output format decided empirically (see `wiki.md`): plain labeled lines
+(`THOUGHT:` / `REPLY:`, etc.), not JSON — verified-reliable in two hand-run
+`claude -p` tests either way, but labels tolerate a stray quote/apostrophe
+inside in-character dialogue that could otherwise break strict JSON
+parsing, and that's also what the research pass (below) found most
+roleplay/structured-output writeups converge on for a flat two-field
+payload. Every parse is defensive: a missing label never errors the
+turn, it falls back to treating the whole response as the primary field.
+- [ ] `generate_setup_reply(message, resume_session_id, business_description) -> SetupReply`
+      — scenario-designer persona; either asks a clarifying question or
+      emits a structured proposal (`TITLE:`/`META:`/`ASSUMPTIONS:` bullet
+      list) once enough is known; reads `business_description` (from
+      Phase 15) so a proposal reflects what this Space actually sells.
+      One continuous `--resume`d session across the whole setup phase.
+- [ ] `generate_roleplay_turn(message, system_context, resume_session_id) -> RoleplayTurnReply { thought, reply, session_id }`
+      — the prospect persona. System prompt per round: persona + scenario
+      + locked assumptions + this round's carried-forward adjustment
+      phrase (if any) + the reasoning-before-speaking + output-contract
+      instructions from `wiki.md`'s research section, including one
+      worked few-shot example (not just a schema description — the
+      research flagged this as the single biggest reliability lever).
+      `--resume` carries continuity *within* one round; "Next Session"
+      starts a fresh call with no `--resume`, since the transcript is
+      meant to reset — only the adjustment phrase (plain text, re-fed
+      into the system prompt) carries forward, never raw session memory.
+      **Enforced by this command's own signature, not a runtime check**:
+      it takes `message: String`, never a second "thought" field — the
+      frontend physically cannot pass the human's private thought into
+      this call (resolves TODO #7).
+- [ ] `generate_insight(input_text, kind: "adjustment" | "round_report" | "final_report") -> String`
+      — one shared one-shot command, three system-prompt variants keyed
+      by `kind`. `input_text` for `adjustment`/`round_report` is that
+      round's turns rendered speaker-labeled, **text only, never
+      thoughts**; for `final_report` it's the already-generated per-round
+      reports + adjustment phrases concatenated, so the final report is a
+      real synthesis (trends across sessions), not just a re-stitch of
+      strings TS already had.
+- [ ] Unit coverage for the parsers (label-extraction + fallback-to-whole-
+      text-on-missing-label), same spirit as `mcp/bridge.rs`'s existing
+      `#[cfg(test)]` block.
+- [ ] `cargo check` clean.
+
+### Phase 17 — Wire the setup conversation to `generate_setup_reply` (not started)
+- [ ] `ChatRoleplaySession.script.ts`'s `submitSetupMessage` calls the real
+      command instead of the `freshProposalCard`/`REFINED_META` canned
+      path; `SETUP_OPENING_MESSAGE` becomes the real first call's reply
+      (or a static "what are we training today?" opener before the first
+      real call — TBD at implementation time, not a backend question).
+- [ ] Setup state becomes real: `setupThread` + the setup's own
+      `claudeSessionId` persist into `session.json` via a new
+      `RoleplayMetaFields` shape in `src/lib/training` (parallel to
+      `StoredClipMeta`), so leaving and returning to a session mid-setup
+      doesn't lose the conversation.
+- [ ] Delete `ChatRoleplaySession.data.ts`'s now-dead scripted setup
+      constants (`SETUP_OPENING_MESSAGE`, `freshProposalCard`,
+      `REFINED_META`) — not grown, same fate `TrainingRoom.data.ts`'s
+      original fixture had once real storage landed.
+- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
+      `.app` rebuilt and reinstalled.
+
+### Phase 18 — Wire the roleplay itself to `generate_roleplay_turn` (not started)
+- [ ] `sendTurn` calls the real command with only `text` (the attached
+      private `thoughtText` stays local-only, never leaves this function —
+      see Phase 16's signature-level enforcement); renders the real
+      `thought`/`reply` pair back into the turn.
+- [ ] `beginRoleplay`'s `freshRound`/`PERSONA_OPENING`/`PERSONA_OPENING_LINE`
+      become a real first `generate_roleplay_turn` call (no human message
+      yet — an opening-line variant, or the persona's own cold-open
+      prompted directly); `nextSession`'s per-round reset drops
+      `--resume` on purpose per Phase 16.
+- [ ] `heroSummary` stops being the static `HERO_SUMMARY` constant —
+      derived from the locked proposal's real title/assumptions once
+      those are real (Phase 17), not a fresh AI call.
+- [ ] Each `SessionRound` gains `claudeSessionId: string | null`,
+      persisted in `session.json`'s `RoleplayMetaFields.rounds`.
+- [ ] Delete `PERSONA_OPENING`/`PERSONA_OPENING_LINE`/`PERSONA_REPLY_POOL`
+      from `ChatRoleplaySession.data.ts`.
+- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
+      `.app` rebuilt and reinstalled.
+
+### Phase 19 — Wire report generation to `generate_insight` (not started)
+- [ ] `reportFor` (round report) and `nextSession`'s adjustment-phrase pick
+      both call `generate_insight` with the real round transcript instead
+      of `ROUND_REPORT_FLAVOR_POOL`/`ADJUSTMENT_PHRASE_POOL`.
+- [ ] `generateFinalReport` calls `generate_insight(kind: "final_report")`
+      with the real per-round reports instead of hand-assembling the
+      markdown string itself in TS.
+- [ ] Delete `ROUND_REPORT_FLAVOR_POOL`/`ADJUSTMENT_PHRASE_POOL` from
+      `ChatRoleplaySession.data.ts` — every scripted constant in that file
+      is gone after this phase.
+- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
+      `.app` rebuilt and reinstalled.
+
+### Phase 20 — Scope the AI Trainer's chat history to its training session (not started)
+Resolves backend TODO #1. Generalized, not special-cased — `AITrainerPane`
+is the second real consumer of "a chat history scoped to something
+narrower than a whole Space" (the first being the Space-wide chats/ root
+every other chat uses).
+- [ ] `src/lib/chat/storage.ts`: `chatsRoot()` takes an optional root
+      override instead of always resolving `spaceChatsDir(...)`.
+- [ ] `useAIAssistant()` (`AIAssistant.script.ts`) takes an optional
+      `storageRoot` param, threaded into every storage call.
+- [ ] New `src/lib/training` helper: `trainerChatsDir(sessionId)` →
+      `training/<sessionId>/trainerChats/`.
+- [ ] `AITrainerPane` passes that root into its `useAIAssistant()` call —
+      its history is now genuinely private to this one training session,
+      not the user's whole real AI Assistant history.
+- [ ] `npm run build` / `lint` / `tsc --noEmit` clean; `.app` rebuilt and
+      reinstalled.
+
+### Phase 21 — Give the AI Trainer real access to the roleplay transcript (not started)
+Resolves backend TODO #2, decided (not left open) per `wiki.md`'s
+reasoning: **ungated**, unlike `get_performance_review` — a Trainer pane
+is already scoped to exactly one training session (unlike the general AI
+Assistant, which roams across many records in a Space), so there is no
+"which record" ambiguity for a tag/permission UI to resolve. No new
+Decline/Allow card.
+- [ ] New MCP tool `get_roleplay_transcript` (own file under
+      `mcp/tools/`, same shape as `get_performance_review.rs`): params
+      `round_number` (omit = latest/live round), `with_thoughts: bool`,
+      `offset`/`limit` (same char-indexed pagination). Reads from a
+      training-session path the subprocess learns via a new env var
+      (`MASTERS_WHEEL_TRAINING_SESSION_PATH_ENV`), same channel
+      `RECORDS_ROOT_ENV` already uses — not a tag lookup.
+- [ ] `mcp/config.rs`'s `write_config_file` gains an optional training-
+      session-path argument; when present, adds this one tool to that
+      call's `--allowedTools` and writes the env var. Absent for every
+      ordinary `ask_agent` call (floating widget, `/chat`, a dedicated
+      agent chat) — this tool only ever exists for a Trainer-pane call.
+- [ ] `assistant.rs`'s `ask_agent` gains an optional
+      `training_session_path: Option<String>` param, passed through only
+      by `AITrainerPane`'s call site.
+- [ ] `npm run build` / `lint` / `tsc --noEmit` / `cargo check` clean;
+      `.app` rebuilt and reinstalled.
+

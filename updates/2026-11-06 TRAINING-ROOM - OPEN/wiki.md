@@ -563,3 +563,114 @@ None of this is built — everything below is UI-only or scripted today.
   specific to the Voice Practicing feed's playback-synced rendering, not a
   drop-in replacement for the existing line-click-to-seek `Transcript`
   element (which Performance Review keeps using as-is).
+
+## Chat Roleplay backend — research + architecture decisions (2026-11-08)
+
+Covers Phases 15–21 in `update v1.md`. Resolves every item in the "Backend
+TODO" section above except the session-round persistence question (#6),
+which stays a confirmed assumption, not newly decided: the AI Trainer
+conversation and Notes persist *across* rounds (scoped to the training
+session record), only the roleplay transcript itself resets per round.
+
+### Why not reuse `ask_agent`
+`assistant.rs`'s `ask_agent` is built for a user-facing `Agent` persona:
+knowledge retrieval, per-chat MCP tags/permissions, streaming. None of
+Chat Roleplay's three internal AI roles (scenario designer, the prospect,
+a coach writing a report) are a user's own Agent, and none need knowledge
+files or record access. A new, simpler Rust module
+(`src-tauri/src/roleplay.rs`) shells out to `claude -p` the same way, but
+blocking (`.output()`, like `name_chat`) rather than streamed — a
+thought+reply pair is short enough that streaming buys nothing.
+
+### Output format: labeled lines, not JSON — decided empirically
+Verified by hand (not assumed) before committing to either: ran real
+`claude -p --system-prompt ... --tools "" --permission-mode dontAsk`
+calls against a from-scratch Marcus-Webb-style persona prompt asking for
+strict JSON (`{"thought": "...", "reply": "..."}`), including a
+`--resume`d second turn. Both single-shot and resumed calls returned
+clean, parseable JSON with correctly escaped embedded quotes/apostrophes,
+in-character, with reply length visibly tracking the reasoned emotional
+state (a terser reply once "annoyed," a longer one once "testing for
+specifics"). So JSON *does* work. The choice to use plain labeled lines
+(`THOUGHT: ...` / `REPLY: ...`) instead anyway comes from a parallel
+research pass (external prompting-pattern writeups + a couple of academic
+persona-consistency papers, cited below) that converged on labels as the
+more failure-tolerant convention for a flat two-field payload in a
+single-shot, no-function-calling call: a stray unescaped quote inside
+natural dialogue breaks a strict JSON parse outright, while a label-based
+split degrades gracefully (worst case, the second label is missing and
+the whole response is treated as the primary field — no crash, no empty
+turn). Same defensive-parse ethos the rest of this codebase already uses
+(`name_chat`'s title cleanup, `get_performance_review`'s "missing is
+absent, not a crash").
+
+Research highlights (full report in the session this was researched):
+- **Reflection-then-response ordering**: have the model reason about the
+  character's emotional state *before* writing the line, not after —
+  mirrors both SillyTavern-community convention and academic "Chain of
+  Persona" / inner-monologue framings. This is the `THOUGHT` field,
+  generated first in the prompt's instructed order.
+- **Reply length as an emotional signal**: curt replies read as annoyed/
+  dismissive, longer ones as engaged — explicitly tie pacing to the
+  reasoned state in the system prompt, confirmed to actually happen in
+  the hand-run test above.
+- **Schema + one worked example beats schema alone**: an instruction
+  describing the two-field format without a concrete example is cited as
+  causing meaningfully more malformed output; every new system prompt in
+  Phase 16 includes a worked example of its own output shape, not just a
+  description of it.
+- **Explicit negative constraints** ("output ONLY the two lines below,
+  nothing before or after") measurably cut stray leading/trailing prose.
+- Sources referenced: blog.mini-tavern.com (SillyTavern card conventions),
+  aclanthology.org/2025.findings-acl.1344 and arxiv.org/html/2601.21459v1
+  (persona self-reflection framing), docs.anthropic.com's own XML-tag
+  prompt-engineering guidance (tags/labels tolerate partial malformation
+  better than JSON), dev.to/gabrielanhaia's structured-output comparison.
+
+### Why the AI Trainer's transcript tool is ungated (resolves TODO #2)
+`get_performance_review` is gated (tag-suggested / explicitly-allowed /
+always-allowed) because one AI Assistant chat can roam across *many*
+records in a Space — the gate answers "which one, and did the user agree
+to this specific one." `AITrainerPane` has no such ambiguity: it is
+already, structurally, scoped to exactly one training session (it's
+mounted *inside* that session's own Detail column). So
+`get_roleplay_transcript` skips the tag/permission-card machinery
+entirely and is just always-allowed for that one call, scoped by a path
+the MCP subprocess learns via an env var (same channel `RECORDS_ROOT_ENV`
+already uses for Performance Review's records root) rather than a
+`record_id` looked up through `SessionAccess`. `with_thoughts` is a real,
+separate flag on this tool — unrelated to TODO #7's constraint, which is
+about the *persona* call (`generate_roleplay_turn`) never seeing a
+human's private thought, not about the Trainer being unable to.
+
+### Why final-report generation is a real AI call, not just string assembly
+The scripted `generateFinalReport` in `ChatRoleplaySession.script.ts`
+today just concatenates each round's own (also scripted) report string.
+Once round reports are real, a pure re-stitch would still be correct but
+would miss the point — a coach's real value is noticing trends *across*
+sessions ("opening specificity still hasn't improved by session 3").
+`generate_insight(kind: "final_report")` is a real synthesis call over
+every round's report + adjustment phrase, not a formatting function.
+
+### Two more prompt-engineering mitigations folded in from a second,
+### independent research pass (SillyTavern issue #584, Ali:Chat, arXiv
+### 2506.01748 "Thinking in Character", arXiv 2506.15674 "Leaky Thoughts")
+Both passes converged independently on label/tag separation over bare
+JSON and on reflection-before-response ordering, which is reassuring —
+but the second pass also surfaced two specific failure modes worth
+building into Phase 16's system prompts from the start rather than
+discovering them later:
+- **Thought leakage** ("Leaky Thoughts," ~5–9% leak rates in reasoning
+  models): don't rely on the model's own discipline to keep `REPLY`
+  clean of anything from `THOUGHT`. The system prompt explicitly states
+  the reply must "stand alone, as if the reasoning step never
+  happened" — a direct instruction, not just implied by having two
+  separate fields.
+- **Attention diversion / style drift** ("Thinking in Character"): a
+  generic "reason about your feelings" instruction tends to produce
+  reasoning that reads like a dispassionate analyst rather than the
+  character, which can then bleed tone into the reply. Mitigation is to
+  re-state the persona's identity *inside* the `THOUGHT` instruction
+  itself ("reason as [Persona] would, in [Persona]'s own voice, about
+  what *they* feel right now"), not just once at the top of the system
+  prompt.
