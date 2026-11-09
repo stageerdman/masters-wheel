@@ -1,39 +1,42 @@
 // Pure tag-list operations — AIAssistant.script.ts calls these and
 // decides when to persist the result; nothing here touches React state
-// or disk itself.
+// or disk itself. Generalized from Performance-Review-only (bare
+// `recordId`) once Training Room sessions became a second real
+// consumer — every match is now on the (resourceKind, resourceId) pair.
 
-import type { PerformanceReviewTag } from "./types";
+import type { ChatTag, TaggedResourceKind } from "./types";
 
-// Replaces whatever tag was previously "suggested" with one for
-// `activeRecordId` — never touches an "active" tag, and adds nothing if
-// that record is already tagged (active or suggested) or there's no
-// Performance Review page currently open at all. At most one "suggested"
-// tag ever exists in the result.
-export function withSuggestedTag(
-  tags: PerformanceReviewTag[],
-  activeRecordId: string | null,
-): PerformanceReviewTag[] {
-  const withoutSuggested = tags.filter((tag) => tag.kind !== "suggested");
-  if (!activeRecordId) return withoutSuggested;
-  if (withoutSuggested.some((tag) => tag.recordId === activeRecordId)) return withoutSuggested;
-  return [...withoutSuggested, { recordId: activeRecordId, kind: "suggested" }];
+function sameResource(tag: ChatTag, resourceKind: TaggedResourceKind, resourceId: string): boolean {
+  return tag.resourceKind === resourceKind && tag.resourceId === resourceId;
 }
 
-// The × button's action — drops a tag regardless of kind.
-export function removeTag(tags: PerformanceReviewTag[], recordId: string): PerformanceReviewTag[] {
-  return tags.filter((tag) => tag.recordId !== recordId);
+// Replaces whatever tag was previously "suggested" with one for the
+// given resource — never touches an "active" tag, and adds nothing if
+// that resource is already tagged (active or suggested) or there's
+// nothing currently active to suggest. At most one "suggested" tag ever
+// exists in the result.
+export function withSuggestedTag(
+  tags: ChatTag[],
+  suggested: { kind: TaggedResourceKind; id: string } | null,
+): ChatTag[] {
+  const withoutSuggested = tags.filter((tag) => tag.state !== "suggested");
+  if (!suggested) return withoutSuggested;
+  if (withoutSuggested.some((tag) => sameResource(tag, suggested.kind, suggested.id))) return withoutSuggested;
+  return [...withoutSuggested, { resourceKind: suggested.kind, resourceId: suggested.id, state: "suggested" }];
+}
+
+// The × button's action — drops a tag regardless of state.
+export function removeTag(tags: ChatTag[], resourceKind: TaggedResourceKind, resourceId: string): ChatTag[] {
+  return tags.filter((tag) => !sameResource(tag, resourceKind, resourceId));
 }
 
 // A "suggested" tag the AI actually reads becomes "active" — sticks
-// around across page navigation from then on. No-op if the record isn't
-// tagged at all (shouldn't happen — see mcp/permission.rs's gating) or
-// is already active.
-// Phase C calls this when the AI actually reads a record that was only
-// a computed suggestion (never stored) or already active — either way,
-// the result is one stored "active" entry for that record, no duplicates.
-export function promoteTag(tags: PerformanceReviewTag[], recordId: string): PerformanceReviewTag[] {
-  if (tags.some((tag) => tag.recordId === recordId)) {
-    return tags.map((tag) => (tag.recordId === recordId ? { ...tag, kind: "active" } : tag));
+// around across page navigation from then on. No-op if the resource
+// isn't tagged at all (shouldn't happen — see mcp/permission.rs's
+// gating) or is already active.
+export function promoteTag(tags: ChatTag[], resourceKind: TaggedResourceKind, resourceId: string): ChatTag[] {
+  if (tags.some((tag) => sameResource(tag, resourceKind, resourceId))) {
+    return tags.map((tag) => (sameResource(tag, resourceKind, resourceId) ? { ...tag, state: "active" } : tag));
   }
-  return [...tags, { recordId, kind: "active" }];
+  return [...tags, { resourceKind, resourceId, state: "active" }];
 }

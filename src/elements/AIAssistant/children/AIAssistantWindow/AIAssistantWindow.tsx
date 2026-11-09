@@ -6,7 +6,8 @@ import type { Agent, ChatSession } from "@/elements/AIAssistant/AIAssistant.scri
 import { resolveDedicatedAgent } from "@/elements/AIAssistant/AIAssistant.script";
 import type { DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
 import type { RecordSummary } from "@/lib/records";
-import type { PerformanceReviewTag, PermissionDecision } from "@/lib/mcp/types";
+import type { SessionSummary as TrainingSessionSummary } from "@/lib/training";
+import type { ChatTag, PermissionDecision, TaggedResourceKind } from "@/lib/mcp/types";
 import { useNarrowContainer } from "@/lib/useNarrowContainer";
 import { AgentPicker } from "@/elements/AgentPicker/AgentPicker";
 import { Composer } from "@/elements/Composer/Composer";
@@ -48,8 +49,9 @@ type AIAssistantWindowProps = {
   onSelectAgent: (id: string) => void;
   onPickAgentForNewChat: (id: string) => void;
   recordSummaries: RecordSummary[];
-  visibleTags: PerformanceReviewTag[];
-  onRemoveTag: (recordId: string) => void;
+  trainingSessionSummaries: TrainingSessionSummary[];
+  visibleTags: ChatTag[];
+  onRemoveTag: (resourceKind: TaggedResourceKind, resourceId: string) => void;
   onRespondToPermission: (messageId: string, decision: PermissionDecision) => void;
 };
 
@@ -96,6 +98,7 @@ export function AIAssistantWindow({
   onSelectAgent,
   onPickAgentForNewChat,
   recordSummaries,
+  trainingSessionSummaries,
   visibleTags,
   onRemoveTag,
   onRespondToPermission,
@@ -221,7 +224,12 @@ export function AIAssistantWindow({
               <AgentPicker agents={agents} onSelectAgent={onPickAgentForNewChat} />
             ) : (
               <>
-                <TagBar tags={visibleTags} records={recordSummaries} onRemove={onRemoveTag} />
+                <TagBar
+                  tags={visibleTags}
+                  records={recordSummaries}
+                  trainingSessions={trainingSessionSummaries}
+                  onRemove={onRemoveTag}
+                />
                 <MessageList
                   messages={activeSession.messages}
                   density={density}

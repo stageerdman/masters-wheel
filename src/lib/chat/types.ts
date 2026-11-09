@@ -1,4 +1,4 @@
-import type { PermissionRequestPayload, PerformanceReviewTag } from "@/lib/mcp/types";
+import type { ChatTag, PermissionRequestPayload, TaggedResourceKind } from "@/lib/mcp/types";
 
 export type ChatMessageRole = "user" | "assistant" | "system";
 
@@ -42,14 +42,15 @@ export type ChatSession = {
   /** Set only by makeNewSession in AIAssistant.script.ts — see
    * isDraftSession there. Never persisted (see storage.ts). */
   isDraft?: boolean;
-  /** Which Performance Review records are in scope for this chat right
-   * now — "suggested" follows page navigation, "active" sticks once the
-   * AI has actually read that record. Scoped to this one session only,
-   * by explicit user choice — switching chats starts with none. See
-   * src/lib/mcp/types.ts and AIAssistant.script.ts's tag management. */
-  tags: PerformanceReviewTag[];
-  /** Record ids the user picked "Always Allow" for in this chat — never
+  /** Which resources (Performance Review records, Training Room
+   * sessions) are in scope for this chat right now — "suggested" follows
+   * page navigation, "active" sticks once the AI has actually read that
+   * resource. Scoped to this one session only, by explicit user choice —
+   * switching chats starts with none. See src/lib/mcp/types.ts and
+   * AIAssistant.script.ts's tag management. */
+  tags: ChatTag[];
+  /** Resources the user picked "Always Allow" for in this chat — never
    * rendered as their own chips (see TagBar), just silently skips the
-   * permission prompt for that record for the rest of this session. */
-  alwaysAllowedRecordIds: string[];
+   * permission prompt for that resource for the rest of this session. */
+  alwaysAllowedResources: { resourceKind: TaggedResourceKind; resourceId: string }[];
 };

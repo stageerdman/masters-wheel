@@ -184,13 +184,26 @@ pub async fn ask_agent(
         // for the model to read — see knowledge/prompt.rs's
         // build_tagged_context for why this has to be spelled out
         // explicitly rather than trusted to be "visible" from the tag
-        // just existing in the UI.
-        let tagged_records: Vec<(String, String)> = bridge
-            .tags_for_session(&chat_session_id)
-            .into_iter()
-            .map(|(record_id, _kind)| {
-                let title = crate::mcp::tools::get_performance_review::title_for(&record_id);
-                (record_id, title)
+        // just existing in the UI. Split by resource kind since
+        // Performance Review records and Training Room sessions each get
+        // their own context block/tool (see knowledge::prompt).
+        let records_root = crate::spaces::records_dir(&app, &active_space_folder)?;
+        let training_root = crate::spaces::training_dir(&app, &active_space_folder)?;
+        let all_tags = bridge.tags_for_session(&chat_session_id);
+        let tagged_records: Vec<(String, String)> = all_tags
+            .iter()
+            .filter(|(kind, _, _)| *kind == crate::mcp::bridge::ResourceKind::PerformanceReview)
+            .map(|(_, id, _)| {
+                let title = crate::mcp::tools::get_performance_review::title_for(&records_root, id);
+                (id.clone(), title)
+            })
+            .collect();
+        let tagged_training_sessions: Vec<(String, String)> = all_tags
+            .iter()
+            .filter(|(kind, _, _)| *kind == crate::mcp::bridge::ResourceKind::TrainingSession)
+            .map(|(_, id, _)| {
+                let title = crate::mcp::tools::get_training_session::title_for(&training_root, id);
+                (id.clone(), title)
             })
             .collect();
 
@@ -207,10 +220,10 @@ pub async fn ask_agent(
         // the persona (see this update's wiki.md for the repro).
         let system_prompt = match &agent_id {
             Some(id) => match knowledge::commands::retrieve_for_agent(&app, &agent_space_folder, id, &message, RETRIEVAL_TOP_K) {
-                Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks, &tagged_records, training_session_id.as_deref()),
-                Err(_) => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records, training_session_id.as_deref()),
+                Ok(chunks) => knowledge::prompt::build_augmented_system_prompt(&instructions, &chunks, &tagged_records, &tagged_training_sessions, training_session_id.as_deref()),
+                Err(_) => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records, &tagged_training_sessions, training_session_id.as_deref()),
             },
-            None => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records, training_session_id.as_deref()),
+            None => knowledge::prompt::build_augmented_system_prompt(&instructions, &[], &tagged_records, &tagged_training_sessions, training_session_id.as_deref()),
         };
 
         // --mcp-config points the CLI at this app's own MCP server (a
@@ -238,22 +251,23 @@ pub async fn ask_agent(
         // since the tool schema is then declared directly instead of
         // needing a separate discovery round-trip first. See this
         // update's wiki.md for the full repro.
-        let records_root = crate::spaces::records_dir(&app, &active_space_folder)?;
-        let training_session_path = match &training_session_id {
-            Some(id) => Some(crate::spaces::training_dir(&app, &active_space_folder)?.join(id).to_string_lossy().into_owned()),
-            None => None,
-        };
+        // records_root/training_root were already resolved above (needed
+        // there for tagged-resource title lookups too).
+        let training_session_path =
+            training_session_id.as_ref().map(|id| training_root.join(id).to_string_lossy().into_owned());
         let mcp_config_path = crate::mcp::config::write_config_file(
             &chat_session_id,
             agent_id.as_deref().unwrap_or(""),
             &records_root.to_string_lossy(),
+            &training_root.to_string_lossy(),
             training_session_path.as_deref(),
         )
         .map_err(|e| format!("Couldn't prepare MCP tools: {e}"))?;
 
         // get_roleplay_transcript is only ever declared for this one
-        // call when it's actually scoped to a training session — every
-        // ordinary chat's --allowedTools stays exactly ALLOWED_TOOLS.
+        // call when it's actually scoped to a training session —
+        // list_training_sessions/get_training_session are always in
+        // ALLOWED_TOOLS now, same as the Performance Review pair.
         let mut allowed_tools: Vec<&str> = crate::mcp::config::ALLOWED_TOOLS.to_vec();
         if training_session_path.is_some() {
             allowed_tools.extend_from_slice(crate::mcp::config::TRAINING_ALLOWED_TOOLS);

@@ -28,18 +28,32 @@ const AGENT_ID_ENV: &str = "MASTERS_WHEEL_AGENT_ID";
 // file's doc comment) — this is the only channel it has to learn which
 // Space's records root the active chat is using.
 pub const RECORDS_ROOT_ENV: &str = "MASTERS_WHEEL_RECORDS_ROOT";
+// Same job as RECORDS_ROOT_ENV, for Training Room's training/ root —
+// read back by mcp/paths.rs::training_root(). Always set, same as
+// RECORDS_ROOT_ENV, since list_training_sessions/get_training_session
+// are always-granted tools now, not conditional on an AITrainerPane call.
+pub const TRAINING_ROOT_ENV: &str = "MASTERS_WHEEL_TRAINING_ROOT";
 // Only set for an AITrainerPane call (see assistant.rs's `ask_agent`) —
-// read back by mcp/paths.rs::training_session_path().
+// read back by mcp/paths.rs::training_session_path(). Distinct from
+// TRAINING_ROOT_ENV above: this points at one specific session's own
+// folder (for the ungated, structurally-scoped get_roleplay_transcript),
+// not the whole training/ root an arbitrary session_id is resolved
+// against.
 pub const TRAINING_SESSION_PATH_ENV: &str = "MASTERS_WHEEL_TRAINING_SESSION_PATH";
 
 /// Every tool name this server currently exposes, in the
 /// `mcp__<server name>__<tool name>` shape `--allowedTools` expects —
 /// kept here (not derived from the tool registry at runtime) since it's
 /// the one list a human reviewing "what can the model actually call"
-/// should be able to read without chasing macro expansion.
+/// should be able to read without chasing macro expansion. The Training
+/// Room pair is always granted, same as the Performance Review pair —
+/// each is gated per-resource by its own tool (get_performance_review/
+/// get_training_session), not by whether it's declared at all.
 pub const ALLOWED_TOOLS: &[&str] = &[
     "mcp__masters_wheel__list_performance_reviews",
     "mcp__masters_wheel__get_performance_review",
+    "mcp__masters_wheel__list_training_sessions",
+    "mcp__masters_wheel__get_training_session",
 ];
 
 /// Only ever added on top of ALLOWED_TOOLS for an AITrainerPane call —
@@ -48,17 +62,19 @@ pub const ALLOWED_TOOLS: &[&str] = &[
 /// it's meaningless outside one specific training session.
 pub const TRAINING_ALLOWED_TOOLS: &[&str] = &["mcp__masters_wheel__get_roleplay_transcript"];
 
-// chat_session_id/agent_id/records_root flow into the mcp_server
-// subprocess's env so mcp/permission.rs knows which chat (for
+// chat_session_id/agent_id/records_root/training_root flow into the
+// mcp_server subprocess's env so mcp/permission.rs knows which chat (for
 // tag/always-allow lookups) and which agent (shown on the permission
 // card) a tool call is answering for, and mcp/paths.rs knows which
-// Space's records to read — the subprocess has no other way to know any
-// of these. `training_session_path` is only ever `Some` for an
-// AITrainerPane call (see assistant.rs's `ask_agent`).
+// Space's records/training sessions to read — the subprocess has no
+// other way to know any of these. `training_session_path` is only ever
+// `Some` for an AITrainerPane call (see assistant.rs's `ask_agent`) —
+// distinct from `training_root`, which is always set.
 pub fn write_config_file(
     chat_session_id: &str,
     agent_id: &str,
     records_root: &str,
+    training_root: &str,
     training_session_path: Option<&str>,
 ) -> io::Result<PathBuf> {
     let current_exe = std::env::current_exe()?;
@@ -68,6 +84,7 @@ pub fn write_config_file(
         CHAT_SESSION_ID_ENV: chat_session_id,
         AGENT_ID_ENV: agent_id,
         RECORDS_ROOT_ENV: records_root,
+        TRAINING_ROOT_ENV: training_root,
     });
     if let Some(path) = training_session_path {
         env[TRAINING_SESSION_PATH_ENV] = serde_json::Value::String(path.to_string());

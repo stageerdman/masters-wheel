@@ -46,6 +46,7 @@ export function AIAssistant() {
     removeTag,
     visibleTags,
     recordSummaries,
+    trainingSessionSummaries,
     respondToPermission,
   } = useAIAssistant();
   const {
@@ -113,6 +114,7 @@ export function AIAssistant() {
           onSelectAgent={handleSelectAgent}
           onPickAgentForNewChat={startChatWithAgent}
           recordSummaries={recordSummaries}
+          trainingSessionSummaries={trainingSessionSummaries}
           visibleTags={visibleTags}
           onRemoveTag={removeTag}
           onRespondToPermission={respondToPermission}

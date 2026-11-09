@@ -20,8 +20,12 @@ use rmcp::{
     ServiceExt,
 };
 
+use crate::mcp::bridge::ResourceKind;
 use crate::mcp::permission::{self, Access};
-use crate::mcp::tools::{get_performance_review, get_roleplay_transcript, list_performance_reviews};
+use crate::mcp::tools::{
+    get_performance_review, get_roleplay_transcript, get_training_session, list_performance_reviews,
+    list_training_sessions,
+};
 
 #[derive(Clone)]
 pub struct MastersWheelServer {
@@ -58,9 +62,9 @@ impl MastersWheelServer {
             get_performance_review::GetPerformanceReviewInput,
         >,
     ) -> Result<CallToolResult, McpError> {
-        let title = get_performance_review::title_for(&record_id);
+        let title = get_performance_review::title_for(&crate::mcp::paths::records_root(), &record_id);
         let document_label = documents.join(", ");
-        match permission::check_access(&record_id, &document_label, &title)
+        match permission::check_access(ResourceKind::PerformanceReview, &record_id, &document_label, &title)
             .await
             .map_err(|e| McpError::internal_error(e, None))?
         {
@@ -92,6 +96,46 @@ impl MastersWheelServer {
             Err(message) => Ok(CallToolResult::success(vec![ContentBlock::text(message)])),
         }
     }
+
+    #[tool(
+        description = "List every Training Room session (a practice session — Voice Training, Chat Roleplay, Voice Roleplay, Mindset Shifting, or Learning) the user has in Master's Wheel. Returns each session's id, name, discipline (toolType), status, and last-updated time only — never the real notes/transcript content. Always safe to call, no permission needed. Use get_training_session with a session_id from this list to actually read a specific session's content (that one may require the user's permission)."
+    )]
+    async fn list_training_sessions(&self) -> Result<CallToolResult, McpError> {
+        let sessions = list_training_sessions::list(&crate::mcp::paths::training_root());
+        let json = serde_json::to_string_pretty(&sessions).map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
+    }
+
+    #[tool(
+        description = "Read a specific Training Room session's real content (notes and/or transcript) by its session_id from list_training_sessions. The first time a given session comes up in this conversation, this may need the user's permission — if declined, you'll get a plain message back instead of the content. Don't keep re-asking for the same declined session without the user bringing it up again themselves. Notes and transcript mean whatever that session's discipline actually has — some disciplines may have one and not the other, which is normal, not an error. Long documents come back in chunks: if a returned document's has_more is true, call again with the same session_id/documents and offset = that document's offset + content.length to keep reading, repeating until has_more is false, before answering questions about its full content."
+    )]
+    async fn get_training_session(
+        &self,
+        Parameters(get_training_session::GetTrainingSessionInput { session_id, documents, offset, limit }): Parameters<
+            get_training_session::GetTrainingSessionInput,
+        >,
+    ) -> Result<CallToolResult, McpError> {
+        let root = crate::mcp::paths::training_root();
+        let title = get_training_session::title_for(&root, &session_id);
+        let document_label = documents.join(", ");
+        match permission::check_access(ResourceKind::TrainingSession, &session_id, &document_label, &title)
+            .await
+            .map_err(|e| McpError::internal_error(e, None))?
+        {
+            Access::Allowed => match get_training_session::read(&root, &session_id, &documents, offset, limit) {
+                Ok(content) => {
+                    let json = serde_json::to_string_pretty(&content).map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                    Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
+                }
+                Err(message) => Ok(CallToolResult::success(vec![ContentBlock::text(message)])),
+            },
+            Access::Declined => Ok(CallToolResult::success(vec![ContentBlock::text(
+                "The user declined access to this Training Room session. Don't ask again for \
+                 this session in this conversation unless the user brings it up themselves."
+                    .to_string(),
+            )])),
+        }
+    }
 }
 
 #[tool_handler]
@@ -99,7 +143,7 @@ impl ServerHandler for MastersWheelServer {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build()).with_instructions(
             "Tools for seeing the user's Performance Review records (saved sales-call review \
-             sessions) and Training Room roleplay transcripts inside Master's Wheel."
+             sessions) and Training Room sessions (any discipline) inside Master's Wheel."
                 .to_string(),
         )
     }

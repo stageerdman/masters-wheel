@@ -34,7 +34,7 @@ import {
 import { parseTranscript, renameSpeaker, serializeTranscript } from "@/lib/transcript";
 import { generateFakeScorecard } from "@/lib/scorecard/generate";
 import type { Scorecard } from "@/lib/scorecard";
-import { setActiveRecord } from "@/lib/mcp/activeRecord";
+import { setActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
 import {
   GENERATE_CANCELLED,
   cancelGenerateTranscript,
@@ -181,14 +181,14 @@ export function usePerformanceReviewData() {
   }, [selectedId]);
 
   // Tells the AI Assistant (a sibling, mounted globally in layout.tsx —
-  // see src/lib/mcp/activeRecord.ts) which record is currently open here,
-  // so its chat can show a "suggested" tag that tracks page navigation.
-  // Cleared on unmount (leaving Performance Review entirely), not just on
-  // every selectedId change, so the suggested tag doesn't linger once
-  // there's no Performance Review page open to suggest.
+  // see src/lib/mcp/activeTaggedResource.ts) which record is currently
+  // open here, so its chat can show a "suggested" tag that tracks page
+  // navigation. Cleared on unmount (leaving Performance Review entirely),
+  // not just on every selectedId change, so the suggested tag doesn't
+  // linger once there's no Performance Review page open to suggest.
   useEffect(() => {
-    setActiveRecord(selectedId);
-    return () => setActiveRecord(null);
+    setActiveTaggedResource(selectedId ? { kind: "performanceReview", id: selectedId } : null);
+    return () => setActiveTaggedResource(null);
   }, [selectedId]);
 
   // One global subscription for every in-flight Generate Transcript job

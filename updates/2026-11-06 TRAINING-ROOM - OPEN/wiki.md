@@ -681,3 +681,62 @@ discovering them later:
   itself ("reason as [Persona] would, in [Persona]'s own voice, about
   what *they* feel right now"), not just once at the top of the system
   prompt.
+
+### Generalizing the tag/permission-card mechanism to Training Room (2026-11-09)
+Performance Review's tag-suggested → permission-card → gated-tool-call
+mechanism (`src/lib/mcp/*`, `src/elements/TagBar/*`,
+`src-tauri/src/mcp/{bridge,permission,config,paths}.rs`) was hard-wired to
+"record" end to end — a bare `record_id` string everywhere, no notion of
+"what kind of thing is this." The user asked for the exact same mechanism
+for Training Room sessions, for every discipline, on the floating AI
+Assistant (not just the AI Trainer pane's own always-on, ungated,
+single-session tool, which is unrelated and untouched). Rather than
+building a second, parallel, near-duplicate pipeline, the whole thing was
+generalized in place around a `ResourceKind` discriminator
+(`"performanceReview" | "trainingSession"`), threaded through every
+layer: `ChatTag`/`TagState` (was `PerformanceReviewTag`), one shared
+`activeTaggedResource.ts` store (was `activeRecord.ts`, now fed by both
+PerformanceReview.script.ts and TrainingRoom.script.ts), `SessionAccess`'s
+map keyed by `(ResourceKind, String)` tuples instead of a bare id (so a
+Performance Review record and a Training Room session that happen to
+share a literal id string can never leak access to each other — covered
+by a dedicated regression test), and a matching `list_training_sessions`/
+`get_training_session` tool pair mirroring `list_performance_reviews`/
+`get_performance_review` exactly (ungated metadata-only list, gated
+paginated-read). `ResourceKind` serializes to/from one canonical string
+("performanceReview"/"trainingSession") at every hop — Tauri command
+args, emitted events, and even the internal subprocess↔bridge HTTP
+bodies — via a hand-written `Serialize`/`Deserialize`/`FromStr` on the
+enum itself, so no layer needed its own ad-hoc casing convention.
+
+A real pre-existing bug surfaced during this pass, fixed in the same
+diff since it was the exact function being generalized anyway:
+`get_performance_review::title_for` resolved its records root internally
+via `mcp::paths::records_root()`, which reads an env var
+(`MASTERS_WHEEL_RECORDS_ROOT`) that's only ever set for the MCP
+*subprocess* — but `assistant.rs` was calling `title_for` from the *main*
+process (to resolve a tagged record's title for the system prompt),
+where that env var is never set, silently falling back to the hardcoded
+Default Space's records folder. A tagged record's title would therefore
+resolve wrong (or not at all) for any Space other than Default.
+`title_for` (both the Performance Review one and the new
+`get_training_session::title_for`) now takes `root: &Path` explicitly —
+the MCP subprocess passes `mcp::paths::records_root()`/`training_root()`
+(env-based, correct for its context), `assistant.rs` passes
+`spaces::records_dir(...)`/`spaces::training_dir(...)` directly (correct
+for its context) — same split `list_performance_reviews::list()` already
+documented and followed, just not yet applied to `title_for`.
+
+Training Room's session.json has no single shared "notes"/"transcript"
+shape across disciplines the way a Performance Review record's four
+files do, so `get_training_session` flattens whatever's actually
+meaningful per discipline at read time rather than exposing the raw
+on-disk shape: `notes` is Learning's `learning.blocks[].content` text
+blocks concatenated in order for Learning (its real notes aren't in the
+plain `notes` field at all — see `TrainingRoom.data.ts`'s `LearningBlock`
+comment) and the plain `notes` field for everyone else; `transcript` is
+every `clips[]`/`learning.files[]` item's own `transcriptRaw`,
+concatenated and labeled by file name. Chat Roleplay's own transcript
+stays exclusively behind its dedicated ungated `get_roleplay_transcript`
+tool — `get_training_session` simply returns empty notes/transcript for
+that discipline, which is correct, not a gap.

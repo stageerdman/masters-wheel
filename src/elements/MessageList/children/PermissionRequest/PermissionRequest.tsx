@@ -16,13 +16,14 @@ type PermissionRequestProps = {
 // card again once resolved.
 export function PermissionRequest({ request, agent, onRespond }: PermissionRequestProps) {
   const agentName = agent?.name ?? "The AI";
+  const resourceLabel = request.resourceKind === "trainingSession" ? "Training Room session" : "Performance Review record";
 
   if (request.status !== "pending") {
     const resolutionText: Record<Exclude<typeof request.status, "pending">, string> = {
-      declined: `You declined ${agentName}'s access to "${request.recordTitle}".`,
-      allowed: `You allowed ${agentName} to read "${request.recordTitle}" once.`,
-      "always-allowed": `You always allow ${agentName} to read "${request.recordTitle}" in this chat.`,
-      "timed-out": `No response — ${agentName}'s request to read "${request.recordTitle}" timed out.`,
+      declined: `You declined ${agentName}'s access to "${request.resourceTitle}".`,
+      allowed: `You allowed ${agentName} to read "${request.resourceTitle}" once.`,
+      "always-allowed": `You always allow ${agentName} to read "${request.resourceTitle}" in this chat.`,
+      "timed-out": `No response — ${agentName}'s request to read "${request.resourceTitle}" timed out.`,
     };
     return (
       <p className={`${styles.resolved} ${position.resolved}`} data-construction>
@@ -34,7 +35,7 @@ export function PermissionRequest({ request, agent, onRespond }: PermissionReque
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
       <p className={`${styles.prompt} ${position.prompt}`} data-construction>
-        {agentName} wants to read the {request.document} from Performance Review record &ldquo;{request.recordTitle}
+        {agentName} wants to read the {request.document} from {resourceLabel} &ldquo;{request.resourceTitle}
         &rdquo;.
       </p>
       <div className={`${styles.actions} ${position.actions}`} data-construction>

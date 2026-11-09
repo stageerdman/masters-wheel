@@ -3,17 +3,17 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { PerformanceReviewTag, PermissionDecision, PermissionDocument } from "./types";
+import type { ChatTag, PermissionDecision, PermissionDocument, TaggedResourceKind } from "./types";
 
 export async function syncMcpTags(
   sessionId: string,
-  tags: PerformanceReviewTag[],
-  alwaysAllowedRecordIds: string[],
+  tags: ChatTag[],
+  alwaysAllowed: { resourceKind: TaggedResourceKind; resourceId: string }[],
 ): Promise<void> {
   await invoke("sync_mcp_tags", {
     sessionId,
-    tags: tags.map((tag) => ({ recordId: tag.recordId, kind: tag.kind })),
-    alwaysAllowed: alwaysAllowedRecordIds,
+    tags: tags.map((tag) => ({ resourceKind: tag.resourceKind, resourceId: tag.resourceId, state: tag.state })),
+    alwaysAllowed: alwaysAllowed.map((entry) => ({ resourceKind: entry.resourceKind, resourceId: entry.resourceId })),
   });
 }
 
@@ -25,8 +25,9 @@ export type McpPermissionRequestEvent = {
   requestId: string;
   sessionId: string;
   agentId: string;
-  recordId: string;
-  recordTitle: string;
+  resourceKind: TaggedResourceKind;
+  resourceId: string;
+  resourceTitle: string;
   document: PermissionDocument;
 };
 
@@ -36,7 +37,7 @@ export async function onMcpPermissionRequest(
   return listen<McpPermissionRequestEvent>("mcp-permission-request", (event) => callback(event.payload));
 }
 
-export type McpTagUsedEvent = { sessionId: string; recordId: string };
+export type McpTagUsedEvent = { sessionId: string; resourceKind: TaggedResourceKind; resourceId: string };
 
 export async function onMcpTagUsed(callback: (event: McpTagUsedEvent) => void): Promise<() => void> {
   return listen<McpTagUsedEvent>("mcp-tag-used", (event) => callback(event.payload));

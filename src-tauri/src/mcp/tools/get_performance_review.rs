@@ -14,6 +14,8 @@
 // both problems: the model always gets exact, predictable chunks
 // straight from this tool.
 
+use std::path::Path;
+
 use serde::{Deserialize, Serialize};
 
 use crate::mcp::paths::record_dir;
@@ -89,9 +91,16 @@ pub struct PerformanceReviewContent {
 // Best-effort title lookup for the permission prompt — falls back to the
 // bare recordId (still meaningful; see list_performance_reviews.rs,
 // record_id is a human-written "<date> <title>" folder name) if meta.json
-// is missing or corrupt.
-pub fn title_for(record_id: &str) -> String {
-    let Ok(text) = std::fs::read_to_string(record_dir(record_id).join("meta.json")) else {
+// is missing or corrupt. Takes `root` explicitly (rather than resolving
+// it internally via mcp::paths::records_root(), which reads an env var
+// only ever set for the MCP subprocess) so a main-process caller like
+// assistant.rs can pass the active Space's real records dir directly —
+// same pattern list_performance_reviews::list() already uses, and for
+// the same reason: the main process's own env never has that var set, so
+// calling through the subprocess-only path here would silently fall back
+// to the hardcoded Default Space.
+pub fn title_for(root: &Path, record_id: &str) -> String {
+    let Ok(text) = std::fs::read_to_string(root.join(record_id).join("meta.json")) else {
         return record_id.to_string();
     };
     serde_json::from_str::<serde_json::Value>(&text)

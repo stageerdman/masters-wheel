@@ -5,4 +5,6 @@
 
 pub mod get_performance_review;
 pub mod get_roleplay_transcript;
+pub mod get_training_session;
 pub mod list_performance_reviews;
+pub mod list_training_sessions;

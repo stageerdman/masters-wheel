@@ -35,7 +35,7 @@ const CORE_RULE: &str = "Only state facts that are actually supported by the kno
 // enough on its own to get them actually used: same live bug as above,
 // a direct "analyze my call" request got answered with "send me the
 // transcript" instead of a single tool call.
-const TOOL_USE_RULE: &str = "You have tools for Master's Wheel's Performance Review records: list_performance_reviews (always available, metadata only) and get_performance_review (the real notes/transcript/analysis for one record_id — may need the user's permission the first time). When the user asks you to analyze, review, or discuss a call/session, use these tools yourself instead of asking them to paste a transcript — only ask them directly if the tools genuinely don't have what you need (e.g. get_performance_review was declined, or nothing matches what they described). Never guess, construct, or pattern-match a record_id yourself (e.g. from a date or a name the user mentioned) — a record_id is an opaque folder name that often has no relationship to the call's title or participant. Always call list_performance_reviews first and copy the record_id verbatim from whichever result's title matches, unless the record is already named with its record_id below. Never write out what a tool call would look like (e.g. text like `{\"name\": \"get_performance_review\", ...}` or `[Tool call: ...]`) as your actual reply — that leaves the user with no real answer. If you intend to use a tool, actually invoke it through the real tool-calling mechanism every time, never describe or simulate the call in prose instead.";
+const TOOL_USE_RULE: &str = "You have tools for Master's Wheel's Performance Review records: list_performance_reviews (always available, metadata only) and get_performance_review (the real notes/transcript/analysis for one record_id — may need the user's permission the first time). You also have the same pair for Training Room sessions (any discipline — Voice Training, Chat Roleplay, Voice Roleplay, Mindset Shifting, Learning): list_training_sessions and get_training_session (the real notes/transcript for one session_id — may also need the user's permission the first time). When the user asks you to analyze, review, or discuss a call/session, use these tools yourself instead of asking them to paste a transcript — only ask them directly if the tools genuinely don't have what you need (e.g. access was declined, or nothing matches what they described). Never guess, construct, or pattern-match a record_id/session_id yourself (e.g. from a date or a name the user mentioned) — both are opaque folder names that often have no relationship to the call's title or session's name. Always call list_performance_reviews/list_training_sessions first and copy the id verbatim from whichever result's title/name matches, unless it's already named with its id below. Never write out what a tool call would look like (e.g. text like `{\"name\": \"get_performance_review\", ...}` or `[Tool call: ...]`) as your actual reply — that leaves the user with no real answer. If you intend to use a tool, actually invoke it through the real tool-calling mechanism every time, never describe or simulate the call in prose instead.";
 
 // A record the user has visibly tagged in this exact chat (see TagBar in
 // the UI) — built from the live bridge state, not anything in the
@@ -55,6 +55,27 @@ pub fn build_tagged_context(tagged_records: &[(String, String)]) -> String {
         .join("\n");
     format!(
         "The user currently has these Performance Review record(s) in view in this chat:\n{lines}\nIf they refer to \"my call\"/\"this call\"/\"the call\" without naming a different one, use one of these record_ids with get_performance_review rather than asking which call they mean.\n\n"
+    )
+}
+
+// A Training Room session the user has visibly tagged in this exact chat
+// (see TagBar) — the general, gated counterpart to build_tagged_context
+// above, for the second resource kind (see mcp/bridge.rs::ResourceKind).
+// Distinct from build_training_context below: that one is
+// AITrainerPane's own always-on, ungated, single-session channel; this
+// one only fires for whatever the user has actually tagged via the
+// floating AI Assistant, same as Performance Review records.
+pub fn build_tagged_training_sessions_context(tagged_sessions: &[(String, String)]) -> String {
+    if tagged_sessions.is_empty() {
+        return String::new();
+    }
+    let lines: String = tagged_sessions
+        .iter()
+        .map(|(session_id, name)| format!("- \"{name}\" (session_id: \"{session_id}\")"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        "The user currently has these Training Room session(s) in view in this chat:\n{lines}\nIf they refer to \"this session\"/\"this training\"/\"my notes on this\" without naming a different one, use one of these session_ids with get_training_session rather than asking which session they mean.\n\n"
     )
 }
 
@@ -101,6 +122,7 @@ pub fn build_augmented_system_prompt(
     persona_instructions: &str,
     chunks: &[RetrievedChunk],
     tagged_records: &[(String, String)],
+    tagged_training_sessions: &[(String, String)],
     training_session_id: Option<&str>,
 ) -> String {
     let knowledge_block = if chunks.is_empty() {
@@ -115,10 +137,11 @@ pub fn build_augmented_system_prompt(
         format!("<knowledge>\n{excerpts}\n</knowledge>\n\n")
     };
     let tagged_block = build_tagged_context(tagged_records);
+    let tagged_training_block = build_tagged_training_sessions_context(tagged_training_sessions);
     let training_block = build_training_context(training_session_id);
 
     format!(
-        "{CORE_RULE}\n\n{TOOL_USE_RULE}\n\n{training_block}{tagged_block}{knowledge_block}<persona>\n{persona_instructions}\n</persona>\n\n{CORE_RULE}"
+        "{CORE_RULE}\n\n{TOOL_USE_RULE}\n\n{training_block}{tagged_block}{tagged_training_block}{knowledge_block}<persona>\n{persona_instructions}\n</persona>\n\n{CORE_RULE}"
     )
 }
 
@@ -153,6 +176,8 @@ mod tests {
     fn tool_use_rule_names_both_tools_and_tells_the_model_not_to_ask_for_a_transcript() {
         assert!(TOOL_USE_RULE.contains("list_performance_reviews"));
         assert!(TOOL_USE_RULE.contains("get_performance_review"));
+        assert!(TOOL_USE_RULE.contains("list_training_sessions"));
+        assert!(TOOL_USE_RULE.contains("get_training_session"));
         assert!(TOOL_USE_RULE.to_lowercase().contains("transcript"));
     }
 
@@ -184,6 +209,7 @@ mod tests {
             "Be a helpful coach.",
             &[],
             &[("abc-123".to_string(), "Jordan Blake".to_string())],
+            &[],
             None,
         );
         let tagged_index = prompt.find("Jordan Blake").expect("tagged context present");
@@ -193,8 +219,37 @@ mod tests {
 
     #[test]
     fn augmented_prompt_with_no_tags_has_no_leftover_empty_block() {
-        let prompt = build_augmented_system_prompt("Be a helpful coach.", &[], &[], None);
+        let prompt = build_augmented_system_prompt("Be a helpful coach.", &[], &[], &[], None);
         assert!(!prompt.contains("currently has these Performance Review"));
+        assert!(!prompt.contains("currently has these Training Room"));
+    }
+
+    #[test]
+    fn no_tagged_training_sessions_produces_no_context_block() {
+        assert_eq!(build_tagged_training_sessions_context(&[]), "");
+    }
+
+    #[test]
+    fn a_tagged_training_session_names_itself_and_its_id_and_tells_the_model_to_use_it() {
+        let block = build_tagged_training_sessions_context(&[("session-123".to_string(), "Voice Training #1".to_string())]);
+        assert!(block.contains("Voice Training #1"));
+        assert!(block.contains("session-123"));
+        assert!(block.contains("get_training_session"));
+        assert!(block.to_lowercase().contains("this session"));
+    }
+
+    #[test]
+    fn augmented_prompt_includes_tagged_training_session_context_ahead_of_the_persona_block() {
+        let prompt = build_augmented_system_prompt(
+            "Be a helpful coach.",
+            &[],
+            &[],
+            &[("session-123".to_string(), "Voice Training #1".to_string())],
+            None,
+        );
+        let tagged_index = prompt.find("Voice Training #1").expect("tagged training context present");
+        let persona_index = prompt.find("<persona>").expect("persona block present");
+        assert!(tagged_index < persona_index, "tagged training context must come before the persona block");
     }
 
     #[test]
@@ -227,7 +282,7 @@ mod tests {
 
     #[test]
     fn augmented_prompt_includes_training_context_ahead_of_the_persona_block() {
-        let prompt = build_augmented_system_prompt("Be a helpful coach.", &[], &[], Some("session-123"));
+        let prompt = build_augmented_system_prompt("Be a helpful coach.", &[], &[], &[], Some("session-123"));
         let training_index = prompt.find("get_roleplay_transcript").expect("training context present");
         let persona_index = prompt.find("<persona>").expect("persona block present");
         assert!(training_index < persona_index, "training context must come before the persona block");

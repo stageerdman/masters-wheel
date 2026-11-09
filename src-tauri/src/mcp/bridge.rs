@@ -1,5 +1,6 @@
-// The local bridge between live app state (which records are tagged in
-// which chat, which the user has always-allowed) and the MCP server
+// The local bridge between live app state (which resources — Performance
+// Review records, and (generalized) Training Room sessions — are tagged
+// in which chat, which the user has always-allowed) and the MCP server
 // subprocess, which is spawned fresh per `ask_agent` call and otherwise
 // has no way to see that state at all. Same `tiny_http` pattern as
 // media_server.rs (fixed localhost port, worker threads) — a second,
@@ -9,7 +10,7 @@
 // Three endpoints, all POST+JSON, called only by mcp/permission.rs from
 // the mcp_server subprocess (never by the model, never reachable from
 // outside this machine):
-//   POST /access              -> is this record already in scope?
+//   POST /access              -> is this resource already in scope?
 //   POST /mark-used            -> a "suggested" tag just got read for real
 //   POST /permission-request   -> ask the real user; blocks until they
 //                                 answer (or times out)
@@ -23,6 +24,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
+use serde::de::{self, Deserializer};
+use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 use tiny_http::{Header, Method, Request, Response, Server};
@@ -36,6 +39,53 @@ const WORKER_THREADS: usize = 4;
 // `claude -p` call forever.
 const PERMISSION_TIMEOUT: Duration = Duration::from_secs(180);
 
+// What kind of resource a tag/permission is about — originally
+// Performance-Review-only (a bare record id); generalized once Training
+// Room sessions became a second real taggable resource kind. Serializes
+// to/from exactly the same string the frontend's TaggedResourceKind union
+// uses ("performanceReview"/"trainingSession"), everywhere this type
+// appears (Tauri command args, emitted events, and the internal
+// subprocess<->bridge HTTP bodies alike) — one canonical representation,
+// not a different casing per hop.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ResourceKind {
+    PerformanceReview,
+    TrainingSession,
+}
+
+impl ResourceKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ResourceKind::PerformanceReview => "performanceReview",
+            ResourceKind::TrainingSession => "trainingSession",
+        }
+    }
+}
+
+impl std::str::FromStr for ResourceKind {
+    type Err = String;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "performanceReview" => Ok(ResourceKind::PerformanceReview),
+            "trainingSession" => Ok(ResourceKind::TrainingSession),
+            other => Err(format!("unknown resource kind: {other}")),
+        }
+    }
+}
+
+impl Serialize for ResourceKind {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ResourceKind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        value.parse().map_err(de::Error::custom)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TagKind {
@@ -43,21 +93,24 @@ pub enum TagKind {
     Active,
 }
 
+type ResourceId = (ResourceKind, String);
+
 #[derive(Default)]
 struct SessionAccess {
-    tags: HashMap<String, TagKind>,
-    always_allowed: HashSet<String>,
+    tags: HashMap<ResourceId, TagKind>,
+    always_allowed: HashSet<ResourceId>,
 }
 
 impl SessionAccess {
     // The actual gating decision: a tag (either kind) or an always-allow
     // grant both pre-authorize silently; a tag wins over always-allow
-    // when a record somehow has both, since "via" drives whether
+    // when a resource somehow has both, since "via" drives whether
     // mark-used fires (see mcp/permission.rs — only ever for
     // "tag-suggested", never for "always-allowed"). Pure and
     // dependency-free on purpose — see the tests below.
-    fn resolve(&self, record_id: &str) -> AccessResult {
-        if let Some(kind) = self.tags.get(record_id) {
+    fn resolve(&self, resource_kind: ResourceKind, resource_id: &str) -> AccessResult {
+        let key = (resource_kind, resource_id.to_string());
+        if let Some(kind) = self.tags.get(&key) {
             AccessResult {
                 preauthorized: true,
                 via: Some(match kind {
@@ -65,7 +118,7 @@ impl SessionAccess {
                     TagKind::Active => "tag-active",
                 }),
             }
-        } else if self.always_allowed.contains(record_id) {
+        } else if self.always_allowed.contains(&key) {
             AccessResult { preauthorized: true, via: Some("always-allowed") }
         } else {
             AccessResult { preauthorized: false, via: None }
@@ -76,7 +129,8 @@ impl SessionAccess {
 struct PendingRequest {
     sender: mpsc::Sender<String>,
     session_id: String,
-    record_id: String,
+    resource_kind: ResourceKind,
+    resource_id: String,
 }
 
 #[derive(Default)]
@@ -93,14 +147,19 @@ pub struct Bridge {
 }
 
 impl Bridge {
-    pub fn sync_tags(&self, session_id: String, tags: Vec<(String, TagKind)>, always_allowed: Vec<String>) {
+    pub fn sync_tags(
+        &self,
+        session_id: String,
+        tags: Vec<(ResourceKind, String, TagKind)>,
+        always_allowed: Vec<(ResourceKind, String)>,
+    ) {
         let mut sessions = self.state.sessions.lock().expect("bridge sessions mutex");
         let entry = sessions.entry(session_id).or_default();
-        entry.tags = tags.into_iter().collect();
+        entry.tags = tags.into_iter().map(|(kind, id, state)| ((kind, id), state)).collect();
         entry.always_allowed = always_allowed.into_iter().collect();
     }
 
-    // Every record currently tagged for a session (both kinds — a
+    // Every resource currently tagged for a session (both kinds — a
     // "suggested" tag is just as much "in view" as an "active" one from
     // the model's perspective) — assistant.rs weaves this into the
     // system prompt per turn (see knowledge::prompt), since a tag on
@@ -109,11 +168,11 @@ impl Bridge {
     // in anything the model reads. Called in-process (same Tauri app,
     // via `tauri::State<Bridge>`), not over HTTP like the mcp_server
     // subprocess's own calls — assistant.rs already has direct access.
-    pub fn tags_for_session(&self, session_id: &str) -> Vec<(String, TagKind)> {
+    pub fn tags_for_session(&self, session_id: &str) -> Vec<(ResourceKind, String, TagKind)> {
         let sessions = self.state.sessions.lock().expect("bridge sessions mutex");
         sessions
             .get(session_id)
-            .map(|access| access.tags.iter().map(|(id, kind)| (id.clone(), *kind)).collect())
+            .map(|access| access.tags.iter().map(|((kind, id), state)| (*kind, id.clone(), *state)).collect())
             .unwrap_or_default()
     }
 
@@ -133,7 +192,7 @@ impl Bridge {
                 .entry(pending.session_id.clone())
                 .or_default()
                 .always_allowed
-                .insert(pending.record_id.clone());
+                .insert((pending.resource_kind, pending.resource_id.clone()));
         }
         let _ = pending.sender.send(decision.to_string());
     }
@@ -194,7 +253,8 @@ fn respond_json<T: Serialize>(request: Request, value: &T) {
 #[derive(Deserialize)]
 struct AccessQuery {
     session_id: String,
-    record_id: String,
+    resource_kind: ResourceKind,
+    resource_id: String,
 }
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -211,7 +271,7 @@ fn handle_access(request: Request, state: &Arc<BridgeState>, body: &str) {
     let sessions = state.sessions.lock().expect("bridge sessions mutex");
     let result = sessions
         .get(&query.session_id)
-        .map(|access| access.resolve(&query.record_id))
+        .map(|access| access.resolve(query.resource_kind, &query.resource_id))
         .unwrap_or(AccessResult { preauthorized: false, via: None });
     drop(sessions);
     respond_json(request, &result);
@@ -220,7 +280,8 @@ fn handle_access(request: Request, state: &Arc<BridgeState>, body: &str) {
 #[derive(Deserialize)]
 struct MarkUsedBody {
     session_id: String,
-    record_id: String,
+    resource_kind: ResourceKind,
+    resource_id: String,
 }
 
 fn handle_mark_used(request: Request, app: &AppHandle, body: &str) {
@@ -230,7 +291,11 @@ fn handle_mark_used(request: Request, app: &AppHandle, body: &str) {
     };
     let _ = app.emit(
         "mcp-tag-used",
-        serde_json::json!({ "sessionId": payload.session_id, "recordId": payload.record_id }),
+        serde_json::json!({
+            "sessionId": payload.session_id,
+            "resourceKind": payload.resource_kind.as_str(),
+            "resourceId": payload.resource_id,
+        }),
     );
     let _ = request.respond(Response::empty(200));
 }
@@ -239,8 +304,9 @@ fn handle_mark_used(request: Request, app: &AppHandle, body: &str) {
 struct PermissionRequestBody {
     session_id: String,
     agent_id: String,
-    record_id: String,
-    record_title: String,
+    resource_kind: ResourceKind,
+    resource_id: String,
+    resource_title: String,
     document: String,
 }
 
@@ -262,7 +328,8 @@ fn handle_permission_request(request: Request, state: &Arc<BridgeState>, app: &A
         PendingRequest {
             sender,
             session_id: payload.session_id.clone(),
-            record_id: payload.record_id.clone(),
+            resource_kind: payload.resource_kind,
+            resource_id: payload.resource_id.clone(),
         },
     );
 
@@ -272,8 +339,9 @@ fn handle_permission_request(request: Request, state: &Arc<BridgeState>, app: &A
             "requestId": request_id,
             "sessionId": payload.session_id,
             "agentId": payload.agent_id,
-            "recordId": payload.record_id,
-            "recordTitle": payload.record_title,
+            "resourceKind": payload.resource_kind.as_str(),
+            "resourceId": payload.resource_id,
+            "resourceTitle": payload.resource_title,
             "document": payload.document,
         }),
     );
@@ -292,16 +360,35 @@ fn handle_permission_request(request: Request, state: &Arc<BridgeState>, app: &A
 // src/lib/mcp/bridge.ts) — Tauri's own arg-name case conversion only
 // covers a command's top-level parameter names, not a nested struct's
 // own fields, which still go through plain serde field matching.
+// `resource_kind`'s own (de)serialization is unaffected by this
+// attribute either way — ResourceKind implements it manually above.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TagDto {
-    pub record_id: String,
-    pub kind: TagKind,
+    pub resource_kind: ResourceKind,
+    pub resource_id: String,
+    pub state: TagKind,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AlwaysAllowedDto {
+    pub resource_kind: ResourceKind,
+    pub resource_id: String,
 }
 
 #[tauri::command]
-pub fn sync_mcp_tags(bridge: tauri::State<Bridge>, session_id: String, tags: Vec<TagDto>, always_allowed: Vec<String>) {
-    bridge.sync_tags(session_id, tags.into_iter().map(|tag| (tag.record_id, tag.kind)).collect(), always_allowed);
+pub fn sync_mcp_tags(
+    bridge: tauri::State<Bridge>,
+    session_id: String,
+    tags: Vec<TagDto>,
+    always_allowed: Vec<AlwaysAllowedDto>,
+) {
+    bridge.sync_tags(
+        session_id,
+        tags.into_iter().map(|tag| (tag.resource_kind, tag.resource_id, tag.state)).collect(),
+        always_allowed.into_iter().map(|entry| (entry.resource_kind, entry.resource_id)).collect(),
+    );
 }
 
 #[tauri::command]
@@ -313,35 +400,38 @@ pub fn respond_to_mcp_permission(bridge: tauri::State<Bridge>, request_id: Strin
 mod tests {
     use super::*;
 
-    fn access_with(tags: &[(&str, TagKind)], always_allowed: &[&str]) -> SessionAccess {
+    fn access_with(tags: &[(ResourceKind, &str, TagKind)], always_allowed: &[(ResourceKind, &str)]) -> SessionAccess {
         SessionAccess {
-            tags: tags.iter().map(|(id, kind)| (id.to_string(), *kind)).collect(),
-            always_allowed: always_allowed.iter().map(|id| id.to_string()).collect(),
+            tags: tags.iter().map(|(kind, id, state)| ((*kind, id.to_string()), *state)).collect(),
+            always_allowed: always_allowed.iter().map(|(kind, id)| (*kind, id.to_string())).collect(),
         }
     }
 
+    const PR: ResourceKind = ResourceKind::PerformanceReview;
+    const TS: ResourceKind = ResourceKind::TrainingSession;
+
     #[test]
-    fn untagged_and_unallowed_record_is_not_preauthorized() {
+    fn untagged_and_unallowed_resource_is_not_preauthorized() {
         let access = access_with(&[], &[]);
-        assert_eq!(access.resolve("r1"), AccessResult { preauthorized: false, via: None });
+        assert_eq!(access.resolve(PR, "r1"), AccessResult { preauthorized: false, via: None });
     }
 
     #[test]
     fn suggested_tag_preauthorizes_and_reports_suggested() {
-        let access = access_with(&[("r1", TagKind::Suggested)], &[]);
-        assert_eq!(access.resolve("r1"), AccessResult { preauthorized: true, via: Some("tag-suggested") });
+        let access = access_with(&[(PR, "r1", TagKind::Suggested)], &[]);
+        assert_eq!(access.resolve(PR, "r1"), AccessResult { preauthorized: true, via: Some("tag-suggested") });
     }
 
     #[test]
     fn active_tag_preauthorizes_and_reports_active() {
-        let access = access_with(&[("r1", TagKind::Active)], &[]);
-        assert_eq!(access.resolve("r1"), AccessResult { preauthorized: true, via: Some("tag-active") });
+        let access = access_with(&[(PR, "r1", TagKind::Active)], &[]);
+        assert_eq!(access.resolve(PR, "r1"), AccessResult { preauthorized: true, via: Some("tag-active") });
     }
 
     #[test]
-    fn always_allowed_preauthorizes_a_record_with_no_tag_at_all() {
-        let access = access_with(&[], &["r1"]);
-        assert_eq!(access.resolve("r1"), AccessResult { preauthorized: true, via: Some("always-allowed") });
+    fn always_allowed_preauthorizes_a_resource_with_no_tag_at_all() {
+        let access = access_with(&[], &[(PR, "r1")]);
+        assert_eq!(access.resolve(PR, "r1"), AccessResult { preauthorized: true, via: Some("always-allowed") });
     }
 
     #[test]
@@ -350,20 +440,30 @@ mod tests {
         // disjoint in the frontend), but the gating decision should stay
         // deterministic either way rather than depending on map
         // iteration order.
-        let access = access_with(&[("r1", TagKind::Suggested)], &["r1"]);
-        assert_eq!(access.resolve("r1"), AccessResult { preauthorized: true, via: Some("tag-suggested") });
+        let access = access_with(&[(PR, "r1", TagKind::Suggested)], &[(PR, "r1")]);
+        assert_eq!(access.resolve(PR, "r1"), AccessResult { preauthorized: true, via: Some("tag-suggested") });
     }
 
     #[test]
-    fn a_tag_or_grant_on_one_record_never_leaks_to_another() {
-        let access = access_with(&[("r1", TagKind::Active)], &["r2"]);
-        assert_eq!(access.resolve("r3"), AccessResult { preauthorized: false, via: None });
+    fn a_tag_or_grant_on_one_resource_never_leaks_to_another() {
+        let access = access_with(&[(PR, "r1", TagKind::Active)], &[(PR, "r2")]);
+        assert_eq!(access.resolve(PR, "r3"), AccessResult { preauthorized: false, via: None });
+    }
+
+    #[test]
+    fn same_id_different_resource_kind_never_leaks_access() {
+        // A Performance Review record and a Training Room session could
+        // coincidentally share the same literal id string — the kind is
+        // part of the key, so a tag on one must never pre-authorize the
+        // other.
+        let access = access_with(&[(PR, "same-id", TagKind::Active)], &[]);
+        assert_eq!(access.resolve(TS, "same-id"), AccessResult { preauthorized: false, via: None });
     }
 
     #[test]
     fn unknown_session_is_never_preauthorized() {
         let sessions: HashMap<String, SessionAccess> = HashMap::new();
-        let result = sessions.get("missing").map(|access| access.resolve("r1")).unwrap_or(AccessResult {
+        let result = sessions.get("missing").map(|access| access.resolve(PR, "r1")).unwrap_or(AccessResult {
             preauthorized: false,
             via: None,
         });
@@ -377,14 +477,14 @@ mod tests {
         let (sender, _receiver) = mpsc::channel::<String>();
         state.pending.lock().unwrap().insert(
             "req-1".to_string(),
-            PendingRequest { sender, session_id: "s1".to_string(), record_id: "r1".to_string() },
+            PendingRequest { sender, session_id: "s1".to_string(), resource_kind: PR, resource_id: "r1".to_string() },
         );
 
         bridge.respond("req-1", "always-allow");
 
         let sessions = state.sessions.lock().unwrap();
         let access = sessions.get("s1").expect("session should exist after a grant");
-        assert_eq!(access.resolve("r1"), AccessResult { preauthorized: true, via: Some("always-allowed") });
+        assert_eq!(access.resolve(PR, "r1"), AccessResult { preauthorized: true, via: Some("always-allowed") });
     }
 
     #[test]
@@ -394,7 +494,7 @@ mod tests {
         let (sender, _receiver) = mpsc::channel::<String>();
         state.pending.lock().unwrap().insert(
             "req-1".to_string(),
-            PendingRequest { sender, session_id: "s1".to_string(), record_id: "r1".to_string() },
+            PendingRequest { sender, session_id: "s1".to_string(), resource_kind: PR, resource_id: "r1".to_string() },
         );
 
         bridge.respond("req-1", "decline");
@@ -407,12 +507,21 @@ mod tests {
     fn sync_tags_replaces_rather_than_merges_with_the_previous_sync() {
         let state = Arc::new(BridgeState::default());
         let bridge = Bridge { state: state.clone() };
-        bridge.sync_tags("s1".to_string(), vec![("r1".to_string(), TagKind::Suggested)], vec![]);
-        bridge.sync_tags("s1".to_string(), vec![("r2".to_string(), TagKind::Active)], vec![]);
+        bridge.sync_tags("s1".to_string(), vec![(PR, "r1".to_string(), TagKind::Suggested)], vec![]);
+        bridge.sync_tags("s1".to_string(), vec![(TS, "t1".to_string(), TagKind::Active)], vec![]);
 
         let sessions = state.sessions.lock().unwrap();
         let access = sessions.get("s1").unwrap();
-        assert_eq!(access.resolve("r1"), AccessResult { preauthorized: false, via: None });
-        assert_eq!(access.resolve("r2"), AccessResult { preauthorized: true, via: Some("tag-active") });
+        assert_eq!(access.resolve(PR, "r1"), AccessResult { preauthorized: false, via: None });
+        assert_eq!(access.resolve(TS, "t1"), AccessResult { preauthorized: true, via: Some("tag-active") });
+    }
+
+    #[test]
+    fn resource_kind_round_trips_through_its_canonical_string() {
+        assert_eq!(ResourceKind::PerformanceReview.as_str(), "performanceReview");
+        assert_eq!(ResourceKind::TrainingSession.as_str(), "trainingSession");
+        assert_eq!("performanceReview".parse::<ResourceKind>().unwrap(), ResourceKind::PerformanceReview);
+        assert_eq!("trainingSession".parse::<ResourceKind>().unwrap(), ResourceKind::TrainingSession);
+        assert!("something-else".parse::<ResourceKind>().is_err());
     }
 }

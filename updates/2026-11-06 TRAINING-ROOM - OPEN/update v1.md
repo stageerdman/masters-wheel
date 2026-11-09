@@ -753,3 +753,59 @@ preview, no text extraction (both explicitly deferred, see FEATURES.md).
       uploading a video/pdf, pinning, writing notes, and generating a
       transcript in the real `.app` hasn't happened yet.
 
+### Phase 30 — Generalize the tag/permission-card MCP mechanism to Training Room (2026-11-09)
+User-dictated, requested together with Phase 29 but a mostly independent
+backend-heavy change: the floating AI Assistant should see/read any
+Training Room session (every discipline, not just Learning) the same
+tag-suggested → permission-card → gated-tool-call way it already handles
+Performance Review records. See this update's `wiki.md` for the full
+design writeup (the `ResourceKind` discriminator, the tuple-keyed
+`SessionAccess`, and a real pre-existing `title_for` Space-resolution bug
+fixed along the way) — summary here:
+- [x] Frontend types/store generalized in place:
+      `PerformanceReviewTag`→`ChatTag` (`src/lib/mcp/types.ts`),
+      `src/lib/mcp/tags.ts`'s three functions now match on
+      `(resourceKind, resourceId)` pairs, `activeRecord.ts`→
+      `activeTaggedResource.ts` (one shared store, fed by both
+      `PerformanceReview.script.ts` and the new `TrainingRoom.script.ts`
+      call site — fires for every discipline), `ChatSession.tags`/
+      `alwaysAllowedResources` (renamed from `alwaysAllowedRecordIds`).
+- [x] `TagBar`/`TagChip` resolve either a Performance Review record or a
+      Training Room session by id (glyph/color from `CALL_STATE_META` or
+      `TOOL_TYPE_META` respectively, matching `VideoListItem`/
+      `SessionListItem`'s own convention); `PermissionRequest`'s copy
+      says "Training Room session" vs "Performance Review record" by
+      kind. `AIAssistant.script.ts` now also loads training session
+      summaries (`listSessions()` from `src/lib/training`) alongside
+      record summaries, for title/status resolution.
+- [x] Rust: `mcp/bridge.rs`'s `SessionAccess` keyed by
+      `(ResourceKind, String)` tuples (regression-tested: same literal id
+      under a different resource kind never leaks access);
+      `mcp/permission.rs::check_access` takes a `ResourceKind` param; new
+      `mcp/tools/{list_training_sessions,get_training_session}.rs`
+      mirroring the Performance Review pair exactly (ungated metadata
+      list / gated paginated read, same `DocumentSlice` char-indexed
+      pagination shape); both always granted in
+      `mcp/config.rs::ALLOWED_TOOLS` now (previously Training Room tools
+      were conditional on an AITrainerPane call — that conditional
+      grant, `TRAINING_ALLOWED_TOOLS`, still exists but now only ever
+      covers `get_roleplay_transcript`, unrelated and untouched).
+      `knowledge/prompt.rs` gains `build_tagged_training_sessions_context`
+      alongside `build_tagged_context`; `assistant.rs::ask_agent` splits
+      `bridge.tags_for_session`'s results by kind and resolves each via
+      the newly-`root`-parameterized `title_for` functions.
+- [x] `get_training_session` flattens each discipline's own shape into
+      generic `notes`/`transcript` fields at read time (Learning's
+      `learning.blocks[]` text concatenated for notes, since its real
+      notes aren't in the plain `notes` field at all; every
+      `clips[]`/`learning.files[]` item's own `transcriptRaw`
+      concatenated for transcript) — see wiki.md for why this is correct
+      rather than a shared on-disk shape.
+- [x] `cargo test` (40 passing, including new `ResourceKind` and
+      cross-kind-isolation regression tests) / `cargo clippy` / `npm run
+      build` / `lint` / `tsc --noEmit` all clean.
+- [ ] Not yet click-through verified in the running app — same caveat as
+      Phase 29; a manual pass through tagging a Training Room session
+      from the floating AI Assistant, triggering a permission card, and
+      asking "what's in my notes on this?" hasn't happened yet.
+

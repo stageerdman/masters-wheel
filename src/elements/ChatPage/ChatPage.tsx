@@ -46,6 +46,7 @@ export function ChatPage() {
     removeTag,
     visibleTags,
     recordSummaries,
+    trainingSessionSummaries,
     respondToPermission,
   } = useAIAssistant();
 
@@ -132,7 +133,12 @@ export function ChatPage() {
             <AgentPicker agents={agents} onSelectAgent={startChatWithAgent} />
           ) : (
             <>
-              <TagBar tags={visibleTags} records={recordSummaries} onRemove={removeTag} />
+              <TagBar
+                tags={visibleTags}
+                records={recordSummaries}
+                trainingSessions={trainingSessionSummaries}
+                onRemove={removeTag}
+              />
               <MessageList
                 messages={activeSession.messages}
                 density="comfortable"

@@ -1,12 +1,17 @@
 // Runs inside the mcp_server subprocess (see server.rs) — talks to the
 // bridge (bridge.rs, running in the main app process) over localhost to
-// decide whether get_performance_review may actually serve a record's
-// content, same "shell out to curl rather than add an HTTP client crate"
-// approach transcribe.rs already uses for ElevenLabs.
+// decide whether a gated tool (get_performance_review, get_training_session)
+// may actually serve a resource's content, same "shell out to curl rather
+// than add an HTTP client crate" approach transcribe.rs already uses for
+// ElevenLabs. Generalized from Performance-Review-only once Training Room
+// sessions became a second real gated resource kind — every call now
+// names which kind it's checking (see bridge::ResourceKind).
 //
 // assistant.rs sets these per-call via the generated --mcp-config's env
 // (see config.rs) — this subprocess has no other way to know which chat
 // session or agent it's answering for.
+use crate::mcp::bridge::ResourceKind;
+
 const BRIDGE_PORT_ENV: &str = "MASTERS_WHEEL_BRIDGE_PORT";
 const CHAT_SESSION_ID_ENV: &str = "MASTERS_WHEEL_CHAT_SESSION_ID";
 const AGENT_ID_ENV: &str = "MASTERS_WHEEL_AGENT_ID";
@@ -16,7 +21,12 @@ pub enum Access {
     Declined,
 }
 
-pub async fn check_access(record_id: &str, document: &str, record_title: &str) -> Result<Access, String> {
+pub async fn check_access(
+    resource_kind: ResourceKind,
+    resource_id: &str,
+    document: &str,
+    resource_title: &str,
+) -> Result<Access, String> {
     let port = std::env::var(BRIDGE_PORT_ENV).unwrap_or_default();
     let session_id = std::env::var(CHAT_SESSION_ID_ENV).unwrap_or_default();
     let agent_id = std::env::var(AGENT_ID_ENV).unwrap_or_default();
@@ -29,7 +39,11 @@ pub async fn check_access(record_id: &str, document: &str, record_title: &str) -
     let access = post_json(
         &port,
         "/access",
-        &serde_json::json!({ "session_id": session_id, "record_id": record_id }),
+        &serde_json::json!({
+            "session_id": session_id,
+            "resource_kind": resource_kind.as_str(),
+            "resource_id": resource_id,
+        }),
     )
     .await?;
     let preauthorized = access.get("preauthorized").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -41,7 +55,11 @@ pub async fn check_access(record_id: &str, document: &str, record_title: &str) -
             let _ = post_json(
                 &port,
                 "/mark-used",
-                &serde_json::json!({ "session_id": session_id, "record_id": record_id }),
+                &serde_json::json!({
+                    "session_id": session_id,
+                    "resource_kind": resource_kind.as_str(),
+                    "resource_id": resource_id,
+                }),
             )
             .await;
         }
@@ -54,8 +72,9 @@ pub async fn check_access(record_id: &str, document: &str, record_title: &str) -
         &serde_json::json!({
             "session_id": session_id,
             "agent_id": agent_id,
-            "record_id": record_id,
-            "record_title": record_title,
+            "resource_kind": resource_kind.as_str(),
+            "resource_id": resource_id,
+            "resource_title": resource_title,
             "document": document,
         }),
     )

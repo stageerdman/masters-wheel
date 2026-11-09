@@ -227,38 +227,37 @@ between the two lists. Each page gets its own section as pages get added.
       consumer.
 
 ### Built — MCP tool calling (Performance Review visibility)
-- [x] Every reply is now generated with two real MCP tools granted
+- [x] Every reply is now generated with real MCP tools granted
       (`--mcp-config`/`--strict-mcp-config`/`--allowedTools`, pointing
       at this app's own re-exec'd binary — see
-      `src-tauri/src/mcp/server.rs`): `list_performance_reviews`
-      (metadata only — id/date/status/description, always available,
-      never gated) and `get_performance_review` (real notes/transcript/
-      analysis content, gated).
+      `src-tauri/src/mcp/server.rs`): `list_performance_reviews`/
+      `get_performance_review` (Performance Review's metadata-only list +
+      gated real notes/transcript/analysis content) and, since this was
+      generalized (2026-11-09, see
+      `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`), the same pair
+      for Training Room — `list_training_sessions`/`get_training_session`
+      — covering every discipline, not just Performance Review records.
 - [x] A visible tag chip bar between the window header and the chat
       (`TagBar`/`TagChip`) — "suggested" (dashed, muted) follows
-      whichever Performance Review record is currently open
-      (`src/lib/mcp/activeRecord.ts`); "active" (solid, accent) means
-      the AI has actually read that record. Both removable via a
-      hover-revealed ×. Scoped to one chat session — switching chats
-      starts with none, switching back restores them.
-- [x] Reading an untagged, un-always-allowed record triggers an inline
-      permission card (`PermissionRequest`) with Decline / Allow /
-      Always Allow, backed by a local bridge
+      whichever Performance Review record *or Training Room session* is
+      currently open (`src/lib/mcp/activeTaggedResource.ts`, one shared
+      store for both); "active" (solid, accent) means the AI has
+      actually read that resource. Both removable via a hover-revealed
+      ×. Scoped to one chat session — switching chats starts with none,
+      switching back restores them.
+- [x] Reading an untagged, un-always-allowed resource (either kind)
+      triggers an inline permission card (`PermissionRequest`) with
+      Decline / Allow / Always Allow, backed by a local bridge
       (`src-tauri/src/mcp/bridge.rs`) that actually blocks the tool call
       until the user answers (or 180s elapses, auto-declining). Resolved
       cards collapse to one line ("You declined/allowed/always allow…").
-- [x] Reading a suggested-tagged record promotes it to active
+- [x] Reading a suggested-tagged resource promotes it to active
       automatically, no prompt.
 
 ### To build (real functionality — not started)
-- [ ] More MCP tools beyond Performance Review (e.g. Agents, Notion) —
-      the per-tool pattern in `src-tauri/src/mcp/tools/` is in place,
-      nothing else wired yet
-- [ ] Generalizing the tag-suggested/permission-card/MCP-access mechanism
-      above (currently Performance Review records only) to Training Room
-      sessions, so the floating AI Assistant can see/read a session's
-      transcript/notes the same tag-gated way — in progress, see
-      `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
+- [ ] More MCP tools beyond Performance Review/Training Room (e.g.
+      Agents, Notion) — the per-tool pattern in
+      `src-tauri/src/mcp/tools/` is in place, nothing else wired yet
 - [ ] Keyboard-only path to cycle dock states / toggle the side menu
       (currently pointer-only)
 
@@ -808,6 +807,17 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
 - [ ] Not yet click-through verified in the running app, same caveat as
       Mindset Shifting above.
 
+### Built (real functionality — AI Assistant tag/MCP access, every discipline, 2026-11-09)
+- [x] The floating AI Assistant can now see/read any Training Room
+      session's notes/transcript the same tag-suggested → permission-
+      card → gated-tool-call way it already handles Performance Review
+      records — generalized in place, not a separate mechanism; see the
+      AI Assistant section above and
+      `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md` for the full
+      design writeup. Opening any session (any discipline) surfaces a
+      "suggested" tag in the AI Assistant; the first real read prompts a
+      permission card, then promotes to "active."
+
 ### To build (real functionality — not started)
 - [ ] Persisting real per-word timestamps (ElevenLabs returns them, still
       discarded at serialize time) so the lyrics highlight is exact
@@ -818,9 +828,6 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
       (still a no-op) to actually open/seed a Training Room session.
 - [ ] PDF/EPUB in-app preview and text extraction for Learning (currently
       store+download only).
-- [ ] The AI Assistant accessing a Training Room session's transcript/
-      notes the same tag-gated way it accesses a Performance Review
-      record — see the AI Assistant section's own "To build" list.
 
 ## Agents page
 

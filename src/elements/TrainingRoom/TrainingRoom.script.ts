@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { useWindowFileDrop } from "@/lib/useWindowFileDrop";
+import { setActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
 import {
   clipAbsolutePath,
   createSession,
@@ -289,6 +290,16 @@ export function useTrainingRoomData() {
   }, []);
 
   const selected = sessions.find((session) => session.id === selectedId) ?? null;
+
+  // Tells the AI Assistant (see src/lib/mcp/activeTaggedResource.ts)
+  // which Training Room session is currently open here, for every
+  // discipline — same "suggested" tag behavior Performance Review's own
+  // call site already has. Cleared on unmount (leaving Training Room
+  // entirely), not just on every selectedId change.
+  useEffect(() => {
+    setActiveTaggedResource(selectedId ? { kind: "trainingSession", id: selectedId } : null);
+    return () => setActiveTaggedResource(null);
+  }, [selectedId]);
 
   const openSessions = useMemo(
     () =>

@@ -6,11 +6,12 @@ import { listAgents, type Agent } from "@/lib/agents";
 import { buildAgentTurnInput, listSessions, saveSession, deleteSessionFile } from "@/lib/chat";
 import type { ChatMessage, ChatMessageRole, ChatSession } from "@/lib/chat";
 import { listRecords, type RecordSummary } from "@/lib/records";
-import { useActiveRecord } from "@/lib/mcp/activeRecord";
+import { listSessions as listTrainingSessions, type SessionSummary as TrainingSessionSummary } from "@/lib/training";
+import { useActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
 import { useActiveSpace } from "@/lib/spaces";
 import { onMcpPermissionRequest, onMcpTagUsed, respondToMcpPermission, syncMcpTags } from "@/lib/mcp/bridge";
 import { promoteTag, removeTag as removeTagFromList, withSuggestedTag } from "@/lib/mcp/tags";
-import type { PerformanceReviewTag, PermissionDecision, PermissionRequestStatus } from "@/lib/mcp/types";
+import type { ChatTag, PermissionDecision, PermissionRequestStatus, TaggedResourceKind } from "@/lib/mcp/types";
 
 export type AssistantPhase = "closed" | "open" | "closing";
 export type { ChatMessage, ChatMessageRole, ChatSession, Agent };
@@ -29,7 +30,7 @@ function makeNewSession(id: string = NEW_SESSION_ID): ChatSession {
     contextUsage: {},
     isDraft: true,
     tags: [],
-    alwaysAllowedRecordIds: [],
+    alwaysAllowedResources: [],
   };
 }
 
@@ -186,6 +187,14 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
     listRecords().then(setRecordSummaries);
   }, [phase, activeSpace?.id]);
 
+  // Same job, for Training Room sessions — the second real taggable
+  // resource kind TagChip needs a title/discipline for.
+  const [trainingSessionSummaries, setTrainingSessionSummaries] = useState<TrainingSessionSummary[]>([]);
+  useEffect(() => {
+    if (phase !== "open") return;
+    listTrainingSessions().then(setTrainingSessionSummaries);
+  }, [phase, activeSpace?.id]);
+
   // Switching Spaces must drop every bit of this Space's in-memory state —
   // agents, sessions, records — since the new Space is a genuinely
   // separate set of all three, not a filtered view of the same data. This
@@ -206,6 +215,7 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
     sessionsLoadStarted.current = false;
     setAgents([]);
     setRecordSummaries([]);
+    setTrainingSessionSummaries([]);
     setSessions([makeNewSession()]);
     setActiveSessionId(NEW_SESSION_ID);
   }
@@ -302,22 +312,28 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
 
   // The "suggested" tag is never written to a session's stored `tags` —
   // it's a pure, render-time reflection of wherever the user currently
-  // is in Performance Review (src/lib/mcp/activeRecord.ts), re-derived
-  // every render rather than synced via an effect (an effect that calls
+  // is (Performance Review or, since this was generalized, Training
+  // Room — see src/lib/mcp/activeTaggedResource.ts), re-derived every
+  // render rather than synced via an effect (an effect that calls
   // setState in response to an external store is exactly the kind of
   // "derived state" React's docs recommend computing during render
   // instead). Only a real, stored "active" tag (one the AI has actually
   // read — see Phase C) ever lives in session.tags.
-  const activeRecordId = useActiveRecord();
+  const activeResource = useActiveTaggedResource();
   // Dismissing a *suggested* chip can't remove something that was never
   // stored — this is what makes "×" on a not-yet-active suggestion stick
   // instead of reappearing on the next render. Keyed per session (tags
   // are scoped per chat, per the user's own choice), reset for free the
-  // moment the user navigates to a different record.
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Record<string, string>>({});
-  const suggestedRecordId =
-    activeRecordId && dismissedSuggestions[activeSessionId] !== activeRecordId ? activeRecordId : null;
-  const visibleTags: PerformanceReviewTag[] = withSuggestedTag(activeSession.tags, suggestedRecordId);
+  // moment the user navigates to a different resource.
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Record<string, { kind: TaggedResourceKind; id: string }>>(
+    {},
+  );
+  const dismissed = dismissedSuggestions[activeSessionId];
+  const suggestedResource =
+    activeResource && !(dismissed && dismissed.kind === activeResource.kind && dismissed.id === activeResource.id)
+      ? activeResource
+      : null;
+  const visibleTags: ChatTag[] = withSuggestedTag(activeSession.tags, suggestedResource);
 
   // Pushes the active session's tag/always-allow state to the Rust
   // bridge (src-tauri/src/mcp/bridge.rs) — a real external-system sync,
@@ -328,8 +344,8 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
   // sendMessage captures its target session synchronously before this
   // could change out from under it.
   useEffect(() => {
-    void syncMcpTags(activeSessionId, visibleTags, activeSession.alwaysAllowedRecordIds);
-  }, [activeSessionId, visibleTags, activeSession.alwaysAllowedRecordIds]);
+    void syncMcpTags(activeSessionId, visibleTags, activeSession.alwaysAllowedResources);
+  }, [activeSessionId, visibleTags, activeSession.alwaysAllowedResources]);
 
   // Two long-lived subscriptions to the bridge's events — mount once,
   // route by the sessionId each event itself carries (never assumed to
@@ -346,8 +362,9 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
         permissionRequest: {
           requestId: event.requestId,
           agentId: event.agentId,
-          recordId: event.recordId,
-          recordTitle: event.recordTitle,
+          resourceKind: event.resourceKind,
+          resourceId: event.resourceId,
+          resourceTitle: event.resourceTitle,
           document: event.document,
           status: "pending",
         },
@@ -365,7 +382,10 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
 
   useEffect(() => {
     const unlistenPromise = onMcpTagUsed((event) => {
-      updateAndPersistSession(event.sessionId, (session) => ({ ...session, tags: promoteTag(session.tags, event.recordId) }));
+      updateAndPersistSession(event.sessionId, (session) => ({
+        ...session,
+        tags: promoteTag(session.tags, event.resourceKind, event.resourceId),
+      }));
     });
     return () => {
       void unlistenPromise.then((unlisten) => unlisten());
@@ -393,10 +413,10 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
       decision === "decline" ? "declined" : decision === "allow" ? "allowed" : "always-allowed";
     updateAndPersistSession(owningSession.id, (session) => ({
       ...session,
-      alwaysAllowedRecordIds:
+      alwaysAllowedResources:
         decision === "always-allow"
-          ? [...session.alwaysAllowedRecordIds, request.recordId]
-          : session.alwaysAllowedRecordIds,
+          ? [...session.alwaysAllowedResources, { resourceKind: request.resourceKind, resourceId: request.resourceId }]
+          : session.alwaysAllowedResources,
       messages: session.messages.map((message) =>
         message.id === messageId && message.permissionRequest
           ? { ...message, permissionRequest: { ...message.permissionRequest, status } }
@@ -407,13 +427,16 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
 
   // The × button on a tag chip. A stored (active) tag is actually
   // removed from the session; a merely-suggested one (never stored) is
-  // just dismissed for as long as the user stays on that same record.
-  function removeTag(recordId: string) {
-    const isStored = activeSession.tags.some((tag) => tag.recordId === recordId);
+  // just dismissed for as long as the user stays on that same resource.
+  function removeTag(resourceKind: TaggedResourceKind, resourceId: string) {
+    const isStored = activeSession.tags.some((tag) => tag.resourceKind === resourceKind && tag.resourceId === resourceId);
     if (isStored) {
-      updateAndPersistSession(activeSessionId, (session) => ({ ...session, tags: removeTagFromList(session.tags, recordId) }));
+      updateAndPersistSession(activeSessionId, (session) => ({
+        ...session,
+        tags: removeTagFromList(session.tags, resourceKind, resourceId),
+      }));
     } else {
-      setDismissedSuggestions((current) => ({ ...current, [activeSessionId]: recordId }));
+      setDismissedSuggestions((current) => ({ ...current, [activeSessionId]: { kind: resourceKind, id: resourceId } }));
     }
   }
 
@@ -641,9 +664,14 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
   // sendMessage/nameChat) overwrites this once the first message sends —
   // this is only what shows up until then, or if that call fails.
   function resolveDefaultTitle(agent: Agent): string {
-    const recordId = visibleTags[0]?.recordId;
-    const record = recordId ? recordSummaries.find((candidate) => candidate.id === recordId) : undefined;
-    return record?.title || `Chat with ${agent.name}`;
+    const tag = visibleTags[0];
+    const title =
+      tag?.resourceKind === "performanceReview"
+        ? recordSummaries.find((candidate) => candidate.id === tag.resourceId)?.title
+        : tag?.resourceKind === "trainingSession"
+          ? trainingSessionSummaries.find((candidate) => candidate.id === tag.resourceId)?.name
+          : undefined;
+    return title || `Chat with ${agent.name}`;
   }
 
   // Picking an agent from the sidebar strip switches to the one dedicated
@@ -668,7 +696,7 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
       contextUsage: {},
       agentId,
       tags: [],
-      alwaysAllowedRecordIds: [],
+      alwaysAllowedResources: [],
     };
     setSessions((current) => [session, ...current]);
     setActiveSessionId(session.id);
@@ -757,6 +785,7 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
     removeTag,
     visibleTags,
     recordSummaries,
+    trainingSessionSummaries,
     respondToPermission,
   };
 }
