@@ -542,9 +542,20 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       but are currently discarded at serialize time everywhere, not just
       here — see the wiki for why this is a shared, not Training-Room-
       specific, gap).
-- [x] "Generate transcript" fabricates one fixed example after a short
-      delay (same no-real-AI-yet shape as Performance Review's "Generate
-      Scorecard").
+- [x] "Generate transcript" is real: the same ElevenLabs cloud Speech-to-
+      Text pipeline Performance Review uses (`src-tauri/src/transcribe.rs`,
+      `src/lib/transcript/generate.ts`), minus that pipeline's multi-track
+      detection step — a practice clip is always one file, so there's no
+      track picker, just two choices offered per clip up front: a plain
+      transcript, or "with voice recognition" (ElevenLabs' `diarize` word-
+      level speaker annotation — a real detected-voice signal, not
+      Performance Review's separate-audio-track one) to split the
+      transcript by who's actually speaking. Runs as the same kind of
+      cancelable background job as Performance Review's version (live
+      progress text + an indeterminate bar, Stop, and a real error state
+      with Retry/Dismiss), tracked per clip
+      (`TrainingRoom.script.ts`'s `generationByClip`) so more than one
+      clip can transcribe at once.
 - [x] Detail: Notes, through the same generic split-rail mechanism as
       Performance Review's Detail, seeded with a single "notes" kind for
       now (dragging it is a no-op with only one kind — nothing to split
@@ -736,12 +747,37 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
       "here"/"this call"/"this conversation" to it whenever a Trainer
       call is in play.
 
+### Built (real functionality — Mindset Shifting discipline, 2026-11-09)
+- [x] `DisciplinePicker`'s Mindset Shifting card is unlocked. Selecting it
+      creates a session whose entire main column *is* a single AI chat —
+      no Hero feed, no setup thread, no multi-chat history. New
+      `MindsetShiftingChat` is its own, deliberately minimal instance of
+      the real AI Assistant engine (`useAIAssistant`, the same real local-
+      `claude`-CLI backend and real agents on disk, reusing
+      `AgentPicker`/`MessageList`/`Composer` unmodified) — but without
+      `Sidebar`/`TagBar`/"+ new chat": pick one agent once and the whole
+      column becomes that one conversation with them, by construction
+      (this component never calls `startNewChat`). Its history is real
+      and scoped to this one training session (`src/lib/training`'s
+      `mindsetShiftingChatsDir`), isolated the same way Chat Roleplay's
+      `trainerChatsDir` is. While mounted it hides the floating
+      `AIAssistant` widget via the existing `AIAssistant.context.tsx`,
+      same precedent as the Trainer pane.
+- [x] The Detail column alongside it is the generic, unmodified `Detail`
+      component (notes only, same as Voice Training) — no AI Trainer pane
+      stacked above it; the chat itself already fills that role for this
+      discipline.
+- [ ] Not yet click-through verified in the running app — this project's
+      CLAUDE.md rules out browser automation here; build/lint/tsc are
+      clean but a manual pass through picking an agent and chatting in
+      the real `.app` hasn't happened yet.
+
 ### To build (real functionality — not started)
-- [ ] Real transcript generation (ElevenLabs), and persisting real
-      per-word timestamps so the lyrics highlight is exact instead of
-      interpolated.
-- [ ] The two still-locked disciplines (Voice Roleplay, Mindset Shifting)
-      — DisciplinePicker already lists them, nothing behind them yet.
+- [ ] Persisting real per-word timestamps (ElevenLabs returns them, still
+      discarded at serialize time) so the lyrics highlight is exact
+      instead of interpolated.
+- [ ] The one still-locked discipline (Voice Roleplay) — DisciplinePicker
+      already lists it, nothing behind it yet.
 - [ ] Wiring Performance Review's "Take it to the training ground" button
       (still a no-op) to actually open/seed a Training Room session.
 

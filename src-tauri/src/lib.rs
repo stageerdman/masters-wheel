@@ -47,6 +47,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       transcribe::probe_audio_tracks,
       transcribe::generate_transcript,
+      transcribe::generate_voice_transcript,
       transcribe::cancel_generate_transcript,
       assistant::ask_agent,
       assistant::name_chat,

@@ -7,8 +7,10 @@
 // src/lib/records. Clip files were already real storage (see this update's
 // wiki.md); this phase makes the session list itself (name, status, notes,
 // which clips belong to it) real too, so it survives a reload/restart.
-// "Generate transcript" still fabricates a fixed example after a short fake
-// delay — no real ElevenLabs call yet.
+// "Generate transcript" is now real too (src/lib/transcript/generate.ts's
+// transcribeVoiceClip/voiceWordsToDialogueEntries, the same ElevenLabs
+// pipeline Performance Review uses, minus its track-detection step — a
+// practice clip is always one file) — see generateTranscript below.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
@@ -24,6 +26,15 @@ import {
   type SessionSummary,
   type StoredClipMeta,
 } from "@/lib/training";
+import { serializeTranscript } from "@/lib/transcript";
+import {
+  GENERATE_CANCELLED,
+  cancelGenerateTranscript,
+  onGenerateTranscriptProgress,
+  transcribeVoiceClip,
+  voiceWordsToDialogueEntries,
+  type VoiceTranscriptGenerationState,
+} from "@/lib/transcript/generate";
 import {
   TOOL_TYPE_META,
   TOOL_TYPE_ORDER,
@@ -72,31 +83,6 @@ function makeId(prefix: string): string {
   return `${prefix}-${Date.now()}-${nextId}`;
 }
 
-// One fixed, hand-written example transcript — same reasoning as
-// generateFakeScorecard: a real-shaped result now, swappable for a real
-// transcription pass later without changing anything downstream. A
-// single "You" speaker, since Voice Training is solo.
-const FAKE_TRANSCRIPT = `---
-source: fake
----
-
-**You** [0:00]
-Okay, let's run through the opening again from the top.
-
-**You** [0:04]
-Hey, thanks so much for jumping on with me today — I know you're busy, so I'll keep this focused.
-
-**You** [0:11]
-I want to start by understanding where things stand right now before we talk about anything else.
-
-**You** [0:18]
-Can you walk me through what a normal week looks like for your team at the moment?
-
-**You** [0:24]
-Got it — that's really helpful context, and it lines up with what I was expecting to hear.
-`;
-
-const GENERATE_TRANSCRIPT_DELAY_MS = 1200;
 const WRITE_DEBOUNCE_MS = 400;
 
 function nameFor(toolType: TrainingToolType, existing: TrainingSession[]): string {
@@ -113,7 +99,6 @@ async function clipFromMeta(sessionId: string, clip: StoredClipMeta): Promise<Tr
     fileName: clip.displayName,
     storedFileName: clip.fileName,
     transcriptRaw: clip.transcriptRaw,
-    isGeneratingTranscript: false,
   };
 }
 
@@ -145,9 +130,17 @@ export function useTrainingRoomData() {
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
   const [selectedId, setSelectedIdState] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  // Keyed by clip id, not by job: several clips (even across sessions)
+  // could be generating at once, each tracked independently — same reasoning
+  // as Performance Review's generationByRecord.
+  const [generationByClip, setGenerationByClip] = useState<Record<string, VoiceTranscriptGenerationState>>({});
 
   const metaTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const pendingMeta = useRef<Record<string, Partial<SessionSummary>>>({});
+  // Progress events only carry a job id (see src-tauri/src/transcribe.rs);
+  // this maps that back to the session+clip it belongs to, same role as
+  // Performance Review's generationJobRecord.
+  const generationJobClip = useRef<Record<string, { sessionId: string; clipId: string }>>({});
 
   // Merges into any already-pending partial for this session rather than
   // replacing it — same shape as Performance Review's scheduleMetaWrite.
@@ -192,6 +185,31 @@ export function useTrainingRoomData() {
       .catch((error) => console.error("Failed to load training sessions:", error));
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  // One global subscription for every in-flight Generate Transcript job,
+  // same shape as Performance Review's own subscription — the Rust side
+  // emits one event type regardless of which pipeline (track-based or
+  // Voice Training's single-clip one) started the job.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    onGenerateTranscriptProgress((progress) => {
+      const target = generationJobClip.current[progress.jobId];
+      if (!target) return;
+      setGenerationByClip((prev) => ({
+        ...prev,
+        [target.clipId]: { status: "running", jobId: progress.jobId, stage: progress.stage },
+      }));
+    }).then((fn) => {
+      if (cancelled) fn();
+      else unlisten = fn;
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
     };
   }, []);
 
@@ -341,7 +359,6 @@ export function useTrainingRoomData() {
         fileName: displayName,
         storedFileName,
         transcriptRaw: null,
-        isGeneratingTranscript: false,
       };
       setSessions((prev) =>
         prev.map((session) => {
@@ -364,35 +381,89 @@ export function useTrainingRoomData() {
     [addClip]
   );
 
+  // Real transcription now (src/lib/transcript/generate.ts's
+  // transcribeVoiceClip), run as a background job the same way Performance
+  // Review's startGenerateTranscript is — never blocks the UI, tracked under
+  // the clip id regardless of which session is currently selected. `diarize`
+  // is the discipline's "with voice recognition" choice (see ClipFeedItem):
+  // off transcribes the clip as one speaker, on asks ElevenLabs to separate
+  // who's talking by voice rather than by audio track (there's only one
+  // track here, unlike Performance Review's multi-mic calls).
   const generateTranscript = useCallback(
-    (sessionId: string, clipId: string) => {
-      setSessions((prev) =>
-        prev.map((session) =>
-          session.id === sessionId
-            ? {
-                ...session,
-                clips: session.clips.map((clip) =>
-                  clip.id === clipId ? { ...clip, isGeneratingTranscript: true } : clip
-                ),
-              }
-            : session
-        )
-      );
-      setTimeout(() => {
-        setSessions((prev) =>
-          prev.map((session) => {
-            if (session.id !== sessionId) return session;
-            const nextClips = session.clips.map((clip) =>
-              clip.id === clipId ? { ...clip, isGeneratingTranscript: false, transcriptRaw: FAKE_TRANSCRIPT } : clip
-            );
-            const lastUpdatedAt = writeNow(sessionId, { clips: nextClips.map(clipToMeta) });
-            return { ...session, clips: nextClips, lastUpdatedAt };
-          })
-        );
-      }, GENERATE_TRANSCRIPT_DELAY_MS);
+    (sessionId: string, clipId: string, diarize: boolean) => {
+      const clip = sessions.find((session) => session.id === sessionId)?.clips.find((c) => c.id === clipId);
+      if (!clip) return;
+      const jobId = makeId("transcribe");
+      generationJobClip.current[jobId] = { sessionId, clipId };
+      setGenerationByClip((prev) => ({ ...prev, [clipId]: { status: "running", jobId, stage: "extracting" } }));
+
+      (async () => {
+        try {
+          const absolutePath = await clipAbsolutePath(sessionId, clip.storedFileName);
+          const words = await transcribeVoiceClip(jobId, absolutePath, clip.fileName, diarize);
+          const canonical = serializeTranscript({
+            meta: [{ key: "generated_at", value: new Date().toISOString() }],
+            entries: voiceWordsToDialogueEntries(words, diarize),
+          });
+          setSessions((prev) =>
+            prev.map((session) => {
+              if (session.id !== sessionId) return session;
+              const nextClips = session.clips.map((c) => (c.id === clipId ? { ...c, transcriptRaw: canonical } : c));
+              const lastUpdatedAt = writeNow(sessionId, { clips: nextClips.map(clipToMeta) });
+              return { ...session, clips: nextClips, lastUpdatedAt };
+            })
+          );
+          setGenerationByClip((prev) => {
+            const next = { ...prev };
+            delete next[clipId];
+            return next;
+          });
+        } catch (error) {
+          const message = typeof error === "string" ? error : String(error);
+          setGenerationByClip((prev) => {
+            if (message === GENERATE_CANCELLED) {
+              const next = { ...prev };
+              delete next[clipId];
+              return next;
+            }
+            return { ...prev, [clipId]: { status: "error", message, clipName: clip.fileName, diarize } };
+          });
+        } finally {
+          delete generationJobClip.current[jobId];
+        }
+      })();
     },
-    [writeNow]
+    [sessions, writeNow]
   );
+
+  const stopGenerateTranscript = useCallback(
+    (clipId: string) => {
+      const state = generationByClip[clipId];
+      if (state?.status !== "running") return;
+      cancelGenerateTranscript(state.jobId).catch((error) =>
+        console.error("Failed to stop transcript generation:", clipId, error)
+      );
+    },
+    [generationByClip]
+  );
+
+  const retryGenerateTranscript = useCallback(
+    (sessionId: string, clipId: string) => {
+      const state = generationByClip[clipId];
+      if (state?.status !== "error") return;
+      generateTranscript(sessionId, clipId, state.diarize);
+    },
+    [generationByClip, generateTranscript]
+  );
+
+  const dismissGenerateTranscriptError = useCallback((clipId: string) => {
+    setGenerationByClip((prev) => {
+      if (prev[clipId]?.status !== "error") return prev;
+      const next = { ...prev };
+      delete next[clipId];
+      return next;
+    });
+  }, []);
 
   const openUpload = useCallback(() => setIsUploadOpen(true), []);
   const closeUpload = useCallback(() => setIsUploadOpen(false), []);
@@ -435,6 +506,10 @@ export function useTrainingRoomData() {
     updateRoleplay,
     addClip: uploadClip,
     generateTranscript,
+    generationByClip,
+    stopGenerateTranscript,
+    retryGenerateTranscript,
+    dismissGenerateTranscriptError,
     isUploadOpen,
     openUpload,
     closeUpload,

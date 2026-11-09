@@ -86,6 +86,13 @@ pub struct WordTiming {
     pub text: String,
     #[serde(rename = "leadSpace")]
     pub lead_space: bool,
+    // Only populated when the ElevenLabs call that produced this word asked
+    // for diarization (see transcribe_mp3_with_elevenlabs's `diarize` flag,
+    // used by generate_voice_transcript) — None for every word from the
+    // track-based pipeline above, which already gets its speaker signal
+    // from which audio track a word came from.
+    #[serde(rename = "speakerId")]
+    pub speaker_id: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -221,11 +228,45 @@ fn extract_track_to_mp3(source_path: &str, index: u32, out_path: &Path, control:
     Ok(())
 }
 
+// Same extraction as extract_track_to_mp3, but for Voice Training's single-
+// file clips — there's no track-detection/picker step for those (see
+// generate_voice_transcript), so this just grabs the file's first audio
+// stream (ffmpeg's "a:0" stream specifier) rather than requiring an
+// explicit absolute stream index.
+fn extract_default_audio_to_mp3(source_path: &str, out_path: &Path, control: &JobControl) -> Result<(), String> {
+    let mut command = Command::new(resolve_binary("ffmpeg"));
+    command.args([
+        "-y",
+        "-i",
+        source_path,
+        "-map",
+        "0:a:0",
+        "-vn",
+        "-codec:a",
+        "libmp3lame",
+        "-q:a",
+        "2",
+        &out_path.to_string_lossy(),
+    ]);
+    let (success, _stdout, stderr) = run_killable(command, control)
+        .map_err(|e| if e == CANCELLED { e } else { format!("ffmpeg isn't available ({e}). Install it with `brew install ffmpeg`.") })?;
+    if !success {
+        return Err(stderr.trim().to_string());
+    }
+    Ok(())
+}
+
 // One blocking HTTP call via `curl` — ElevenLabs Scribe v2, word-level
-// timestamps. Same model/params as transcriber's `_transcribe_with_elevenlabs`.
+// timestamps. Same model/params as transcriber's `_transcribe_with_elevenlabs`,
+// plus an optional `diarize` flag (Voice Training's "with voice recognition"
+// option — see generate_voice_transcript) that asks ElevenLabs to annotate
+// each word with which detected voice spoke it (`speaker_id`), rather than
+// this app relying on separate audio tracks the way the multi-track
+// pipeline above does.
 fn transcribe_mp3_with_elevenlabs(
     api_key: &str,
     mp3_path: &Path,
+    diarize: bool,
     control: &JobControl,
 ) -> Result<serde_json::Value, String> {
     let file_arg = format!("file=@{}", mp3_path.to_string_lossy());
@@ -245,6 +286,9 @@ fn transcribe_mp3_with_elevenlabs(
         "-F",
         &file_arg,
     ]);
+    if diarize {
+        command.args(["-F", "diarize=true"]);
+    }
     let (success, stdout, stderr) = run_killable(command, control)
         .map_err(|e| if e == CANCELLED { e } else { format!("curl isn't available ({e}).") })?;
     if !success {
@@ -284,7 +328,8 @@ fn words_from_elevenlabs_response(value: &serde_json::Value) -> Vec<WordTiming> 
         let end = token["end"].as_f64();
         let text = token["text"].as_str();
         if let (Some(start), Some(end), Some(text)) = (start, end, text) {
-            out.push(WordTiming { start, end, text: text.to_string(), lead_space: pending_space });
+            let speaker_id = token["speaker_id"].as_str().map(|s| s.to_string());
+            out.push(WordTiming { start, end, text: text.to_string(), lead_space: pending_space, speaker_id });
             pending_space = false;
         }
     }
@@ -363,7 +408,11 @@ pub async fn generate_transcript(
                         return Err(CANCELLED.to_string());
                     }
                     emit_progress(&app, &job_id, "uploading", track_index, track_count, &track.name);
-                    transcribe_mp3_with_elevenlabs(&api_key, &tmp_path, &control)
+                    // Speaker separation here already comes from which
+                    // audio track a word was extracted from — diarization
+                    // would be redundant (and is Voice Training's own
+                    // option, see generate_voice_transcript below).
+                    transcribe_mp3_with_elevenlabs(&api_key, &tmp_path, false, &control)
                 });
                 let _ = std::fs::remove_file(&tmp_path);
                 let value = response?;
@@ -374,6 +423,65 @@ pub async fn generate_transcript(
                 });
             }
             Ok(results)
+        }
+    })
+    .await
+    .map_err(|e| format!("Internal error generating the transcript ({e})."))?;
+
+    jobs.0.lock().unwrap().remove(&job_id);
+    result
+}
+
+// Voice Training's own transcription entry point: one clip, one audio
+// stream — no track-detection/picker step, since practice clips are a
+// single file rather than a multi-mic call recording. `diarize` is the
+// "with voice recognition" option dictated for this discipline: off just
+// transcribes the clip as one speaker; on asks ElevenLabs to annotate each
+// word with which detected voice spoke it, so the caller
+// (src/lib/transcript/generate.ts's voiceWordsToDialogueEntries) can group
+// the flat word stream into per-speaker dialogue the same way the
+// track-based pipeline above does per-track. Shares TranscribeJobs/
+// JobControl and the same `generate-transcript-progress` event with that
+// pipeline — both are just "one background job with a job id", regardless
+// of which domain started it.
+#[tauri::command]
+pub async fn generate_voice_transcript(
+    app: AppHandle,
+    jobs: State<'_, TranscribeJobs>,
+    job_id: String,
+    source_path: String,
+    clip_name: String,
+    diarize: bool,
+) -> Result<Vec<WordTiming>, String> {
+    let api_key = std::env::var("ELEVENLABS_API_KEY").map_err(|_| {
+        "Cloud transcription isn't set up — add ELEVENLABS_API_KEY to the project's .env \
+         (get a key at elevenlabs.io)."
+            .to_string()
+    })?;
+
+    let control = JobControl::new();
+    jobs.0.lock().unwrap().insert(job_id.clone(), control.clone());
+
+    let result = tauri::async_runtime::spawn_blocking({
+        let control = control.clone();
+        let job_id = job_id.clone();
+        move || -> Result<Vec<WordTiming>, String> {
+            if control.is_cancelled() {
+                return Err(CANCELLED.to_string());
+            }
+            emit_progress(&app, &job_id, "extracting", 0, 1, &clip_name);
+            let tmp_path = std::env::temp_dir().join(format!("masters-wheel-voice-{job_id}.mp3"));
+            let extraction = extract_default_audio_to_mp3(&source_path, &tmp_path, &control);
+            let response = extraction.and_then(|()| {
+                if control.is_cancelled() {
+                    return Err(CANCELLED.to_string());
+                }
+                emit_progress(&app, &job_id, "uploading", 0, 1, &clip_name);
+                transcribe_mp3_with_elevenlabs(&api_key, &tmp_path, diarize, &control)
+            });
+            let _ = std::fs::remove_file(&tmp_path);
+            let value = response?;
+            Ok(words_from_elevenlabs_response(&value))
         }
     })
     .await

@@ -1,0 +1,11 @@
+/* Where this sits within TrainingRoom — same slot Hero occupies for every
+   other discipline (flex:1, filling whatever Detail's fixed 360px leaves
+   behind). */
+.root {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}

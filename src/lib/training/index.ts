@@ -244,3 +244,15 @@ export async function clipAbsolutePath(sessionId: string, fileName: string): Pro
 export function trainerChatsDir(sessionId: string): string {
   return `${sessionDir(sessionId)}/trainerChats`;
 }
+
+// Mindset Shifting's own chat storage root — same isolation reasoning as
+// trainerChatsDir above, but for a discipline whose entire main column
+// *is* the chat rather than a pane stacked alongside Notes. One session
+// folder only ever grows one real conversation here (MindsetShiftingChat
+// never calls startNewChat), but it still goes through the same
+// `useAIAssistant(storageRoot)` override as every other scoped chat so a
+// Mindset Shifting conversation never shows up from another training
+// session or the floating AI Assistant/ChatPage's own history.
+export function mindsetShiftingChatsDir(sessionId: string): string {
+  return `${sessionDir(sessionId)}/mindsetChats`;
+}

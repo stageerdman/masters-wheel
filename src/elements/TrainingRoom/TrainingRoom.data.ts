@@ -78,7 +78,7 @@ export const TOOL_TYPE_META: Record<
     color: "var(--color-discipline-mindset-shifting)",
     label: "Mindset Shifting",
     description: "Reframe the story you tell yourself before a call, not just the words you say.",
-    locked: true,
+    locked: false,
   },
 };
 
@@ -100,9 +100,11 @@ export type TrainingClip = {
   storedFileName: string;
   // Raw transcript.md-shaped text, or null until "Generate transcript" has
   // been run for this clip. Parsed on demand (src/lib/transcript), same as
-  // Performance Review's transcriptRaw.
+  // Performance Review's transcriptRaw. Live generation progress/errors for
+  // a clip aren't persisted here — see TrainingRoom.script.ts's
+  // generationByClip, same "ephemeral, job-tracked" shape as Performance
+  // Review's generationByRecord.
   transcriptRaw: string | null;
-  isGeneratingTranscript: boolean;
 };
 
 export type TrainingSession = {

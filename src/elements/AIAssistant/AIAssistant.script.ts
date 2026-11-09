@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { askAgent, onAskAgentProgress } from "@/lib/assistant/askAgent";
 import { nameChat } from "@/lib/assistant/nameChat";
+import { attachToPendingReply, beginPendingReply, endPendingReply, growPendingReply, isReplyPending } from "@/lib/assistant/pendingReplies";
 import { listAgents, type Agent } from "@/lib/agents";
 import { buildAgentTurnInput, listSessions, saveSession, deleteSessionFile } from "@/lib/chat";
 import type { ChatMessage, ChatMessageRole, ChatSession } from "@/lib/chat";
@@ -46,6 +47,38 @@ export function isDraftSession(session: ChatSession): boolean {
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const STUCK_REPLY_TEXT = "Didn't get a reply — try asking again.";
+
+// An empty-text assistant message is dispatchAgentReply's own placeholder
+// (see below), persisted to disk the instant a reply starts — streamed
+// text and the final result only ever land in memory/disk once the model
+// call actually finishes (finalizeAgentReply) or fails (failAgentReply).
+// The request itself survives the component that started it unmounting
+// (e.g. switching to a different Training Room session mid-reply, or
+// leaving Training Room entirely) — see src/lib/assistant/pendingReplies —
+// so a message still showing empty text on a fresh load is only genuinely
+// abandoned (e.g. the app itself relaunched mid-reply, wiping every
+// in-memory registry) if `isReplyPending` says nothing is still actively
+// receiving it. Anything still pending is left exactly as-is here — the
+// load effect below reattaches to it live instead, rather than this
+// function ever touching it.
+function reconcileStuckReply(message: ChatMessage): ChatMessage {
+  if (message.role !== "assistant" || message.text !== "" || isReplyPending(message.id)) return message;
+  return { ...message, role: "system", text: STUCK_REPLY_TEXT };
+}
+
+// Returns sessions unchanged by reference unless one of their messages
+// actually needed reconciling — callers rely on that reference equality
+// to know which sessions to re-persist.
+function reconcileStuckReplies(sessions: ChatSession[]): ChatSession[] {
+  return sessions.map((session) => {
+    if (!session.messages.some((message) => message.role === "assistant" && message.text === "" && !isReplyPending(message.id))) {
+      return session;
+    }
+    return { ...session, messages: session.messages.map(reconcileStuckReply) };
+  });
 }
 
 // Which agents a message text @mentions — matches "@" + an agent's exact
@@ -185,10 +218,18 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
   useEffect(() => {
     if (phase !== "open" || sessionsLoadStarted.current) return;
     sessionsLoadStarted.current = true;
+    let cancelled = false;
+    const unsubscribers: Array<() => void> = [];
+
     listSessions(storageRoot).then((loaded) => {
+      if (cancelled) return;
       const ordered = [...loaded].sort(
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
       );
+      const reconciled = reconcileStuckReplies(ordered);
+      reconciled.forEach((session, index) => {
+        if (session !== ordered[index]) void saveSession(session, storageRoot);
+      });
       setSessions((current) => {
         const existingDraft = current.find(isDraftSession);
         // The in-memory placeholder draft always starts life with id
@@ -204,11 +245,41 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
         // for every message/tag change in either. Found live, not
         // theoretical — regenerate the draft's id instead of reusing it
         // whenever this collision is actually possible.
-        const collides = existingDraft && ordered.some((session) => session.id === existingDraft.id);
+        const collides = existingDraft && reconciled.some((session) => session.id === existingDraft.id);
         const draft = existingDraft && !collides ? existingDraft : makeNewSession(crypto.randomUUID());
-        return [draft, ...ordered];
+        return [draft, ...reconciled];
       });
+
+      // Reattach to every reply that's still genuinely in flight (see
+      // src/lib/assistant/pendingReplies) — paints whatever text it's
+      // already accumulated immediately, no flash back to "thinking"
+      // even though this is a brand-new hook instance, then keeps this
+      // message updating live as further deltas (and the eventual
+      // finish/fail) arrive, exactly as if this instance had sent it
+      // itself. This is what lets leaving Training Room entirely, or
+      // switching to a different session/chat, never lose or falsely
+      // fail a reply that's genuinely still on its way.
+      for (const session of reconciled) {
+        for (const message of session.messages) {
+          if (message.role !== "assistant") continue;
+          const attached = attachToPendingReply(message.id, (update) => {
+            updateMessageInSession(session.id, message.id, (current) => ({
+              ...current,
+              text: update.text,
+              role: update.role,
+            }));
+          });
+          if (!attached) continue;
+          updateMessageInSession(session.id, message.id, (current) => ({ ...current, text: attached.text }));
+          unsubscribers.push(attached.unsubscribe);
+        }
+      }
     });
+
+    return () => {
+      cancelled = true;
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
   }, [phase, activeSpace?.id, storageRoot]);
 
   function open() {
@@ -452,10 +523,20 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
       text: "",
       createdAt: new Date().toISOString(),
     });
+    // Registered independently of this component instance (see
+    // src/lib/assistant/pendingReplies) — the rest of this function keeps
+    // running and persisting correctly to disk even if whatever mounted
+    // component called sendMessage unmounts before it finishes (switching
+    // Training Room sessions, leaving Training Room entirely, switching
+    // to a different chat). This registry is what lets a later, brand-new
+    // instance reattach to the live reply instead of either freezing on
+    // an empty bubble or wrongly declaring it failed.
+    beginPendingReply(replyId);
 
     const jobId = crypto.randomUUID();
     const unlisten = await onAskAgentProgress((progress) => {
       if (progress.jobId !== jobId) return;
+      growPendingReply(replyId, progress.delta);
       updateMessageInSession(sessionId, replyId, (message) => ({ ...message, text: message.text + progress.delta }));
     });
 
@@ -474,17 +555,20 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
       // The streamed-in text above is provisional (deltas could in theory
       // drop or reorder); the CLI's final `result` text is authoritative,
       // so it always wins here.
+      const finalText = reply.text || "(no reply)";
       finalizeAgentReply(
         sessionId,
         replyId,
         agent.id,
-        reply.text || "(no reply)",
+        finalText,
         reply.sessionId,
         reply.contextTokens,
         reply.contextWindow,
       );
+      endPendingReply(replyId, finalText, "assistant");
     } catch (error) {
       failAgentReply(sessionId, replyId, error);
+      endPendingReply(replyId, `Couldn't reach Claude: ${error}`, "system");
     } finally {
       unlisten();
     }

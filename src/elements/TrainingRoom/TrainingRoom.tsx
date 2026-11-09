@@ -9,6 +9,7 @@ import { Hero } from "./children/Hero/Hero";
 import { Detail } from "./children/Detail/Detail";
 import { DisciplinePicker } from "./children/DisciplinePicker/DisciplinePicker";
 import { ChatRoleplaySession } from "./children/ChatRoleplaySession/ChatRoleplaySession";
+import { MindsetShiftingChat } from "./children/MindsetShiftingChat/MindsetShiftingChat";
 import position from "./TrainingRoom.position.module.css";
 import styles from "./TrainingRoom.styles.module.css";
 
@@ -29,6 +30,10 @@ export function TrainingRoom() {
     updateRoleplay,
     addClip,
     generateTranscript,
+    generationByClip,
+    stopGenerateTranscript,
+    retryGenerateTranscript,
+    dismissGenerateTranscriptError,
     isUploadOpen,
     openUpload,
     closeUpload,
@@ -67,13 +72,26 @@ export function TrainingRoom() {
             onNameChange={(name) => renameSession(selected.id, name)}
             onRoleplayChange={(roleplay) => updateRoleplay(selected.id, roleplay)}
           />
+        ) : selected.toolType === "mindsetShifting" ? (
+          <>
+            <MindsetShiftingChat key={selected.id} sessionId={selected.id} />
+            <Detail
+              sessionId={selected.id}
+              notes={selected.notes}
+              onNotesChange={(value) => onNotesChange(selected.id, value)}
+            />
+          </>
         ) : (
           <>
             <Hero
               session={selected}
+              generationByClip={generationByClip}
               onNameChange={(name) => renameSession(selected.id, name)}
               onOpenUpload={openUpload}
-              onGenerateTranscript={(clipId) => generateTranscript(selected.id, clipId)}
+              onGenerateTranscript={(clipId, diarize) => generateTranscript(selected.id, clipId, diarize)}
+              onStopGenerateTranscript={stopGenerateTranscript}
+              onRetryGenerateTranscript={(clipId) => retryGenerateTranscript(selected.id, clipId)}
+              onDismissGenerateTranscriptError={dismissGenerateTranscriptError}
             />
             <Detail
               sessionId={selected.id}

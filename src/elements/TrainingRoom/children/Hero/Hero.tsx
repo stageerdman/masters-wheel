@@ -2,18 +2,32 @@
 
 import { useState } from "react";
 import type { TrainingSession } from "@/elements/TrainingRoom/TrainingRoom.data";
+import type { VoiceTranscriptGenerationState } from "@/lib/transcript/generate";
 import { ClipFeedItem } from "./children/ClipFeedItem/ClipFeedItem";
 import position from "./Hero.position.module.css";
 import styles from "./Hero.styles.module.css";
 
 type HeroProps = {
   session: TrainingSession;
+  generationByClip: Record<string, VoiceTranscriptGenerationState>;
   onNameChange: (name: string) => void;
   onOpenUpload: () => void;
-  onGenerateTranscript: (clipId: string) => void;
+  onGenerateTranscript: (clipId: string, diarize: boolean) => void;
+  onStopGenerateTranscript: (clipId: string) => void;
+  onRetryGenerateTranscript: (clipId: string) => void;
+  onDismissGenerateTranscriptError: (clipId: string) => void;
 };
 
-export function Hero({ session, onNameChange, onOpenUpload, onGenerateTranscript }: HeroProps) {
+export function Hero({
+  session,
+  generationByClip,
+  onNameChange,
+  onOpenUpload,
+  onGenerateTranscript,
+  onStopGenerateTranscript,
+  onRetryGenerateTranscript,
+  onDismissGenerateTranscriptError,
+}: HeroProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
   // Switching to a different session while mid-edit shouldn't leave the
@@ -73,7 +87,15 @@ export function Hero({ session, onNameChange, onOpenUpload, onGenerateTranscript
               + Add another clip
             </button>
             {session.clips.map((clip) => (
-              <ClipFeedItem key={clip.id} clip={clip} onGenerateTranscript={() => onGenerateTranscript(clip.id)} />
+              <ClipFeedItem
+                key={clip.id}
+                clip={clip}
+                generation={generationByClip[clip.id] ?? null}
+                onGenerateTranscript={(diarize) => onGenerateTranscript(clip.id, diarize)}
+                onStopGenerateTranscript={() => onStopGenerateTranscript(clip.id)}
+                onRetryGenerateTranscript={() => onRetryGenerateTranscript(clip.id)}
+                onDismissGenerateTranscriptError={() => onDismissGenerateTranscriptError(clip.id)}
+              />
             ))}
           </div>
         )}
