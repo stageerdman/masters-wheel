@@ -20,8 +20,10 @@ import {
   clipAbsolutePath,
   createSession,
   deleteSession,
+  isLearningDocumentExtension,
   listSessions,
   storeClipFile,
+  storeLearningFile,
   writeSessionMeta,
   type SessionSummary,
   type StoredClipMeta,
@@ -36,9 +38,15 @@ import {
   type VoiceTranscriptGenerationState,
 } from "@/lib/transcript/generate";
 import {
+  emptyLearningState,
+  parseLearningState,
   TOOL_TYPE_META,
   TOOL_TYPE_ORDER,
   type ClipKind,
+  type LearningBlock,
+  type LearningFile,
+  type LearningFileKind,
+  type LearningState,
   type SessionStatus,
   type TrainingClip,
   type TrainingSession,
@@ -50,6 +58,14 @@ const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "m4a", "aac", "ogg", "flac", "ai
 
 function kindForPath(path: string): ClipKind {
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  return AUDIO_EXTENSIONS.has(ext) ? "audio" : "video";
+}
+
+// Learning accepts a third kind (document = pdf/epub, store+download only)
+// on top of Voice Training's video/audio split above.
+function learningKindForPath(path: string): LearningFileKind {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  if (isLearningDocumentExtension(ext)) return "document";
   return AUDIO_EXTENSIONS.has(ext) ? "audio" : "video";
 }
 
@@ -102,8 +118,23 @@ async function clipFromMeta(sessionId: string, clip: StoredClipMeta): Promise<Tr
   };
 }
 
+// `src` is rebuilt here, never trusted from disk — same reasoning as
+// clipFromMeta below (see parseLearningFile's comment in TrainingRoom.data.ts).
+async function learningFileWithSrc(sessionId: string, file: LearningFile): Promise<LearningFile> {
+  const absolutePath = await clipAbsolutePath(sessionId, file.storedFileName);
+  return { ...file, src: convertFileSrc(absolutePath) };
+}
+
+async function learningStateFromMeta(sessionId: string, raw: unknown): Promise<LearningState | null> {
+  const parsed = parseLearningState(raw);
+  if (!parsed) return null;
+  const files = await Promise.all(parsed.files.map((file) => learningFileWithSrc(sessionId, file)));
+  return { ...parsed, files };
+}
+
 async function sessionFromSummary(summary: SessionSummary): Promise<TrainingSession> {
   const clips = await Promise.all(summary.clips.map((clip) => clipFromMeta(summary.id, clip)));
+  const learning = await learningStateFromMeta(summary.id, summary.learning);
   return {
     id: summary.id,
     toolType: normalizeToolType(summary.toolType),
@@ -113,6 +144,7 @@ async function sessionFromSummary(summary: SessionSummary): Promise<TrainingSess
     clips,
     notes: summary.notes,
     roleplay: parseRoleplayState(summary.roleplay),
+    learning,
   };
 }
 
@@ -126,21 +158,64 @@ function clipToMeta(clip: TrainingClip): StoredClipMeta {
   };
 }
 
+// Drops the rebuilt-at-load `src` before persisting — same reasoning as
+// clipToMeta above, just for Learning's own file shape.
+function learningFileToMeta(file: LearningFile): Omit<LearningFile, "src"> {
+  return {
+    id: file.id,
+    kind: file.kind,
+    fileName: file.fileName,
+    storedFileName: file.storedFileName,
+    extension: file.extension,
+    sizeBytes: file.sizeBytes,
+    transcriptRaw: file.transcriptRaw,
+  };
+}
+
+function learningStateToMeta(state: LearningState): unknown {
+  return { ...state, files: state.files.map(learningFileToMeta) };
+}
+
 export function useTrainingRoomData() {
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
   const [selectedId, setSelectedIdState] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  // Keyed by clip id, not by job: several clips (even across sessions)
-  // could be generating at once, each tracked independently — same reasoning
-  // as Performance Review's generationByRecord.
-  const [generationByClip, setGenerationByClip] = useState<Record<string, VoiceTranscriptGenerationState>>({});
+  // Keyed by media id — a Voice Training clip id or a Learning file id
+  // (both from the same makeId(), so never collide): several could be
+  // generating at once, even across sessions/disciplines, each tracked
+  // independently — same reasoning as Performance Review's
+  // generationByRecord. Generalized from a Voice-Training-only
+  // generationByClip once Learning became a second real consumer of the
+  // exact same job-tracking shape.
+  const [generationByMedia, setGenerationByMedia] = useState<Record<string, VoiceTranscriptGenerationState>>({});
+
+  // Learning's player lives in LearningHero but its transcript (with the
+  // LyricsTranscript word-highlight/seek) renders in LearningDetail, a
+  // sibling column — these four bridge that gap without either column
+  // needing to know about the other directly. `learningSeekHandlers` is a
+  // ref (not state) since it holds functions, never read during render.
+  const learningSeekHandlers = useRef<Record<string, (seconds: number) => void>>({});
+  const [learningMediaTime, setLearningMediaTime] = useState<Record<string, number>>({});
+
+  const registerLearningMediaSeek = useCallback((fileId: string, seek: ((seconds: number) => void) | null) => {
+    if (seek) learningSeekHandlers.current[fileId] = seek;
+    else delete learningSeekHandlers.current[fileId];
+  }, []);
+
+  const reportLearningMediaTime = useCallback((fileId: string, seconds: number) => {
+    setLearningMediaTime((prev) => (prev[fileId] === seconds ? prev : { ...prev, [fileId]: seconds }));
+  }, []);
+
+  const seekLearningMedia = useCallback((fileId: string, seconds: number) => {
+    learningSeekHandlers.current[fileId]?.(seconds);
+  }, []);
 
   const metaTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const pendingMeta = useRef<Record<string, Partial<SessionSummary>>>({});
   // Progress events only carry a job id (see src-tauri/src/transcribe.rs);
-  // this maps that back to the session+clip it belongs to, same role as
+  // this maps that back to the session+media it belongs to, same role as
   // Performance Review's generationJobRecord.
-  const generationJobClip = useRef<Record<string, { sessionId: string; clipId: string }>>({});
+  const generationJobMedia = useRef<Record<string, { sessionId: string; mediaId: string }>>({});
 
   // Merges into any already-pending partial for this session rather than
   // replacing it — same shape as Performance Review's scheduleMetaWrite.
@@ -197,11 +272,11 @@ export function useTrainingRoomData() {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     onGenerateTranscriptProgress((progress) => {
-      const target = generationJobClip.current[progress.jobId];
+      const target = generationJobMedia.current[progress.jobId];
       if (!target) return;
-      setGenerationByClip((prev) => ({
+      setGenerationByMedia((prev) => ({
         ...prev,
-        [target.clipId]: { status: "running", jobId: progress.jobId, stage: progress.stage },
+        [target.mediaId]: { status: "running", jobId: progress.jobId, stage: progress.stage },
       }));
     }).then((fn) => {
       if (cancelled) fn();
@@ -251,6 +326,7 @@ export function useTrainingRoomData() {
         clips: [],
         notes: "",
         roleplay: null,
+        learning: toolType === "learning" ? emptyLearningState() : null,
       };
       setSessions((prev) => [fresh, ...prev]);
       setSelectedIdState(id);
@@ -381,55 +457,199 @@ export function useTrainingRoomData() {
     [addClip]
   );
 
-  // Real transcription now (src/lib/transcript/generate.ts's
+  // Learning's upload: a video/audio file gets the exact same real-storage
+  // treatment addClip gives Voice Training clips (reused via
+  // storeLearningFile, not duplicated); a pdf/epub is just copied+stat'd.
+  // Uploading always unshifts a fresh {media, text} pair onto the very
+  // front of blocks (see LearningBlock's comment in TrainingRoom.data.ts)
+  // and selects the new file for LearningDetail — "it is on top, and you
+  // can again create notes under it."
+  const addLearningFile = useCallback(
+    async (sessionId: string, path: string) => {
+      let absolutePath = path;
+      let storedFileName = fileNameOf(path);
+      let displayName = storedFileName;
+      let extension = storedFileName.split(".").pop()?.toLowerCase() ?? "";
+      let sizeBytes = 0;
+      if (isTauri()) {
+        try {
+          const stored = await storeLearningFile(sessionId, path);
+          absolutePath = stored.absolutePath;
+          storedFileName = stored.fileName;
+          displayName = stored.displayName;
+          extension = stored.extension;
+          sizeBytes = stored.sizeBytes;
+        } catch (error) {
+          console.error("Failed to store learning file:", sessionId, error);
+          return;
+        }
+      }
+      const file: LearningFile = {
+        id: makeId("file"),
+        kind: learningKindForPath(path),
+        src: convertFileSrc(absolutePath),
+        fileName: displayName,
+        storedFileName,
+        extension,
+        sizeBytes,
+        transcriptRaw: null,
+      };
+      setSessions((prev) =>
+        prev.map((session) => {
+          if (session.id !== sessionId || !session.learning) return session;
+          const mediaBlock: LearningBlock = { id: makeId("block"), kind: "media", fileId: file.id };
+          const textBlock: LearningBlock = { id: makeId("block"), kind: "text", content: "" };
+          const nextLearning: LearningState = {
+            ...session.learning,
+            files: [file, ...session.learning.files],
+            blocks: [mediaBlock, textBlock, ...session.learning.blocks],
+            selectedFileId: file.id,
+          };
+          const lastUpdatedAt = writeNow(sessionId, { learning: learningStateToMeta(nextLearning) });
+          return { ...session, learning: nextLearning, lastUpdatedAt };
+        })
+      );
+    },
+    [writeNow]
+  );
+
+  const addLearningFiles = useCallback(
+    (sessionId: string, paths: string[]) => {
+      // Same drop-order preservation as addClips above.
+      [...paths].reverse().forEach((path) => addLearningFile(sessionId, path));
+    },
+    [addLearningFile]
+  );
+
+  // A text block's free-written content — debounced per-keystroke write,
+  // same shape as onNotesChange, just scoped to one block instead of the
+  // whole session.
+  const updateLearningBlockText = useCallback(
+    (sessionId: string, blockId: string, content: string) => {
+      const lastUpdatedAt = new Date().toISOString();
+      setSessions((prev) =>
+        prev.map((session) => {
+          if (session.id !== sessionId || !session.learning) return session;
+          const nextBlocks = session.learning.blocks.map((block) =>
+            block.id === blockId && block.kind === "text" ? { ...block, content } : block
+          );
+          const nextLearning: LearningState = { ...session.learning, blocks: nextBlocks };
+          scheduleMetaWrite(sessionId, { learning: learningStateToMeta(nextLearning), lastUpdatedAt });
+          return { ...session, learning: nextLearning, lastUpdatedAt };
+        })
+      );
+    },
+    [scheduleMetaWrite]
+  );
+
+  // The Hero-wide pin toggle and per-file selection are both view
+  // preferences, not training content — persisted (so they survive
+  // reopening the session) but, like selectSession, never bump
+  // lastUpdatedAt or reorder Navigation.
+  const toggleLearningPin = useCallback(
+    (sessionId: string) => {
+      setSessions((prev) =>
+        prev.map((session) => {
+          if (session.id !== sessionId || !session.learning) return session;
+          const nextLearning: LearningState = { ...session.learning, pinTopMedia: !session.learning.pinTopMedia };
+          scheduleMetaWrite(sessionId, { learning: learningStateToMeta(nextLearning) });
+          return { ...session, learning: nextLearning };
+        })
+      );
+    },
+    [scheduleMetaWrite]
+  );
+
+  const selectLearningFile = useCallback(
+    (sessionId: string, fileId: string) => {
+      setSessions((prev) =>
+        prev.map((session) => {
+          if (session.id !== sessionId || !session.learning) return session;
+          const nextLearning: LearningState = { ...session.learning, selectedFileId: fileId };
+          scheduleMetaWrite(sessionId, { learning: learningStateToMeta(nextLearning) });
+          return { ...session, learning: nextLearning };
+        })
+      );
+    },
+    [scheduleMetaWrite]
+  );
+
+  // Looks a media id up across both places it could live — a Voice
+  // Training clip or a Learning file — since generateTranscript below is
+  // now shared by both disciplines (see generationByMedia's own comment).
+  function findMediaRef(session: TrainingSession, mediaId: string): { storedFileName: string; fileName: string } | null {
+    const clip = session.clips.find((c) => c.id === mediaId);
+    if (clip) return { storedFileName: clip.storedFileName, fileName: clip.fileName };
+    const file = session.learning?.files.find((f) => f.id === mediaId);
+    if (file) return { storedFileName: file.storedFileName, fileName: file.fileName };
+    return null;
+  }
+
+  // Real transcription (src/lib/transcript/generate.ts's
   // transcribeVoiceClip), run as a background job the same way Performance
   // Review's startGenerateTranscript is — never blocks the UI, tracked under
-  // the clip id regardless of which session is currently selected. `diarize`
-  // is the discipline's "with voice recognition" choice (see ClipFeedItem):
-  // off transcribes the clip as one speaker, on asks ElevenLabs to separate
-  // who's talking by voice rather than by audio track (there's only one
-  // track here, unlike Performance Review's multi-mic calls).
+  // the media id regardless of which session is currently selected or
+  // which discipline owns it (a Voice Training clip or a Learning file;
+  // see findMediaRef above and generationByMedia's comment — this is the
+  // second real consumer of this exact pipeline, generalized in place
+  // rather than copy-pasted). `diarize` is the "with voice recognition"
+  // choice (see ClipFeedItem/LearningDetail): off transcribes the media as
+  // one speaker, on asks ElevenLabs to separate who's talking by voice
+  // rather than by audio track (there's only one track here, unlike
+  // Performance Review's multi-mic calls).
   const generateTranscript = useCallback(
-    (sessionId: string, clipId: string, diarize: boolean) => {
-      const clip = sessions.find((session) => session.id === sessionId)?.clips.find((c) => c.id === clipId);
-      if (!clip) return;
+    (sessionId: string, mediaId: string, diarize: boolean) => {
+      const session = sessions.find((candidate) => candidate.id === sessionId);
+      const media = session && findMediaRef(session, mediaId);
+      if (!media) return;
       const jobId = makeId("transcribe");
-      generationJobClip.current[jobId] = { sessionId, clipId };
-      setGenerationByClip((prev) => ({ ...prev, [clipId]: { status: "running", jobId, stage: "extracting" } }));
+      generationJobMedia.current[jobId] = { sessionId, mediaId };
+      setGenerationByMedia((prev) => ({ ...prev, [mediaId]: { status: "running", jobId, stage: "extracting" } }));
 
       (async () => {
         try {
-          const absolutePath = await clipAbsolutePath(sessionId, clip.storedFileName);
-          const words = await transcribeVoiceClip(jobId, absolutePath, clip.fileName, diarize);
+          const absolutePath = await clipAbsolutePath(sessionId, media.storedFileName);
+          const words = await transcribeVoiceClip(jobId, absolutePath, media.fileName, diarize);
           const canonical = serializeTranscript({
             meta: [{ key: "generated_at", value: new Date().toISOString() }],
             entries: voiceWordsToDialogueEntries(words, diarize),
           });
           setSessions((prev) =>
-            prev.map((session) => {
-              if (session.id !== sessionId) return session;
-              const nextClips = session.clips.map((c) => (c.id === clipId ? { ...c, transcriptRaw: canonical } : c));
-              const lastUpdatedAt = writeNow(sessionId, { clips: nextClips.map(clipToMeta) });
-              return { ...session, clips: nextClips, lastUpdatedAt };
+            prev.map((candidate) => {
+              if (candidate.id !== sessionId) return candidate;
+              if (candidate.clips.some((c) => c.id === mediaId)) {
+                const nextClips = candidate.clips.map((c) => (c.id === mediaId ? { ...c, transcriptRaw: canonical } : c));
+                const lastUpdatedAt = writeNow(sessionId, { clips: nextClips.map(clipToMeta) });
+                return { ...candidate, clips: nextClips, lastUpdatedAt };
+              }
+              if (candidate.learning) {
+                const nextFiles = candidate.learning.files.map((f) =>
+                  f.id === mediaId ? { ...f, transcriptRaw: canonical } : f
+                );
+                const nextLearning: LearningState = { ...candidate.learning, files: nextFiles };
+                const lastUpdatedAt = writeNow(sessionId, { learning: learningStateToMeta(nextLearning) });
+                return { ...candidate, learning: nextLearning, lastUpdatedAt };
+              }
+              return candidate;
             })
           );
-          setGenerationByClip((prev) => {
+          setGenerationByMedia((prev) => {
             const next = { ...prev };
-            delete next[clipId];
+            delete next[mediaId];
             return next;
           });
         } catch (error) {
           const message = typeof error === "string" ? error : String(error);
-          setGenerationByClip((prev) => {
+          setGenerationByMedia((prev) => {
             if (message === GENERATE_CANCELLED) {
               const next = { ...prev };
-              delete next[clipId];
+              delete next[mediaId];
               return next;
             }
-            return { ...prev, [clipId]: { status: "error", message, clipName: clip.fileName, diarize } };
+            return { ...prev, [mediaId]: { status: "error", message, clipName: media.fileName, diarize } };
           });
         } finally {
-          delete generationJobClip.current[jobId];
+          delete generationJobMedia.current[jobId];
         }
       })();
     },
@@ -437,30 +657,30 @@ export function useTrainingRoomData() {
   );
 
   const stopGenerateTranscript = useCallback(
-    (clipId: string) => {
-      const state = generationByClip[clipId];
+    (mediaId: string) => {
+      const state = generationByMedia[mediaId];
       if (state?.status !== "running") return;
       cancelGenerateTranscript(state.jobId).catch((error) =>
-        console.error("Failed to stop transcript generation:", clipId, error)
+        console.error("Failed to stop transcript generation:", mediaId, error)
       );
     },
-    [generationByClip]
+    [generationByMedia]
   );
 
   const retryGenerateTranscript = useCallback(
-    (sessionId: string, clipId: string) => {
-      const state = generationByClip[clipId];
+    (sessionId: string, mediaId: string) => {
+      const state = generationByMedia[mediaId];
       if (state?.status !== "error") return;
-      generateTranscript(sessionId, clipId, state.diarize);
+      generateTranscript(sessionId, mediaId, state.diarize);
     },
-    [generationByClip, generateTranscript]
+    [generationByMedia, generateTranscript]
   );
 
-  const dismissGenerateTranscriptError = useCallback((clipId: string) => {
-    setGenerationByClip((prev) => {
-      if (prev[clipId]?.status !== "error") return prev;
+  const dismissGenerateTranscriptError = useCallback((mediaId: string) => {
+    setGenerationByMedia((prev) => {
+      if (prev[mediaId]?.status !== "error") return prev;
       const next = { ...prev };
-      delete next[clipId];
+      delete next[mediaId];
       return next;
     });
   }, []);
@@ -470,18 +690,24 @@ export function useTrainingRoomData() {
 
   const uploadClip = useCallback(
     (path: string) => {
-      if (selectedId) addClip(selectedId, path);
+      if (selectedId) {
+        if (selected?.toolType === "learning") addLearningFile(selectedId, path);
+        else addClip(selectedId, path);
+      }
       setIsUploadOpen(false);
     },
-    [selectedId, addClip]
+    [selectedId, selected, addClip, addLearningFile]
   );
 
   // Dropping a file anywhere on the page (outside the upload modal)
   // appends it to the currently selected session's feed — same "drop
   // target = whatever's in view" idea as Performance Review's window
-  // drop, just appending a clip instead of creating a new record.
+  // drop, just appending a clip (or, for Learning, a file) instead of
+  // creating a new record.
   const isDragActive = useWindowFileDrop(!isUploadOpen && selected !== null, (paths) => {
-    if (selectedId) addClips(selectedId, paths);
+    if (!selectedId) return;
+    if (selected?.toolType === "learning") addLearningFiles(selectedId, paths);
+    else addClips(selectedId, paths);
   });
 
   // While the upload modal itself is open, a drop lands there instead —
@@ -506,10 +732,17 @@ export function useTrainingRoomData() {
     updateRoleplay,
     addClip: uploadClip,
     generateTranscript,
-    generationByClip,
+    generationByMedia,
     stopGenerateTranscript,
     retryGenerateTranscript,
     dismissGenerateTranscriptError,
+    updateLearningBlockText,
+    toggleLearningPin,
+    selectLearningFile,
+    registerLearningMediaSeek,
+    reportLearningMediaTime,
+    learningMediaTime,
+    seekLearningMedia,
     isUploadOpen,
     openUpload,
     closeUpload,

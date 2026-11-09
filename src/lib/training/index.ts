@@ -19,7 +19,8 @@
 // expected to be far smaller, so convertFileSrc's whole-file-buffering
 // tradeoff doesn't bite here the way it did for Performance Review.
 
-import { copyFile, mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
+import { copyFile, mkdir, readDir, readTextFile, remove, size, writeTextFile } from "@tauri-apps/plugin-fs";
+import { save } from "@tauri-apps/plugin-dialog";
 import { documentDir, join } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 import { BASE_DIR, spaceTrainingDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
@@ -64,6 +65,10 @@ export type SessionMetaFields = {
   // file's header). `null` for every other discipline, and for a
   // not-yet-written Chat Roleplay session.
   roleplay: unknown;
+  // Learning's own persisted state (files/blocks/pin/selection) — same
+  // "this module doesn't know the shape" boundary as roleplay above.
+  // `null` for every other discipline.
+  learning: unknown;
 };
 
 export type SessionSummary = SessionMetaFields & { id: string };
@@ -77,6 +82,7 @@ function emptyMeta(toolType: string, name: string): SessionMetaFields {
     notes: "",
     clips: [],
     roleplay: null,
+    learning: null,
   };
 }
 
@@ -118,6 +124,7 @@ function parseMeta(text: string): SessionMetaFields | null {
     notes: typeof candidate.notes === "string" ? candidate.notes : "",
     clips,
     roleplay: candidate.roleplay ?? null,
+    learning: candidate.learning ?? null,
   };
 }
 
@@ -233,6 +240,59 @@ export async function storeClipFile(sessionId: string, sourcePath: string): Prom
 export async function clipAbsolutePath(sessionId: string, fileName: string): Promise<string> {
   const docDir = await documentDir();
   return join(docDir, STORAGE_DIR_NAME, getActiveSpaceFolder(), "training", sessionId, fileName);
+}
+
+// Learning's own file-storage extensions: pdf/epub are never played back
+// or transcoded, just copied byte-for-byte and stored for download — no
+// overlap with TRANSCODE_EXTENSIONS/storeClipFile's video/audio handling.
+const DOCUMENT_EXTENSIONS = new Set(["pdf", "epub"]);
+
+export function isLearningDocumentExtension(extension: string): boolean {
+  return DOCUMENT_EXTENSIONS.has(extension.toLowerCase());
+}
+
+export type StoredLearningFile = StoredClip & { extension: string; sizeBytes: number };
+
+// Learning's upload entry point: a pdf/epub is just copied as-is (no
+// transcode — it's never decoded by anything, only downloaded); anything
+// else delegates straight to storeClipFile so video/audio get the exact
+// same transcode-if-WKWebView-can't-play-it treatment Voice Training's
+// clips already get, rather than a second, divergent copy of that logic.
+export async function storeLearningFile(sessionId: string, sourcePath: string): Promise<StoredLearningFile> {
+  const originalName = sourcePath.split(/[/\\]/).pop() ?? "file";
+  const extension = extensionOf(originalName);
+
+  if (isLearningDocumentExtension(extension)) {
+    const dir = sessionDir(sessionId);
+    await mkdir(dir, { baseDir: BASE_DIR, recursive: true });
+    const displayName = originalName;
+    const fileName = `${Date.now()}-${displayName}`;
+    const relativePath = `${dir}/${fileName}`;
+    await copyFile(sourcePath, relativePath, { toPathBaseDir: BASE_DIR });
+    const absolutePath = await clipAbsolutePath(sessionId, fileName);
+    const sizeBytes = await size(relativePath, { baseDir: BASE_DIR });
+    return { absolutePath, fileName, displayName, extension, sizeBytes };
+  }
+
+  const stored = await storeClipFile(sessionId, sourcePath);
+  const sizeBytes = await size(`${sessionDir(sessionId)}/${stored.fileName}`, { baseDir: BASE_DIR });
+  return { ...stored, extension: extensionOf(stored.fileName), sizeBytes };
+}
+
+// A document file's "download" action — the only place in the app that
+// copies a stored file back out to a user-chosen location (no existing
+// precedent to reuse). `save()` returning null means the user cancelled
+// the picker, not a failure.
+export async function downloadLearningFile(
+  sessionId: string,
+  storedFileName: string,
+  suggestedName: string
+): Promise<boolean> {
+  const destination = await save({ defaultPath: suggestedName });
+  if (!destination) return false;
+  const absolutePath = await clipAbsolutePath(sessionId, storedFileName);
+  await copyFile(absolutePath, destination);
+  return true;
 }
 
 // The AI Trainer pane's own chat storage root — a training session's

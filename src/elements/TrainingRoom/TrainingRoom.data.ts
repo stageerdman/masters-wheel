@@ -33,12 +33,18 @@ export const DETAIL_CONTENT_KIND_META: Record<DetailContentKind, BookmarkMeta> =
 // original single value, renamed to "voiceTraining" once more disciplines
 // joined it — TrainingRoom.script.ts's normalizeToolType() still maps a
 // session.json written under the old name to the new one on load.
-export type TrainingToolType = "voiceTraining" | "chatRoleplay" | "voiceRoleplay" | "mindsetShifting";
+export type TrainingToolType = "voiceTraining" | "chatRoleplay" | "voiceRoleplay" | "mindsetShifting" | "learning";
 
 // Every discipline, in the order DisciplinePicker lists them — Voice
 // Training first since it's the only one actually built; the rest follow
 // in the order they're expected to ship.
-export const TOOL_TYPE_ORDER: TrainingToolType[] = ["voiceTraining", "chatRoleplay", "voiceRoleplay", "mindsetShifting"];
+export const TOOL_TYPE_ORDER: TrainingToolType[] = [
+  "voiceTraining",
+  "chatRoleplay",
+  "voiceRoleplay",
+  "mindsetShifting",
+  "learning",
+];
 
 // Fixed per session, driven entirely by its discipline — never user-
 // adjustable (see Training Room's SessionListItem). `locked` disciplines
@@ -80,6 +86,18 @@ export const TOOL_TYPE_META: Record<
     description: "Reframe the story you tell yourself before a call, not just the words you say.",
     locked: false,
   },
+  learning: {
+    // U+1F4D6 + the text-presentation variation selector (U+FE0E) — a
+    // plain emoji glyph here would ignore the `color` CSS variable
+    // SessionListItem/TagChip apply (see CLAUDE.md's styling standards);
+    // every other glyph in this map is already a default-text-style BMP
+    // symbol for the same reason.
+    glyph: "📖︎",
+    color: "var(--color-discipline-learning)",
+    label: "Learning",
+    description: "Upload anything worth studying — a recording, a PDF, a book — and build your own notes around it.",
+    locked: false,
+  },
 };
 
 export type SessionStatus = "open" | "closed";
@@ -107,6 +125,118 @@ export type TrainingClip = {
   transcriptRaw: string | null;
 };
 
+// Learning's own file kind — "document" (pdf/epub) is store-and-download
+// only, never played back or transcribed (see LearningFile.transcriptRaw).
+export type LearningFileKind = "video" | "audio" | "document";
+
+export type LearningFile = {
+  id: string;
+  kind: LearningFileKind;
+  // Playable/downloadable convertFileSrc URL, built from the file's real
+  // on-disk copy (see src/lib/training).
+  src: string;
+  // The original file's display name, shown in the UI.
+  fileName: string;
+  // The on-disk, timestamp-prefixed name of the stored copy — needed to
+  // rebuild `src`/the download path when a persisted session reloads.
+  storedFileName: string;
+  // Lowercased, no leading dot — drives the document chip's icon label.
+  extension: string;
+  // Real on-disk size, shown on a document's chip (video/audio don't show
+  // this — their player already communicates duration).
+  sizeBytes: number;
+  // video/audio only; always null for "document" — PDF/EPUB text
+  // extraction is explicitly future work, not this phase.
+  transcriptRaw: string | null;
+};
+
+// One ordered block of Learning's single notes document — "single" per
+// session.json (see src/lib/training), but rendered as if each uploaded
+// file had its own notes underneath it, Word-doc-with-inline-images style.
+// A "media" block is immutable (just a pointer to a LearningFile); a
+// "text" block is the user's own free-written notes around it. Uploading
+// a file always unshifts a fresh {media, text} pair onto the very front
+// of LearningState.blocks — block[0] is therefore always a media block,
+// the invariant LearningHero's pin-to-top behavior relies on.
+export type LearningBlock =
+  | { id: string; kind: "media"; fileId: string }
+  | { id: string; kind: "text"; content: string };
+
+export type LearningState = {
+  files: LearningFile[];
+  blocks: LearningBlock[];
+  // Session-wide toggle (see this update's wiki.md): pinned keeps
+  // blocks[0]'s media fixed at the top of the Hero column while
+  // blocks.slice(1) scrolls independently underneath; off scrolls the
+  // whole column as one normal feed.
+  pinTopMedia: boolean;
+  // Which file LearningDetail currently shows transcript controls (or a
+  // download/file-info panel) for — defaults to the newest file on
+  // upload, otherwise whichever media block was last clicked.
+  selectedFileId: string | null;
+};
+
+export function emptyLearningState(): LearningState {
+  return { files: [], blocks: [], pinTopMedia: false, selectedFileId: null };
+}
+
+function isLearningFileKind(value: unknown): value is LearningFileKind {
+  return value === "video" || value === "audio" || value === "document";
+}
+
+// `src` is never trusted from disk (same reasoning as TrainingClip's own
+// storedFileName/src split) — parsed as "" here and rebuilt from
+// storedFileName by TrainingRoom.script.ts's learningStateFromMeta right
+// after this runs.
+function parseLearningFile(raw: unknown): LearningFile | null {
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as Partial<LearningFile>;
+  if (
+    typeof candidate.id !== "string" ||
+    !isLearningFileKind(candidate.kind) ||
+    typeof candidate.fileName !== "string" ||
+    typeof candidate.storedFileName !== "string"
+  ) {
+    return null;
+  }
+  return {
+    id: candidate.id,
+    kind: candidate.kind,
+    src: "",
+    fileName: candidate.fileName,
+    storedFileName: candidate.storedFileName,
+    extension: typeof candidate.extension === "string" ? candidate.extension : "",
+    sizeBytes: typeof candidate.sizeBytes === "number" ? candidate.sizeBytes : 0,
+    transcriptRaw: typeof candidate.transcriptRaw === "string" ? candidate.transcriptRaw : null,
+  };
+}
+
+function isLearningBlock(raw: unknown): raw is LearningBlock {
+  if (!raw || typeof raw !== "object") return false;
+  const candidate = raw as { id?: unknown; kind?: unknown; fileId?: unknown; content?: unknown };
+  if (typeof candidate.id !== "string") return false;
+  if (candidate.kind === "media") return typeof candidate.fileId === "string";
+  if (candidate.kind === "text") return typeof candidate.content === "string";
+  return false;
+}
+
+// Same "missing/corrupt is just absent, not a crash" tolerance as
+// parseRoleplayState above and src/lib/training's own parseMeta.
+export function parseLearningState(raw: unknown): LearningState | null {
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as Partial<LearningState>;
+  const files = Array.isArray(candidate.files)
+    ? candidate.files.map(parseLearningFile).filter((file): file is LearningFile => file !== null)
+    : [];
+  const blocks = Array.isArray(candidate.blocks) ? candidate.blocks.filter(isLearningBlock) : [];
+  return {
+    files,
+    blocks,
+    pinTopMedia: typeof candidate.pinTopMedia === "boolean" ? candidate.pinTopMedia : false,
+    selectedFileId: typeof candidate.selectedFileId === "string" ? candidate.selectedFileId : null,
+  };
+}
+
 export type TrainingSession = {
   id: string;
   toolType: TrainingToolType;
@@ -123,4 +253,6 @@ export type TrainingSession = {
   // Chat Roleplay's own persisted state — null for every other discipline,
   // and for a not-yet-set-up Chat Roleplay session.
   roleplay: RoleplayState | null;
+  // Learning's own persisted state — null for every other discipline.
+  learning: LearningState | null;
 };

@@ -705,3 +705,51 @@ simulate the call in prose instead"), but that sentence only names
   (`training_context_forbids_narrating_intent_instead_of_actually_calling_the_tool`);
   35 Rust tests passing. `.app` rebuilt and reinstalled.
 
+### Phase 29 — Add Learning discipline (2026-11-09)
+User-dictated: a 5th discipline, book icon, unlocked. Upload any video/
+audio/PDF/EPUB; write notes "around" each upload the way you'd insert an
+image into a Word doc and write underneath it — visually per-file, but
+one single notes document in storage (`TrainingSession.learning`, not
+one note field per file). A session-wide pin toggle keeps the newest
+file's media fixed at the top of the Hero column while everything else
+(older files + all notes text) scrolls beneath it. "Generate transcript"
+(same plain/"with voice recognition" choice Voice Training already has)
+moved into the Detail column instead of inline in the feed, for whichever
+file is currently selected; a pdf/epub is store+download only — no in-app
+preview, no text extraction (both explicitly deferred, see FEATURES.md).
+- [x] New data model (`TrainingRoom.data.ts`): `LearningFileKind`/
+      `LearningFile`/`LearningBlock`/`LearningState`, `TrainingSession.learning`,
+      `emptyLearningState`/`parseLearningState` (same tolerant-parse shape as
+      `parseRoleplayState`). New `learning` tool type, glyph, and
+      `--color-discipline-learning` token.
+- [x] Storage (`src/lib/training/index.ts`): `storeLearningFile` (delegates
+      to the existing `storeClipFile` transcode/copy path for video/audio;
+      plain copy+`size()` for pdf/epub — no transcode, never played back)
+      and `downloadLearningFile` (the app's first "save a file back out"
+      action — `save()` + `copyFile`, no existing precedent to reuse).
+- [x] `TrainingRoom.script.ts`'s Voice-Training-only `generationByClip`
+      generalized in place to `generationByMedia`, keyed by either a clip
+      id or a Learning file id (never colliding — same `makeId()`) — the
+      second real consumer of that exact job-tracking/transcribe pipeline,
+      so it's shared rather than copy-pasted. New `addLearningFile(s)`,
+      `updateLearningBlockText`, `toggleLearningPin`, `selectLearningFile`,
+      plus the cross-column seek/time bridge (`registerLearningMediaSeek`/
+      `reportLearningMediaTime`/`seekLearningMedia`/`learningMediaTime`) —
+      the player lives in `LearningHero`, its transcript (and
+      `LyricsTranscript`'s seek) renders in the sibling `LearningDetail`.
+- [x] New `TranscriptPanel` (`TrainingRoom/children/`): the exact three-
+      state "Generate transcript"/running-progress/error UI that used to
+      be `ClipFeedItem`'s own inline markup, pulled out once
+      `LearningDetail` became a second real consumer of it — both now
+      render it identically instead of maintaining two copies.
+      `ClipFeedItem` refactored to use it; no behavior change there.
+- [x] New `LearningHero` (+ `children/LearningMediaItem`) and
+      `LearningDetail` elements, wired into `TrainingRoom.tsx` alongside
+      the existing per-discipline branches. `DisciplinePicker` gets a new
+      `#i-book` hand-drawn crest in the same style as the other four.
+- [x] `npm run build` / `lint` / `tsc --noEmit` clean.
+- [ ] Not yet click-through verified in the running app — this project's
+      CLAUDE.md rules out browser automation here; a manual pass through
+      uploading a video/pdf, pinning, writing notes, and generating a
+      transcript in the real `.app` hasn't happened yet.
+

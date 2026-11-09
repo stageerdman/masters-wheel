@@ -40,6 +40,7 @@
   --color-discipline-chat-roleplay: #c2703f;
   --color-discipline-voice-roleplay: #b8862f;
   --color-discipline-mindset-shifting: #7a8c6b;
+  --color-discipline-learning: #5f7a8c;
 
   /* Scorecard rating levels — each value *is* the visual identity of that
      rating (Skipped/Poor/Good/Great/Outstanding), same reasoning as the

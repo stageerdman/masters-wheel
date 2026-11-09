@@ -254,6 +254,11 @@ between the two lists. Each page gets its own section as pages get added.
 - [ ] More MCP tools beyond Performance Review (e.g. Agents, Notion) —
       the per-tool pattern in `src-tauri/src/mcp/tools/` is in place,
       nothing else wired yet
+- [ ] Generalizing the tag-suggested/permission-card/MCP-access mechanism
+      above (currently Performance Review records only) to Training Room
+      sessions, so the floating AI Assistant can see/read a session's
+      transcript/notes the same tag-gated way — in progress, see
+      `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
 - [ ] Keyboard-only path to cycle dock states / toggle the side menu
       (currently pointer-only)
 
@@ -772,6 +777,37 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
       clean but a manual pass through picking an agent and chatting in
       the real `.app` hasn't happened yet.
 
+### Built (real functionality — Learning discipline, 2026-11-09)
+- [x] `DisciplinePicker`'s Learning card is unlocked (new `#i-book` crest).
+      Upload any video/audio/pdf/epub file — real on-disk storage
+      (`src/lib/training`'s `storeLearningFile`, reusing Voice Training's
+      transcode/copy path for video/audio; a plain copy+size() for
+      pdf/epub, never transcoded or played back).
+- [x] The Hero column is one continuous notes document, not a feed of
+      independent per-clip notes: each upload unshifts a real media item
+      (or, for a pdf/epub, a file chip with a real Download action — the
+      app's first "save a file back out" flow) plus a fresh free-text
+      block onto the very top, Word-doc-with-inline-images style —
+      visually per-file, but genuinely one notes document in storage
+      (`TrainingSession.learning`), not separate note fields per file. A
+      session-wide pin toggle keeps the newest file's media fixed at the
+      top of the column while everything else (older files + all text)
+      scrolls underneath; off, the whole column scrolls together.
+- [x] "Generate transcript" (the same plain/"with voice recognition"
+      choice Voice Training has) lives in the Detail column instead of
+      inline in the feed, for whichever file is currently clicked/
+      selected in Hero — a new shared `TranscriptPanel` renders the exact
+      same three-state UI (choice/progress+Stop/error+Retry+Dismiss →
+      the lyrics-style synced transcript) for both this and Voice
+      Training's `ClipFeedItem`, which used to inline this markup itself.
+      The transcript-generation job pipeline itself
+      (`generationByMedia`/`transcribeVoiceClip`) is shared with Voice
+      Training's clips too, not duplicated.
+- [x] No PDF/EPUB in-app preview or text extraction yet — store+download
+      (+ a generic extension chip) only; both are explicitly future work.
+- [ ] Not yet click-through verified in the running app, same caveat as
+      Mindset Shifting above.
+
 ### To build (real functionality — not started)
 - [ ] Persisting real per-word timestamps (ElevenLabs returns them, still
       discarded at serialize time) so the lyrics highlight is exact
@@ -780,6 +816,11 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
       already lists it, nothing behind it yet.
 - [ ] Wiring Performance Review's "Take it to the training ground" button
       (still a no-op) to actually open/seed a Training Room session.
+- [ ] PDF/EPUB in-app preview and text extraction for Learning (currently
+      store+download only).
+- [ ] The AI Assistant accessing a Training Room session's transcript/
+      notes the same tag-gated way it accesses a Performance Review
+      record — see the AI Assistant section's own "To build" list.
 
 ## Agents page
 

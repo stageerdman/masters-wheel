@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { LyricsTranscript } from "../LyricsTranscript/LyricsTranscript";
+import { TranscriptPanel } from "@/elements/TrainingRoom/children/TranscriptPanel/TranscriptPanel";
 import type { TrainingClip } from "@/elements/TrainingRoom/TrainingRoom.data";
 import type { VoiceTranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./ClipFeedItem.position.module.css";
@@ -15,10 +15,6 @@ type ClipFeedItemProps = {
   onRetryGenerateTranscript: () => void;
   onDismissGenerateTranscriptError: () => void;
 };
-
-function statusText(stage: "extracting" | "uploading"): string {
-  return stage === "extracting" ? "Extracting audio…" : "Transcribing via ElevenLabs…";
-}
 
 // One feed entry: a real media element (video or audio — Voice Training
 // accepts either) plus whatever's below it, depending on this clip's
@@ -73,70 +69,16 @@ export function ClipFeedItem({
         {clip.fileName}
       </p>
       <div className={position.transcriptSlot} data-construction>
-        {clip.transcriptRaw ? (
-          <LyricsTranscript rawText={clip.transcriptRaw} currentTime={currentTime} onSeek={seekTo} />
-        ) : generation?.status === "running" ? (
-          <div className={`${styles.generating} ${position.generating}`} data-construction>
-            <p className={`${styles.statusText} ${position.statusText}`} data-construction>
-              {statusText(generation.stage)}
-            </p>
-            <div className={`${styles.progressTrack} ${position.progressTrack}`} data-construction>
-              <div className={`${styles.progressFill} ${position.progressFill}`} data-construction />
-            </div>
-            <button
-              type="button"
-              className={`${styles.secondaryButton} ${position.secondaryButton}`}
-              data-construction
-              onClick={onStopGenerateTranscript}
-            >
-              Stop
-            </button>
-          </div>
-        ) : generation?.status === "error" ? (
-          <div className={`${styles.generating} ${position.generating}`} data-construction>
-            <p className={`${styles.errorText} ${position.statusText}`} data-construction>
-              {generation.message}
-            </p>
-            <div className={position.generateChoices} data-construction>
-              <button
-                type="button"
-                className={`${styles.generateButton} ${position.generateButton}`}
-                data-construction
-                onClick={onRetryGenerateTranscript}
-              >
-                Try again
-              </button>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${position.secondaryButton}`}
-                data-construction
-                onClick={onDismissGenerateTranscriptError}
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className={position.generateChoices} data-construction>
-            <button
-              type="button"
-              className={`${styles.generateButton} ${position.generateButton}`}
-              data-construction
-              onClick={() => onGenerateTranscript(false)}
-            >
-              Generate transcript
-            </button>
-            <button
-              type="button"
-              className={`${styles.secondaryButton} ${position.secondaryButton}`}
-              data-construction
-              onClick={() => onGenerateTranscript(true)}
-              title="Separates the transcript by who's speaking, detected by voice"
-            >
-              With voice recognition
-            </button>
-          </div>
-        )}
+        <TranscriptPanel
+          transcriptRaw={clip.transcriptRaw}
+          generation={generation}
+          currentTime={currentTime}
+          onSeek={seekTo}
+          onGenerate={onGenerateTranscript}
+          onStop={onStopGenerateTranscript}
+          onRetry={onRetryGenerateTranscript}
+          onDismiss={onDismissGenerateTranscriptError}
+        />
       </div>
     </article>
   );

@@ -10,6 +10,8 @@ import { Detail } from "./children/Detail/Detail";
 import { DisciplinePicker } from "./children/DisciplinePicker/DisciplinePicker";
 import { ChatRoleplaySession } from "./children/ChatRoleplaySession/ChatRoleplaySession";
 import { MindsetShiftingChat } from "./children/MindsetShiftingChat/MindsetShiftingChat";
+import { LearningHero } from "./children/LearningHero/LearningHero";
+import { LearningDetail } from "./children/LearningDetail/LearningDetail";
 import position from "./TrainingRoom.position.module.css";
 import styles from "./TrainingRoom.styles.module.css";
 
@@ -30,10 +32,17 @@ export function TrainingRoom() {
     updateRoleplay,
     addClip,
     generateTranscript,
-    generationByClip,
+    generationByMedia,
     stopGenerateTranscript,
     retryGenerateTranscript,
     dismissGenerateTranscriptError,
+    updateLearningBlockText,
+    toggleLearningPin,
+    selectLearningFile,
+    registerLearningMediaSeek,
+    reportLearningMediaTime,
+    learningMediaTime,
+    seekLearningMedia,
     isUploadOpen,
     openUpload,
     closeUpload,
@@ -81,11 +90,35 @@ export function TrainingRoom() {
               onNotesChange={(value) => onNotesChange(selected.id, value)}
             />
           </>
+        ) : selected.toolType === "learning" ? (
+          <>
+            <LearningHero
+              key={selected.id}
+              session={selected}
+              onNameChange={(name) => renameSession(selected.id, name)}
+              onOpenUpload={openUpload}
+              onUpdateBlockText={(blockId, content) => updateLearningBlockText(selected.id, blockId, content)}
+              onTogglePin={() => toggleLearningPin(selected.id)}
+              onSelectFile={(fileId) => selectLearningFile(selected.id, fileId)}
+              onRegisterMediaSeek={registerLearningMediaSeek}
+              onReportMediaTime={reportLearningMediaTime}
+            />
+            <LearningDetail
+              session={selected}
+              generationByMedia={generationByMedia}
+              onGenerateTranscript={(fileId, diarize) => generateTranscript(selected.id, fileId, diarize)}
+              onStopGenerateTranscript={stopGenerateTranscript}
+              onRetryGenerateTranscript={(fileId) => retryGenerateTranscript(selected.id, fileId)}
+              onDismissGenerateTranscriptError={dismissGenerateTranscriptError}
+              learningMediaTime={learningMediaTime}
+              onSeekMedia={seekLearningMedia}
+            />
+          </>
         ) : (
           <>
             <Hero
               session={selected}
-              generationByClip={generationByClip}
+              generationByClip={generationByMedia}
               onNameChange={(name) => renameSession(selected.id, name)}
               onOpenUpload={openUpload}
               onGenerateTranscript={(clipId, diarize) => generateTranscript(selected.id, clipId, diarize)}
@@ -119,8 +152,12 @@ export function TrainingRoom() {
         isDragActive={isUploadDragActive}
         onFileSelected={addClip}
         onClose={closeUpload}
-        title="Upload a clip"
-        dropZoneText="Drag & drop a video or audio file here"
+        title={selected?.toolType === "learning" ? "Upload a file" : "Upload a clip"}
+        dropZoneText={
+          selected?.toolType === "learning"
+            ? "Drag & drop a video, audio, PDF, or EPUB file here"
+            : "Drag & drop a video or audio file here"
+        }
       />
       {isDisciplinePickerOpen && (
         <DisciplinePicker

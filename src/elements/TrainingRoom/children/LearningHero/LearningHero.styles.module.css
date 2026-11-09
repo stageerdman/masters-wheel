@@ -1,0 +1,87 @@
+.root {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.scrollSlot {
+  scrollbar-width: none;
+}
+
+.scrollSlot::-webkit-scrollbar {
+  display: none;
+}
+
+.title {
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+  cursor: text;
+}
+
+.title:hover {
+  color: var(--color-text-muted);
+}
+
+.titleInput {
+  background: transparent;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+  border: none;
+  border-bottom: 1px solid var(--color-accent);
+}
+
+.titleInput:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.pinButton {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.pinButton.pinActive {
+  background: var(--color-discipline-learning);
+  border-color: var(--color-discipline-learning);
+}
+
+.uploadButton {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  border: none;
+  border-radius: 8px;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.uploadButton:hover {
+  color: var(--color-text);
+}
+
+.addFileButton {
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  font-size: var(--text-size-label);
+  cursor: pointer;
+}
+
+.addFileButton:hover {
+  border-color: var(--color-accent);
+}
+
+.editableText {
+  background: transparent;
+  color: var(--color-text);
+  border: none;
+  font-family: inherit;
+  font-size: var(--text-size-body);
+}
+
+.editableText::placeholder {
+  color: var(--color-text-muted);
+}

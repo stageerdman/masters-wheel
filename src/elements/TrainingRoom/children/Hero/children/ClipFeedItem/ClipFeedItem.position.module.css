@@ -18,37 +18,3 @@
   display: flex;
   justify-content: center;
 }
-
-.generateChoices {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.generateButton,
-.secondaryButton {
-  padding: 0.5rem 1rem;
-}
-
-.generating {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  width: 100%;
-  max-width: 320px;
-  padding: 0.5rem 0;
-}
-
-.statusText {
-  text-align: center;
-}
-
-.progressTrack {
-  width: 100%;
-  height: 4px;
-}
-
-.progressFill {
-  width: 40%;
-  height: 100%;
-}

@@ -1,0 +1,75 @@
+.root {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  height: 100%;
+  min-height: 0;
+}
+
+.titleBlock {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.title {
+  width: fit-content;
+}
+
+.titleInput {
+  flex: 1;
+  padding: 0;
+}
+
+.pinButton {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+}
+
+.uploadButton {
+  width: 100%;
+  height: 220px;
+}
+
+/* Always holds the always-scrolling .scrollSlot below, plus — only when
+   pinned — a non-scrolling .pinnedSlot above it; never scrolls itself, so
+   there's exactly one scroll region regardless of pin state. */
+.docSlot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pinnedSlot {
+  flex-shrink: 0;
+}
+
+.scrollSlot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding-bottom: 1rem;
+}
+
+.addFileButton {
+  align-self: center;
+  padding: 0.5rem 1rem;
+}
+
+.editableText {
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+  padding: 0.75rem 0;
+}

@@ -16,6 +16,7 @@ const CREST_BY_TOOL_TYPE: Record<TrainingToolType, string> = {
   chatRoleplay: "#i-chat",
   voiceRoleplay: "#i-mask",
   mindsetShifting: "#i-eye",
+  learning: "#i-book",
 };
 
 // Training Room's full-bleed "choose your discipline" cabinet-select
@@ -89,6 +90,11 @@ export function DisciplinePicker({ onClose, onSelect }: DisciplinePickerProps) {
         {/* Mindset Shifting — an open eye: reframing how you see it. */}
         <symbol id="i-eye" viewBox="0 0 100 100">
           <path mask="url(#discipline-mask-eye)" d="M8 50 C26 20 74 20 92 50 C74 80 26 80 8 50 Z" />
+        </symbol>
+        {/* Learning — an open book: anything worth studying. */}
+        <symbol id="i-book" viewBox="0 0 100 100">
+          <path d="M50 30 C38 24 24 22 14 24 V74 C24 72 38 74 50 80 C62 74 76 72 86 74 V24 C76 22 62 24 50 30 Z" />
+          <path d="M50 30 V80" fill="none" stroke="currentColor" strokeWidth="2" />
         </symbol>
         {/* Card decoration: corner scrollwork, a 4-point sparkle, a small lock, a checkmark badge. */}
         <symbol id="discipline-i-scroll" viewBox="0 0 24 24">
