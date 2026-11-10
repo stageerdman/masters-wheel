@@ -3,9 +3,11 @@
 // ElevenLabs' cloud Speech-to-Text API — the one transcription path this
 // app supports, mirroring ~/dev/transcriber's Cloud tier (see that
 // project's src/audio_tracks.py + src/transcription.py's
-// `_transcribe_with_elevenlabs`). No on-device model, no mic-bleed
-// isolation — this app's version of that process is deliberately the
-// minimal slice: detect tracks, let the user keep/name them, transcribe.
+// `_transcribe_with_elevenlabs`). Extraction also runs each track through
+// an on-device RNNoise background-noise filter (see rnnoise.rs) before
+// upload. No mic-bleed/cross-track isolation, though — this app's version
+// of that process is deliberately the minimal slice: detect tracks, let
+// the user keep/name them, denoise, transcribe.
 //
 // ffmpeg/ffprobe/curl are shelled out to directly (same approach
 // transcriber's Python uses subprocess for) rather than pulling in an HTTP
@@ -205,21 +207,19 @@ fn run_killable(mut command: Command, control: &JobControl) -> Result<(bool, Str
     Ok((success, String::from_utf8_lossy(&stdout_buf).into_owned(), String::from_utf8_lossy(&stderr_buf).into_owned()))
 }
 
-fn extract_track_to_mp3(source_path: &str, index: u32, out_path: &Path, control: &JobControl) -> Result<(), String> {
+fn extract_track_to_mp3(
+    source_path: &str,
+    index: u32,
+    out_path: &Path,
+    noise_model: Option<&Path>,
+    control: &JobControl,
+) -> Result<(), String> {
     let mut command = Command::new(resolve_binary("ffmpeg"));
-    command.args([
-        "-y",
-        "-i",
-        source_path,
-        "-map",
-        &format!("0:{index}"),
-        "-vn",
-        "-codec:a",
-        "libmp3lame",
-        "-q:a",
-        "2",
-        &out_path.to_string_lossy(),
-    ]);
+    command.args(["-y", "-i", source_path, "-map", &format!("0:{index}"), "-vn"]);
+    if let Some(model) = noise_model {
+        command.args(["-af", &crate::rnnoise::filter_arg(model)]);
+    }
+    command.args(["-codec:a", "libmp3lame", "-q:a", "2", &out_path.to_string_lossy()]);
     let (success, _stdout, stderr) = run_killable(command, control)
         .map_err(|e| if e == CANCELLED { e } else { format!("ffmpeg isn't available ({e}). Install it with `brew install ffmpeg`.") })?;
     if !success {
@@ -233,21 +233,18 @@ fn extract_track_to_mp3(source_path: &str, index: u32, out_path: &Path, control:
 // generate_voice_transcript), so this just grabs the file's first audio
 // stream (ffmpeg's "a:0" stream specifier) rather than requiring an
 // explicit absolute stream index.
-fn extract_default_audio_to_mp3(source_path: &str, out_path: &Path, control: &JobControl) -> Result<(), String> {
+fn extract_default_audio_to_mp3(
+    source_path: &str,
+    out_path: &Path,
+    noise_model: Option<&Path>,
+    control: &JobControl,
+) -> Result<(), String> {
     let mut command = Command::new(resolve_binary("ffmpeg"));
-    command.args([
-        "-y",
-        "-i",
-        source_path,
-        "-map",
-        "0:a:0",
-        "-vn",
-        "-codec:a",
-        "libmp3lame",
-        "-q:a",
-        "2",
-        &out_path.to_string_lossy(),
-    ]);
+    command.args(["-y", "-i", source_path, "-map", "0:a:0", "-vn"]);
+    if let Some(model) = noise_model {
+        command.args(["-af", &crate::rnnoise::filter_arg(model)]);
+    }
+    command.args(["-codec:a", "libmp3lame", "-q:a", "2", &out_path.to_string_lossy()]);
     let (success, _stdout, stderr) = run_killable(command, control)
         .map_err(|e| if e == CANCELLED { e } else { format!("ffmpeg isn't available ({e}). Install it with `brew install ffmpeg`.") })?;
     if !success {
@@ -391,6 +388,7 @@ pub async fn generate_transcript(
         let control = control.clone();
         let job_id = job_id.clone();
         move || -> Result<Vec<TrackTranscript>, String> {
+            let noise_model = crate::rnnoise::ensure_model(&app);
             let mut results = Vec::with_capacity(tracks.len());
             for (track_index, track) in tracks.into_iter().enumerate() {
                 if control.is_cancelled() {
@@ -402,7 +400,8 @@ pub async fn generate_transcript(
                     job_id,
                     track.index
                 ));
-                let extraction = extract_track_to_mp3(&source_path, track.index, &tmp_path, &control);
+                let extraction =
+                    extract_track_to_mp3(&source_path, track.index, &tmp_path, noise_model.as_deref(), &control);
                 let response = extraction.and_then(|()| {
                     if control.is_cancelled() {
                         return Err(CANCELLED.to_string());
@@ -469,9 +468,10 @@ pub async fn generate_voice_transcript(
             if control.is_cancelled() {
                 return Err(CANCELLED.to_string());
             }
+            let noise_model = crate::rnnoise::ensure_model(&app);
             emit_progress(&app, &job_id, "extracting", 0, 1, &clip_name);
             let tmp_path = std::env::temp_dir().join(format!("masters-wheel-voice-{job_id}.mp3"));
-            let extraction = extract_default_audio_to_mp3(&source_path, &tmp_path, &control);
+            let extraction = extract_default_audio_to_mp3(&source_path, &tmp_path, noise_model.as_deref(), &control);
             let response = extraction.and_then(|()| {
                 if control.is_cancelled() {
                     return Err(CANCELLED.to_string());

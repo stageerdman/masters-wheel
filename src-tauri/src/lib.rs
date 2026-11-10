@@ -4,6 +4,7 @@ mod claude_cli;
 mod knowledge;
 mod media_server;
 pub mod mcp;
+mod rnnoise;
 mod roleplay;
 mod spaces;
 mod transcode;
