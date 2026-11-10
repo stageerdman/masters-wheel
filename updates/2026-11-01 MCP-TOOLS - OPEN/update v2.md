@@ -120,3 +120,23 @@ event emission) is hand-verified end-to-end up to the Tauri event; the
 React side (listener → appended message → SearchResults render) is only
 `tsc`/`lint`/`build`-clean, not click-tested, per this project's
 no-browser-automation rule.
+
+## Next
+Rebuilt `.app` is already installed at `/Applications/Master's Wheel.app`
+— open it, open a chat with any agent, and ask something that should hit
+`search_performance_reviews` (a literal word/phrase you know appears in
+one of your real transcripts, e.g. "find calls where I mentioned
+[word]"). Confirm: (1) the model actually calls the tool instead of
+guessing, (2) a SearchResults card appears mid-reply (before the text
+reply finishes), (3) matches with `content_access_required` show no
+snippet and the model correctly follows up with `get_performance_review`
+(triggering the normal Decline/Allow/Always Allow card) if it wants to
+read one. Also worth trying a qualitative question ("which call was
+hardest for me") with no literal phrase — confirm the model answers
+straight from `list_performance_reviews`' description field instead of
+calling search_performance_reviews with a made-up phrase.
+
+If all three check out, this round is done — no further phases planned
+unless the click-through surfaces a real bug (same pattern v1's Phase
+A–C fixes followed: build, hand-verify what can be verified without the
+browser, then fix whatever the user's own first real use turns up).
