@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { askAgent, onAskAgentProgress } from "@/lib/assistant/askAgent";
+import { askAgent, onAskAgentProgress, onSearchResultsProgress } from "@/lib/assistant/askAgent";
 import { nameChat } from "@/lib/assistant/nameChat";
 import { attachToPendingReply, beginPendingReply, endPendingReply, growPendingReply, isReplyPending } from "@/lib/assistant/pendingReplies";
 import { listAgents, type Agent } from "@/lib/agents";
@@ -11,7 +11,13 @@ import { useActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
 import { useActiveSpace } from "@/lib/spaces";
 import { onMcpPermissionRequest, onMcpTagUsed, respondToMcpPermission, syncMcpTags } from "@/lib/mcp/bridge";
 import { promoteTag, removeTag as removeTagFromList, withSuggestedTag } from "@/lib/mcp/tags";
-import type { ChatTag, PermissionDecision, PermissionRequestStatus, TaggedResourceKind } from "@/lib/mcp/types";
+import type {
+  ChatTag,
+  PermissionDecision,
+  PermissionRequestStatus,
+  SearchResultMatch,
+  TaggedResourceKind,
+} from "@/lib/mcp/types";
 
 export type AssistantPhase = "closed" | "open" | "closing";
 export type { ChatMessage, ChatMessageRole, ChatSession, Agent };
@@ -562,6 +568,20 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
       growPendingReply(replyId, progress.delta);
       updateMessageInSession(sessionId, replyId, (message) => ({ ...message, text: message.text + progress.delta }));
     });
+    // Appended as its own card the moment the tool result actually
+    // comes back — mid-reply, same as a PermissionRequest card, not
+    // held until the final reply text finishes streaming.
+    const unlistenSearch = await onSearchResultsProgress((progress) => {
+      if (progress.jobId !== jobId) return;
+      appendMessageToSession(sessionId, {
+        id: crypto.randomUUID(),
+        role: "system",
+        text: "",
+        createdAt: new Date().toISOString(),
+        agentId: agent.id,
+        searchResults: { query: progress.query, matches: progress.matches as SearchResultMatch[] },
+      });
+    });
 
     try {
       const reply = await askAgent(
@@ -594,6 +614,7 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
       endPendingReply(replyId, `Couldn't reach Claude: ${error}`, "system");
     } finally {
       unlisten();
+      unlistenSearch();
     }
   }
 

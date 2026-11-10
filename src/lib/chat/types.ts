@@ -1,4 +1,4 @@
-import type { ChatTag, PermissionRequestPayload, TaggedResourceKind } from "@/lib/mcp/types";
+import type { ChatTag, PermissionRequestPayload, SearchResultsPayload, TaggedResourceKind } from "@/lib/mcp/types";
 
 export type ChatMessageRole = "user" | "assistant" | "system";
 
@@ -15,6 +15,12 @@ export type ChatMessage = {
    * MessageList renders PermissionRequest instead of Message for one of
    * these. Absent on every ordinary message. */
   permissionRequest?: PermissionRequestPayload;
+  /** Set only for a search-results card — a snapshot of one
+   * search_performance_reviews call's own result, appended the moment
+   * it comes back mid-reply (see assistant.rs's "search-results" event
+   * and AIAssistant.script.ts's dispatchAgentReply). Absent on every
+   * ordinary message; nothing to respond to, unlike permissionRequest. */
+  searchResults?: SearchResultsPayload;
 };
 
 /** How full one agent's resumed CLI session is, as of its latest reply —

@@ -53,3 +53,17 @@ export type AskAgentProgress = { jobId: string; delta: string };
 export async function onAskAgentProgress(callback: (progress: AskAgentProgress) => void): Promise<() => void> {
   return listen<AskAgentProgress>("ask-agent-progress", (event) => callback(event.payload));
 }
+
+// Fires once per search_performance_reviews call a reply makes, as soon
+// as that tool's own result comes back — before the reply text has even
+// finished streaming. `matches` is SearchResultMatch[] (see
+// src/lib/mcp/types.ts) but typed loosely here, same reasoning as
+// AskAgentProgress: this is a thin wrapper over the raw Tauri event, not
+// the place to own that shape.
+export type SearchResultsProgress = { jobId: string; query: string; matches: unknown };
+
+export async function onSearchResultsProgress(
+  callback: (progress: SearchResultsProgress) => void,
+): Promise<() => void> {
+  return listen<SearchResultsProgress>("search-results", (event) => callback(event.payload));
+}

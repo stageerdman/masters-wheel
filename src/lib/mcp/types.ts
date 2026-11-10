@@ -41,3 +41,28 @@ export type PermissionRequestPayload = {
   document: PermissionDocument;
   status: PermissionRequestStatus;
 };
+
+// One matched record from search_performance_reviews
+// (src-tauri/src/mcp/tools/search_performance_reviews.rs) — field names
+// match that Rust struct's serde output exactly, snake_case included,
+// since this is parsed straight out of the tool's own JSON result, not
+// through a Tauri command's camelCase conversion.
+export type SearchResultMatch = {
+  record_id: string;
+  title: string;
+  date: string;
+  status: string | null;
+  description: string;
+  matched_in: string[];
+  snippet?: string;
+  content_access_required: boolean;
+};
+
+// Carried on a ChatMessage (see chat/types.ts) once the AI calls
+// search_performance_reviews mid-reply — rendered as the SearchResults
+// card. Unlike a PermissionRequest, there's nothing to respond to: it's
+// a one-shot snapshot of that tool call's own result.
+export type SearchResultsPayload = {
+  query: string;
+  matches: SearchResultMatch[];
+};

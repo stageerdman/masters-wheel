@@ -232,3 +232,46 @@ exact sequence instead, recorded here for anyone revisiting this.
   No UI click-through was performed (off-limits per CLAUDE.md for this
   project) — the Decline/Allow/Always-Allow buttons themselves still
   need the user's own click-through to confirm.
+
+## v2 — content search (`search_performance_reviews`)
+
+**Raw stream-json event shapes, hand-verified before writing any
+parsing code** (not assumed from docs): ran a real `claude -p
+--output-format stream-json --include-partial-messages` call that
+actually used a tool (plain `Bash`, outside this app's own MCP config,
+just to see the generic shape) and inspected the raw NDJSON. Confirmed
+`assistant.rs`'s existing loop only ever handled `"stream_event"`
+deltas and the final `"result"` — a tool call's actual request/result
+pair arrives as two *separate* top-level event types it was silently
+ignoring: `{"type":"assistant","message":{"content":[{"type":"tool_use",
+"id":...,"name":...,"input":{...}}]}}` followed later by
+`{"type":"user","message":{"content":[{"type":"tool_result",
+"tool_use_id":...,"content":"<string>"}]}}`. `tool_result.content` for
+an MCP tool is the plain JSON string our tool returned, not a parsed
+object — confirmed directly rather than assumed. This shape is what
+`assistant.rs`'s new `tool_use_names` map + `Some("assistant")`/
+`Some("user")` match arms are built against.
+
+**`search_performance_reviews` verified against this machine's own real
+records**, not a fixture — `~/Documents/Master's Wheel/Closer/records`,
+real Czech-language sales-call transcripts. Built the debug binary, fed
+raw `initialize`/`tools/list`/`tools/call` JSON-RPC over stdin with
+`MASTERS_WHEEL_RECORDS_ROOT` pointed at that real directory:
+- With no `MASTERS_WHEEL_BRIDGE_PORT`/`MASTERS_WHEEL_CHAT_SESSION_ID`
+  set (no bridge context, same as `check_access`'s existing fail-closed
+  path), every content match correctly came back
+  `"content_access_required": true` with no `snippet` key at all —
+  `peek_access` fails closed exactly like `check_access` already does,
+  and real records' `description` text was still visible for free
+  (confirming `list_performance_reviews`-style metadata is never
+  gated).
+- Stood up a one-file Python mock of the bridge's `/access` endpoint
+  (always returns `preauthorized: true`) on `127.0.0.1:47999`, pointed
+  `MASTERS_WHEEL_BRIDGE_PORT` at it, reran the same query:
+  `content_access_required` flipped to `false` and real snippets came
+  back, correctly centered on the matched word with `…` truncation
+  markers — including one match inside a transcript with multi-byte
+  Czech diacritics, confirming the char-indexed (not byte-indexed)
+  snippet windowing never splits a UTF-8 character.
+- Results came back sorted by date descending and correctly capped by
+  `max_results` in both runs.

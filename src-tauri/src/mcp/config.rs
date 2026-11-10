@@ -52,6 +52,7 @@ pub const TRAINING_SESSION_PATH_ENV: &str = "MASTERS_WHEEL_TRAINING_SESSION_PATH
 pub const ALLOWED_TOOLS: &[&str] = &[
     "mcp__masters_wheel__list_performance_reviews",
     "mcp__masters_wheel__get_performance_review",
+    "mcp__masters_wheel__search_performance_reviews",
     "mcp__masters_wheel__list_training_sessions",
     "mcp__masters_wheel__get_training_session",
 ];

@@ -24,7 +24,7 @@ use crate::mcp::bridge::ResourceKind;
 use crate::mcp::permission::{self, Access};
 use crate::mcp::tools::{
     get_performance_review, get_roleplay_transcript, get_training_session, list_performance_reviews,
-    list_training_sessions,
+    list_training_sessions, search_performance_reviews,
 };
 
 #[derive(Clone)]
@@ -44,12 +44,26 @@ impl MastersWheelServer {
     }
 
     #[tool(
-        description = "List every Performance Review record (a saved sales-call review session) the user has in Master's Wheel. Returns each record's id, title, date, status, and description only — never the real notes/transcript/analysis content. Always safe to call, no permission needed. Use get_performance_review with a recordId from this list to actually read a specific record's content (that one may require the user's permission)."
+        description = "List every Performance Review record (a saved sales-call review session) the user has in Master's Wheel. Returns each record's id, title, date, status, and description only — never the real notes/transcript/analysis content. Always safe to call, no permission needed. The description field is real, user-written text about that call — for a qualitative/subjective question (e.g. \"which call was really tough for me personally\", \"find something I felt good about\"), read through every record's description yourself and judge which one(s) fit; don't assume you need a different tool for that. For a literal word/phrase that might appear inside a transcript rather than the description (e.g. \"temperature check\"), use search_performance_reviews instead. Use get_performance_review with a recordId from this list to actually read a specific record's content (that one may require the user's permission)."
     )]
     async fn list_performance_reviews(&self) -> Result<CallToolResult, McpError> {
         let reviews = list_performance_reviews::list(&crate::mcp::paths::records_root());
         let json = serde_json::to_string_pretty(&reviews)
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
+    }
+
+    #[tool(
+        description = "Search for a literal word or phrase across every Performance Review record's title, description, notes, transcript, and AI analysis — use this to find which call(s) a specific thing was said in (e.g. \"temperature check\", a product name, an objection). This is a plain case-insensitive substring match, not semantic/fuzzy search, so use the exact words likely to have been said, not a paraphrase. Always safe to call, no permission needed to run the search itself. Each result names which part matched (matched_in) and, if it matched inside notes/transcript/analysis, either a short snippet of real content (only if this chat already has that record's content allowed) or content_access_required: true with no snippet (this session doesn't have it yet — call get_performance_review with that record_id to actually read it, which will ask the user's permission as usual). For a qualitative/subjective question instead of a literal phrase, use list_performance_reviews and reason over its description field directly rather than searching for a phrase that may not literally appear anywhere."
+    )]
+    async fn search_performance_reviews(
+        &self,
+        Parameters(search_performance_reviews::SearchPerformanceReviewsInput { query, max_results }): Parameters<
+            search_performance_reviews::SearchPerformanceReviewsInput,
+        >,
+    ) -> Result<CallToolResult, McpError> {
+        let matches = search_performance_reviews::search(&crate::mcp::paths::records_root(), &query, max_results).await;
+        let json = serde_json::to_string_pretty(&matches).map_err(|e| McpError::internal_error(e.to_string(), None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
     }
 

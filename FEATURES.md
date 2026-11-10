@@ -253,6 +253,22 @@ between the two lists. Each page gets its own section as pages get added.
       cards collapse to one line ("You declined/allowed/always allow…").
 - [x] Reading a suggested-tagged resource promotes it to active
       automatically, no prompt.
+- [x] `search_performance_reviews` (2026-11-10, see
+      `updates/2026-11-01 MCP-TOOLS - OPEN/update v2.md`): a literal
+      word/phrase search across every record's title, description,
+      notes, transcript, and AI analysis — lets the AI find which
+      call(s) something was actually said in (e.g. "find calls where I
+      used temperature check") without opening records one at a time.
+      Content matches stay gated exactly like `get_performance_review`
+      (a non-blocking peek of this session's existing access, not a new
+      interactive prompt per match); qualitative/subjective questions
+      (e.g. "which call was tough for me") are answered by the model
+      reasoning over `list_performance_reviews`' already-ungated
+      `description` field instead, no search needed. Results render as
+      a dedicated `SearchResults` chat card (title/date/description or
+      snippet per match), appended the moment the tool result comes
+      back mid-reply — same "inline card" pattern `PermissionRequest`
+      already established.
 
 ### To build (real functionality — not started)
 - [ ] More MCP tools beyond Performance Review/Training Room (e.g.

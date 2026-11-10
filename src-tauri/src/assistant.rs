@@ -60,6 +60,7 @@
 // with what Claude actually said.
 
 use serde::Serialize;
+use std::collections::HashMap;
 use std::env::temp_dir;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Command, Stdio};
@@ -134,6 +135,27 @@ struct AskAgentProgress {
 
 fn emit_delta(app: &AppHandle, job_id: &str, delta: &str) {
     let _ = app.emit("ask-agent-progress", AskAgentProgress { job_id: job_id.to_string(), delta: delta.to_string() });
+}
+
+// search_performance_reviews's own full MCP tool name (see
+// mcp/config.rs's ALLOWED_TOOLS) — the one tool_use name this loop
+// cares about recognizing so it can turn that specific tool's result
+// into a chat card instead of leaving it as an invisible mid-turn step.
+const SEARCH_TOOL_NAME: &str = "mcp__masters_wheel__search_performance_reviews";
+
+#[derive(Serialize, Clone)]
+struct SearchResultsEvent {
+    #[serde(rename = "jobId")]
+    job_id: String,
+    query: String,
+    matches: serde_json::Value,
+}
+
+fn emit_search_results(app: &AppHandle, job_id: &str, query: &str, matches: serde_json::Value) {
+    let _ = app.emit(
+        "search-results",
+        SearchResultsEvent { job_id: job_id.to_string(), query: query.to_string(), matches },
+    );
 }
 
 // How many knowledge excerpts to pull into one reply's prompt — enough to
@@ -332,6 +354,16 @@ pub async fn ask_agent(
         let mut is_error = false;
         let mut final_context_tokens = 0u64;
         let mut final_context_window = 0u64;
+        // Maps a tool_use block's id to (tool name, its own input.query
+        // if it's a search call), populated from each "assistant"
+        // message event and consumed by the matching "user" message
+        // event's tool_result — the only way to know which tool a given
+        // result belongs to and what it was actually asked, since
+        // tool_result itself only carries tool_use_id (see this
+        // update's wiki.md for the raw event shapes, hand-verified
+        // against the real CLI). Only ever grows by a handful of
+        // entries per reply.
+        let mut tool_use_names: HashMap<String, (String, String)> = HashMap::new();
 
         for line in BufReader::new(stdout).lines() {
             let Ok(line) = line else { break };
@@ -347,6 +379,37 @@ pub async fn ask_agent(
                     if inner.get("type").and_then(|v| v.as_str()) == Some("content_block_delta") {
                         if let Some(delta) = inner["delta"]["text"].as_str() {
                             emit_delta(&app, &job_id, delta);
+                        }
+                    }
+                }
+                Some("assistant") => {
+                    if let Some(blocks) = event["message"]["content"].as_array() {
+                        for block in blocks {
+                            if block.get("type").and_then(|v| v.as_str()) == Some("tool_use") {
+                                if let (Some(id), Some(name)) =
+                                    (block.get("id").and_then(|v| v.as_str()), block.get("name").and_then(|v| v.as_str()))
+                                {
+                                    let query = block["input"]["query"].as_str().unwrap_or_default().to_string();
+                                    tool_use_names.insert(id.to_string(), (name.to_string(), query));
+                                }
+                            }
+                        }
+                    }
+                }
+                Some("user") => {
+                    if let Some(blocks) = event["message"]["content"].as_array() {
+                        for block in blocks {
+                            if block.get("type").and_then(|v| v.as_str()) != Some("tool_result") {
+                                continue;
+                            }
+                            let Some(tool_use_id) = block.get("tool_use_id").and_then(|v| v.as_str()) else { continue };
+                            let Some((name, query)) = tool_use_names.get(tool_use_id) else { continue };
+                            if name != SEARCH_TOOL_NAME {
+                                continue;
+                            }
+                            let Some(content) = block.get("content").and_then(|v| v.as_str()) else { continue };
+                            let Ok(matches) = serde_json::from_str::<serde_json::Value>(content) else { continue };
+                            emit_search_results(&app, &job_id, query, matches);
                         }
                     }
                 }

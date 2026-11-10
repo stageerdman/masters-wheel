@@ -21,6 +21,31 @@ pub enum Access {
     Declined,
 }
 
+// Non-blocking: only ever hits `/access` (a plain, side-effect-free
+// lookup of this session's existing tag/always-allow state), never
+// `/permission-request` — used by search_performance_reviews to decide
+// whether a content match is already safe to show inline, without
+// firing an interactive prompt for every matched record in one call.
+// Fails closed (false) with no bridge context, same as check_access.
+pub async fn peek_access(resource_kind: ResourceKind, resource_id: &str) -> Result<bool, String> {
+    let port = std::env::var(BRIDGE_PORT_ENV).unwrap_or_default();
+    let session_id = std::env::var(CHAT_SESSION_ID_ENV).unwrap_or_default();
+    if port.is_empty() || session_id.is_empty() {
+        return Ok(false);
+    }
+    let access = post_json(
+        &port,
+        "/access",
+        &serde_json::json!({
+            "session_id": session_id,
+            "resource_kind": resource_kind.as_str(),
+            "resource_id": resource_id,
+        }),
+    )
+    .await?;
+    Ok(access.get("preauthorized").and_then(|v| v.as_bool()).unwrap_or(false))
+}
+
 pub async fn check_access(
     resource_kind: ResourceKind,
     resource_id: &str,

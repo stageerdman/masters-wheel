@@ -4,6 +4,7 @@ import { agentDescription } from "@/lib/agents";
 import type { PermissionDecision } from "@/lib/mcp/types";
 import { Message } from "./children/Message/Message";
 import { PermissionRequest } from "./children/PermissionRequest/PermissionRequest";
+import { SearchResults } from "./children/SearchResults/SearchResults";
 import position from "./MessageList.position.module.css";
 import styles from "./MessageList.styles.module.css";
 
@@ -52,6 +53,9 @@ export function MessageList({ messages, density, agents, respondingAgent, onResp
                 onRespond={(decision) => onRespondToPermission(message.id, decision)}
               />
             );
+          }
+          if (message.searchResults) {
+            return <SearchResults key={message.id} results={message.searchResults} />;
           }
           return <Message key={message.id} message={message} density={density} agents={agents} respondingAgent={author} />;
         })
