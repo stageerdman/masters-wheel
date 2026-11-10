@@ -715,18 +715,26 @@ export function useTrainingRoomData() {
   // target = whatever's in view" idea as Performance Review's window
   // drop, just appending a clip (or, for Learning, a file) instead of
   // creating a new record.
-  const isDragActive = useWindowFileDrop(!isUploadOpen && selected !== null, (paths) => {
-    if (!selectedId) return;
-    if (selected?.toolType === "learning") addLearningFiles(selectedId, paths);
-    else addClips(selectedId, paths);
-  });
+  const onWindowFileDrop = useCallback(
+    (paths: string[]) => {
+      if (!selectedId) return;
+      if (selected?.toolType === "learning") addLearningFiles(selectedId, paths);
+      else addClips(selectedId, paths);
+    },
+    [selectedId, selected, addLearningFiles, addClips]
+  );
+  const isDragActive = useWindowFileDrop(!isUploadOpen && selected !== null, onWindowFileDrop);
 
   // While the upload modal itself is open, a drop lands there instead —
   // mutually exclusive with the page-level drop above, same pattern as
   // Performance Review's modal-specific drop hooks.
-  const isUploadDragActive = useWindowFileDrop(isUploadOpen, (paths) => {
-    if (paths[0]) uploadClip(paths[0]);
-  });
+  const onUploadFileDrop = useCallback(
+    (paths: string[]) => {
+      if (paths[0]) uploadClip(paths[0]);
+    },
+    [uploadClip]
+  );
+  const isUploadDragActive = useWindowFileDrop(isUploadOpen, onUploadFileDrop);
 
   return {
     openSessions,
