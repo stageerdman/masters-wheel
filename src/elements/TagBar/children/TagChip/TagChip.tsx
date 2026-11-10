@@ -1,3 +1,4 @@
+import { DisciplineIcon } from "@/elements/DisciplineIcon/DisciplineIcon";
 import { CALL_STATE_META, type CallState } from "@/elements/PerformanceReview/PerformanceReview.data";
 import { TOOL_TYPE_META, type TrainingToolType } from "@/elements/TrainingRoom/TrainingRoom.data";
 import type { RecordSummary } from "@/lib/records";
@@ -34,13 +35,17 @@ function isTrainingToolType(value: string): value is TrainingToolType {
 // comes from its discipline (same as SessionListItem) — the two kinds
 // have no shared "status" concept, so each resolves its own meta.
 export function TagChip({ tag, record, trainingSession, onRemove }: TagChipProps) {
+  const trainingToolType =
+    tag.resourceKind !== "performanceReview" && trainingSession && isTrainingToolType(trainingSession.toolType)
+      ? trainingSession.toolType
+      : null;
   const meta =
     tag.resourceKind === "performanceReview"
       ? record?.state && isCallState(record.state)
         ? CALL_STATE_META[record.state]
         : UNSET_META
-      : trainingSession && isTrainingToolType(trainingSession.toolType)
-        ? TOOL_TYPE_META[trainingSession.toolType]
+      : trainingToolType
+        ? TOOL_TYPE_META[trainingToolType]
         : UNSET_META;
   const title = tag.resourceKind === "performanceReview" ? record?.title : trainingSession?.name;
   const isActive = tag.state === "active";
@@ -57,7 +62,7 @@ export function TagChip({ tag, record, trainingSession, onRemove }: TagChipProps
         style={{ "--icon-color": meta.color } as React.CSSProperties}
         aria-hidden="true"
       >
-        {meta.glyph}
+        {trainingToolType ? <DisciplineIcon toolType={trainingToolType} /> : "glyph" in meta ? meta.glyph : null}
       </span>
       <span className={`${styles.title} ${position.title}`} data-construction>
         {title ?? tag.resourceId}

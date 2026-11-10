@@ -56,55 +56,38 @@ export const TOOL_TYPE_ORDER: TrainingToolType[] = [
 // whole feature (see AppHeader's "Take it to the training ground" action);
 // the other three are genuinely new categories dictated for the picker —
 // see --color-discipline-* in globals.css.
+// No `glyph` field — SessionListItem/TagChip render the real icon via
+// DisciplineIcon (src/elements/DisciplineIcon), the same artwork as
+// DisciplinePicker's crest for this discipline (see DISCIPLINE_SHAPES).
 export const TOOL_TYPE_META: Record<
   TrainingToolType,
-  { glyph: string; color: string; label: string; description: string; locked: boolean }
+  { color: string; label: string; description: string; locked: boolean }
 > = {
   voiceTraining: {
-    // Two wavy strokes settling into alignment — the imitated voice and
-    // the original voice becoming one, same idea as the "i-waves" crest
-    // in DisciplinePicker.
-    glyph: "≈",
     color: "var(--color-action-training-ground)",
     label: "Voice Training",
     description: "Listen to the voice of the person you want to sound like, then repeat it back the same way.",
     locked: false,
   },
   chatRoleplay: {
-    // A circle holding a circle — the AI prospect's "other world" meeting
-    // yours, same idea as the "i-circles-chat" crest in DisciplinePicker.
-    glyph: "◎",
     color: "var(--color-discipline-chat-roleplay)",
     label: "Chat Roleplay",
     description: "Type your way through a conversation with an AI prospect and see how your wording lands.",
     locked: false,
   },
   voiceRoleplay: {
-    // Same circles-within-circles family as chatRoleplay's glyph, kept
-    // visually distinct (a ring rather than a filled bullseye) since this
-    // one is spoken/live rather than typed — see "i-circles-voice".
-    glyph: "⊚",
     color: "var(--color-discipline-voice-roleplay)",
     label: "Voice Roleplay",
     description: "Speak live against an AI prospect that pushes back in real time, no script to lean on.",
     locked: true,
   },
   mindsetShifting: {
-    // An open, radiating star — the soul/spirit expanding outward, same
-    // idea as the "i-soul" crest in DisciplinePicker.
-    glyph: "✺",
     color: "var(--color-discipline-mindset-shifting)",
     label: "Mindset Shifting",
     description: "Reframe the story you tell yourself before a call, not just the words you say.",
     locked: false,
   },
   learning: {
-    // U+1F4D6 + the text-presentation variation selector (U+FE0E) — a
-    // plain emoji glyph here would ignore the `color` CSS variable
-    // SessionListItem/TagChip apply (see CLAUDE.md's styling standards);
-    // every other glyph in this map is already a default-text-style BMP
-    // symbol for the same reason.
-    glyph: "📖︎",
     color: "var(--color-discipline-learning)",
     label: "Learning",
     description: "Upload anything worth studying — a recording, a PDF, a book — and build your own notes around it.",

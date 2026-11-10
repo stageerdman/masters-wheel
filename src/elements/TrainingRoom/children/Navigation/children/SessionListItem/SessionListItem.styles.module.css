@@ -21,8 +21,6 @@
 .icon {
   color: var(--icon-color);
   font-size: var(--text-size-heading);
-  font-weight: 700;
-  line-height: 1;
 }
 
 .name {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DisciplineIcon } from "@/elements/DisciplineIcon/DisciplineIcon";
 import { formatShortRelativeTime } from "@/lib/formatShortRelativeTime";
 import { TOOL_TYPE_META, type TrainingSession } from "@/elements/TrainingRoom/TrainingRoom.data";
 import position from "./SessionListItem.position.module.css";
@@ -40,7 +41,7 @@ export function SessionListItem({ session, active, onClick, onContextMenu, onRen
         style={{ "--icon-color": meta.color } as React.CSSProperties}
         aria-hidden="true"
       >
-        {meta.glyph}
+        <DisciplineIcon toolType={session.toolType} />
       </span>
       <span className={position.textRows} data-construction>
         {isEditing ? (
