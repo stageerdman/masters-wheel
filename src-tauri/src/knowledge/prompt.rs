@@ -35,7 +35,22 @@ const CORE_RULE: &str = "Only state facts that are actually supported by the kno
 // enough on its own to get them actually used: same live bug as above,
 // a direct "analyze my call" request got answered with "send me the
 // transcript" instead of a single tool call.
-const TOOL_USE_RULE: &str = "You have tools for Master's Wheel's Performance Review records: list_performance_reviews (always available, metadata only) and get_performance_review (the real notes/transcript/analysis for one record_id — may need the user's permission the first time). You also have the same pair for Training Room sessions (any discipline — Voice Training, Chat Roleplay, Voice Roleplay, Mindset Shifting, Learning): list_training_sessions and get_training_session (the real notes/transcript for one session_id — may also need the user's permission the first time). When the user asks you to analyze, review, or discuss a call/session, use these tools yourself instead of asking them to paste a transcript — only ask them directly if the tools genuinely don't have what you need (e.g. access was declined, or nothing matches what they described). Never guess, construct, or pattern-match a record_id/session_id yourself (e.g. from a date or a name the user mentioned) — both are opaque folder names that often have no relationship to the call's title or session's name. Always call list_performance_reviews/list_training_sessions first and copy the id verbatim from whichever result's title/name matches, unless it's already named with its id below. Never write out what a tool call would look like (e.g. text like `{\"name\": \"get_performance_review\", ...}` or `[Tool call: ...]`) as your actual reply — that leaves the user with no real answer. If you intend to use a tool, actually invoke it through the real tool-calling mechanism every time, never describe or simulate the call in prose instead.";
+//
+// The "a sentence announcing intent is never a substitute..." clause
+// was added later, copied verbatim from build_training_context below —
+// found live, twice, not guessed: a model (once in-character as a named
+// persona, once answering in Czech) wrote a short narration like "let
+// me pull the file" / "Mrknu se na přepis..." and then genuinely ended
+// its turn right there — no tool_use content block at all, `is_error:
+// false`, a completely "successful" reply that was really just an
+// unfulfilled promise, needing the user to notice and nudge it (e.g.
+// "so?") before a second turn actually called the tool. This exact
+// failure mode, and this exact wording, had already been found and
+// fixed once for get_roleplay_transcript (see build_training_context's
+// own comment) — it just never got copied over to this rule, which
+// covers get_performance_review/get_training_session, so the identical
+// bug kept happening for those two. See this update's wiki.md.
+const TOOL_USE_RULE: &str = "You have tools for Master's Wheel's Performance Review records: list_performance_reviews (always available, metadata only) and get_performance_review (the real notes/transcript/analysis for one record_id — may need the user's permission the first time). You also have the same pair for Training Room sessions (any discipline — Voice Training, Chat Roleplay, Voice Roleplay, Mindset Shifting, Learning): list_training_sessions and get_training_session (the real notes/transcript for one session_id — may also need the user's permission the first time). When the user asks you to analyze, review, or discuss a call/session, use these tools yourself instead of asking them to paste a transcript — only ask them directly if the tools genuinely don't have what you need (e.g. access was declined, or nothing matches what they described). Never guess, construct, or pattern-match a record_id/session_id yourself (e.g. from a date or a name the user mentioned) — both are opaque folder names that often have no relationship to the call's title or session's name. Always call list_performance_reviews/list_training_sessions first and copy the id verbatim from whichever result's title/name matches, unless it's already named with its id below. Never write out what a tool call would look like (e.g. text like `{\"name\": \"get_performance_review\", ...}` or `[Tool call: ...]`) as your actual reply — that leaves the user with no real answer. If you intend to use a tool, actually invoke it through the real tool-calling mechanism every time, never describe or simulate the call in prose instead. Never say things like \"let me check\", \"let me pull the file\", or \"let me go find out\" without immediately actually calling the tool in that same response — a sentence announcing intent is never a substitute for really invoking it, and ending your turn right after one leaves the user with nothing.";
 
 // A record the user has visibly tagged in this exact chat (see TagBar in
 // the UI) — built from the live bridge state, not anything in the
@@ -190,6 +205,19 @@ mod tests {
         // the user with a non-answer that merely resembled one.
         assert!(TOOL_USE_RULE.to_lowercase().contains("tool call") || TOOL_USE_RULE.to_lowercase().contains("tool-calling"));
         assert!(TOOL_USE_RULE.to_lowercase().contains("never write out"));
+    }
+
+    #[test]
+    fn tool_use_rule_forbids_announcing_intent_without_actually_calling_the_tool() {
+        // Regression check for a live bug, found twice: the model wrote a
+        // short narration ("let me pull the file") and then genuinely
+        // ended its turn without ever emitting a tool_use block — a
+        // "successful" reply (is_error: false) that was really just an
+        // unfulfilled promise. The fix for get_roleplay_transcript
+        // (build_training_context) already had this exact language;
+        // this is the same sentence, finally present here too.
+        assert!(TOOL_USE_RULE.to_lowercase().contains("let me check"));
+        assert!(TOOL_USE_RULE.to_lowercase().contains("substitute"));
     }
 
     #[test]

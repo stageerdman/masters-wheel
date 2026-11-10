@@ -233,7 +233,37 @@ impl Bridge {
     // whatever was decided for it last turn.
     pub fn start_turn(&self, session_id: &str) {
         let mut sessions = self.state.sessions.lock().expect("bridge sessions mutex");
-        sessions.entry(session_id.to_string()).or_default().turn_decisions.clear();
+        let access = sessions.entry(session_id.to_string()).or_default();
+        access.turn_decisions.clear();
+
+        // Snapshot every resource tagged/always-allowed *right now* as
+        // Allowed for the rest of this turn. Without this, a "suggested"
+        // tag (never persisted — it's a pure, live reflection of whatever
+        // record's page happens to be open, see
+        // activeTaggedResource.ts/AIAssistant.script.ts's `visibleTags`)
+        // could be true when this turn's system prompt was built — the
+        // model is explicitly told it may read that record — and then
+        // silently vanish from `tags` before the model actually gets
+        // around to calling the tool: a long turn (a big rubric, a slow
+        // model) leaves plenty of time for the user to navigate away from
+        // that record's page mid-turn, which re-fires the sync effect and
+        // *replaces* this session's live tags (see `sync_tags` above) with
+        // whatever's showing now — dropping the very tag the prompt
+        // already promised. `/access` would then correctly (if confusingly)
+        // say "not preauthorized" against that now-stale live state, but
+        // this snapshot, taken before any of that drift could happen,
+        // still remembers it — so `handle_permission_request`'s
+        // turn_decision short-circuit resolves it silently instead of
+        // showing a card for a resource the user never actually revoked
+        // access to. Reproduced from a real saved chat, not guessed: the
+        // model correctly named the tagged record in its very first line
+        // (proving the tag was live when the turn started) and still hit
+        // an unanswered permission card several minutes later for that
+        // exact same record — see this update's wiki.md.
+        let snapshot: Vec<ResourceId> = access.tags.keys().cloned().chain(access.always_allowed.iter().cloned()).collect();
+        for key in snapshot {
+            access.turn_decisions.insert(key, TurnDecision::Allowed);
+        }
     }
 }
 

@@ -185,6 +185,62 @@ the real CLI with an actual oversized transcript (would need a genuine
 `"always-allow"`, never `"allow"`) and its unit tests are the evidence
 this was broken and is now fixed; rebuilt and reinstalled either way.
 
+## Fix — the real root cause: the model announces intent, then just stops
+Follow-up to the fix above. The user pushed back with a sharp observation
+on the Miroslav Šustáček chat: a tag *was* visually pinned above the
+composer when this happened, and the model clearly knew who "Miroslav
+Šustáček" was without being told — proof a "suggested" tag (never
+persisted, pure live reflection of whatever record's page is open —
+see `activeTaggedResource.ts`) really was in effect when that turn's
+system prompt got built. Traced via the real saved chat JSON
+(`Closer/chats/2e0f3491-....json`): `tags: []` persisted (expected — a
+suggested tag never persists), but `alwaysAllowedResources` only grew
+during the *second* turn, and the single permission-request message in
+the whole file appended only after the second turn's own placeholder —
+meaning turn 1 ended with **no tool call, no permission request, no
+error**, final text just the announcement
+`"**Fetching the call transcript for Miroslav Šustáček...**"`. Caught a
+second live instance of the identical shape in real time while writing
+this up (a brand-new Tony Robbins chat: `"...let me pull the file."`,
+turn complete, `claudeSessionIds` already written, zero permission
+request, unchanged for 3.5+ minutes after) — ruling out a timeout/race
+entirely: the turn wasn't blocked on anything, it simply ended.
+
+**Real root cause**: this exact failure mode — a short "let me check
+X..." narration with no actual `tool_use` block, `is_error: false`, a
+"successful" reply that's really an unfulfilled promise — was already
+found and fixed once before, for `get_roleplay_transcript`
+(`knowledge/prompt.rs`'s `build_training_context`, see its own comment).
+That fix's wording ("never say things like 'let me check'... without
+immediately actually calling the tool in that same response — a
+sentence announcing intent is never a substitute for really invoking
+it") was never copied into `TOOL_USE_RULE`, the rule that actually
+covers `get_performance_review`/`get_training_session` — the two tools
+both live repros hit. `TOOL_USE_RULE` only banned *faking* a tool call's
+syntax in prose, not plainly narrating intent and stopping — a real gap,
+not a guess.
+
+**Fix**: copied the proven sentence into `TOOL_USE_RULE`. One new Rust
+test (`tool_use_rule_forbids_announcing_intent_without_actually_calling_the_tool`).
+`cargo check`/`tsc --noEmit` clean.
+
+Separately, while investigating, found and fixed a second real gap in
+`mcp/bridge.rs`: a tag's gating check was evaluated *live* at the moment
+of the tool call, not locked to whatever was tagged when the turn
+started and the system prompt already promised the model it could read.
+A long turn gives the user plenty of time to navigate away from a
+record's page mid-turn, which re-fires the tag-sync effect and
+*replaces* the session's live tags — dropping the very tag the prompt
+relied on, right before the tool call that needed it. `Bridge::start_turn`
+(already added for the pagination fix above) now also snapshots every
+currently tagged/always-allowed resource as `TurnDecision::Allowed` the
+instant a turn starts, so it survives any later tag-sync churn for the
+rest of that turn. 2 new tests (47 total in this crate, up from 46).
+Both real bugs, found from one user report, by reading the actual saved
+chat logs rather than guessing — not yet re-verified against the real
+CLI with a fresh record (would need a genuine multi-minute run);
+rebuilt and reinstalled either way.
+
 ## Next
 Try it for real: open the AI Assistant, go to Performance Review and open
 a record (watch the dashed "suggested" tag appear above the chat), ask
