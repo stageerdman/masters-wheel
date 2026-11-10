@@ -113,6 +113,10 @@
   padding: 0.125rem 0;
 }
 
+.thinking:not(:first-child) {
+  margin-top: 0.5rem;
+}
+
 .thinkingDot {
   width: 0.375rem;
   height: 0.375rem;

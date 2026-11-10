@@ -241,6 +241,25 @@ chat logs rather than guessing — not yet re-verified against the real
 CLI with a fresh record (would need a genuine multi-minute run);
 rebuilt and reinstalled either way.
 
+## Fix — the "thinking" dots stopped showing after the model's first preamble
+Follow-up ask, once the two fixes above actually worked: the user wanted
+the pulsing "thinking" dots visible for a reply's *entire* background
+work, not just its first moment. Root cause: `Message.tsx`'s dots only
+ever rendered when `message.text === ""` — true for the brief window
+before any text streams in, but false the instant a model's own preamble
+("Let me check that...") streamed in, even though the tool call that
+preamble describes could still take a long time (exactly the multi-chunk
+transcript reads above). From then until the reply actually finished,
+the bubble showed static text with zero indication anything was still
+happening — the same "looks stuck" feeling, just moved one step later.
+
+**Fix**: `Message.tsx` now checks `isReplyPending(message.id)` (see
+`src/lib/assistant/pendingReplies.ts`) instead of `message.text === ""`.
+The dots now render *after* whatever text has streamed so far, for the
+reply's whole real lifetime, and disappear only once it's actually done
+(`endPendingReply`). `tsc --noEmit`/`npm run lint`/`npm run build` clean,
+rebuilt and reinstalled.
+
 ## Next
 Try it for real: open the AI Assistant, go to Performance Review and open
 a record (watch the dashed "suggested" tag appear above the chat), ask

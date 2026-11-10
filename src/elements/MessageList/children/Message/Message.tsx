@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import type { Handlers, State } from "mdast-util-to-hast";
 import type { Agent, ChatMessage } from "@/elements/AIAssistant/AIAssistant.script";
 import { AgentAvatar } from "@/elements/AgentAvatar/AgentAvatar";
+import { isReplyPending } from "@/lib/assistant/pendingReplies";
 import { remarkMentions } from "./Message.script";
 import position from "./Message.position.module.css";
 import styles from "./Message.styles.module.css";
@@ -37,10 +38,18 @@ export function Message({ message, density, agents, respondingAgent }: MessagePr
   // row prepended to each assistant bubble.
   const showAgentLabel = role === "assistant" && Boolean(respondingAgent);
   // An assistant reply starts as an empty placeholder the instant it's
-  // sent (see AIAssistant.script.ts's sendMessage) and only gains text once
-  // the first streamed delta arrives — render that window as "thinking"
-  // rather than an empty bubble.
-  const isThinking = role === "assistant" && message.text === "";
+  // sent (see AIAssistant.script.ts's sendMessage) and stays actively
+  // "pending" (see src/lib/assistant/pendingReplies) for the whole
+  // duration of that one reply, including any stretch where the model
+  // is mid-tool-call and no text is streaming at all — a model's own
+  // preamble text (e.g. "Let me check that...") makes `message.text`
+  // non-empty well before the tool call it describes has actually
+  // finished, so checking only for empty text stopped showing any
+  // "still working" signal the moment that preamble landed, even though
+  // the reply was nowhere near done. Checking `isReplyPending` instead
+  // keeps the dots visible for the reply's entire real lifetime, not
+  // just its first, usually-shortest stretch.
+  const isPending = role === "assistant" && isReplyPending(message.id);
 
   const components: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"] = {
     p: (props) => <p className={`${styles.paragraph} ${position.paragraph}`} data-construction {...props} />,
@@ -100,13 +109,7 @@ export function Message({ message, density, agents, respondingAgent }: MessagePr
           {respondingAgent.name}
         </span>
       )}
-      {isThinking ? (
-        <span className={`${styles.thinking} ${position.thinking}`} data-construction aria-label="Thinking">
-          <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
-          <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
-          <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
-        </span>
-      ) : (
+      {message.text !== "" && (
         <ReactMarkdown
           remarkPlugins={[remarkGfm, [remarkMentions, agents]]}
           remarkRehypeOptions={{ handlers: mentionHandlers }}
@@ -114,6 +117,13 @@ export function Message({ message, density, agents, respondingAgent }: MessagePr
         >
           {message.text}
         </ReactMarkdown>
+      )}
+      {isPending && (
+        <span className={`${styles.thinking} ${position.thinking}`} data-construction aria-label="Still working">
+          <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
+          <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
+          <span className={`${styles.thinkingDot} ${position.thinkingDot}`} data-construction />
+        </span>
       )}
     </div>
   );
