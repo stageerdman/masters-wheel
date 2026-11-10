@@ -17,7 +17,7 @@ export type ParsedTranscript = {
   entries: TranscriptEntry[];
 };
 
-function parseTimestampToSeconds(raw: string): number | null {
+export function parseTimestampToSeconds(raw: string): number | null {
   const parts = raw.trim().split(":");
   if (parts.length === 0 || parts.length > 3) return null;
   const numbers = parts.map((part) => Number(part));

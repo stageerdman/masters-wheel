@@ -7,6 +7,7 @@
 import { FORMAT_PARSERS, type ParsedTranscript, type TranscriptEntry } from "./formats";
 
 export type { ParsedTranscript, TranscriptEntry, TranscriptMetaField } from "./formats";
+export { parseTimestampToSeconds } from "./formats";
 
 export function parseTranscript(raw: string): ParsedTranscript | null {
   for (const parse of FORMAT_PARSERS) {

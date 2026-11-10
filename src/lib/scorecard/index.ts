@@ -51,16 +51,24 @@ export const SCORECARD_RATING_META: Record<
 export type ScorecardItem = {
   criterion: ScorecardCriterionId;
   rating: ScorecardRating;
-  // The AI's reasoning for this score. null timestamp for a Skipped item
-  // with no moment in the call to point at.
+  // The AI's reasoning for this score — may itself contain inline
+  // [MM:SS]/[HH:MM:SS] references, rendered clickable (see
+  // ScorecardRow's remarkTimestamps).
   reasoning: string;
-  timestampSeconds: number | null;
+  // Every moment in the call this phase occurred — empty for a Skipped
+  // item with no moment to point at. More than one entry covers a phase
+  // that happens more than once in a call (e.g. several objections during
+  // Resolving Limitation); the first entry is the phase's start by
+  // convention.
+  timestamps: number[];
 };
 
 export type Scorecard = {
   generatedAt: string;
   // One item per that Space's configured scorecard criteria, same order.
   items: ScorecardItem[];
+  // A short summary of the whole call, shown once below every row.
+  summary: string;
   improvementSuggestion: string;
 };
 

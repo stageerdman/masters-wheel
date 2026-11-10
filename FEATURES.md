@@ -410,15 +410,19 @@ between the two lists. Each page gets its own section as pages get added.
       combobox), 200-char description
 - [x] Detail: draggable bookmark rail, reorderable, splits into two
       independent text panes when a bookmark crosses the line
-- [x] Scorecard (5th bookmark, "SC"): 11 fixed criteria (Frame Setting
-      through Resolving Limitation), each rated Skipped/Poor/Good/Great/
+- [x] Scorecard (5th bookmark, "SC"): one row per that Space's
+      user-configured scoring criteria (Settings page's Score rows — see
+      the Settings section below), each rated Skipped/Poor/Good/Great/
       Outstanding with a color-coded pill (Outstanding gets an animated
-      gradient/glow) and a hover tooltip explaining both the criterion and
-      the rating level. Empty state is just a "Generate Scorecard" button;
-      a document button next to the title opens a modal with the AI's full
-      reasoning per item and a clickable timestamp that seeks the real
-      video. An improvement-suggestion line sits below the rows. "Generate"
-      fabricates a fake result (no real AI call this round — see
+      gradient/glow). Clicking a row expands it inline (one row open at a
+      time) into the moment(s) that phase occurred at — plural; a phase
+      like objection handling can happen more than once in a call, each
+      timestamp independently clickable and seeking the real video — and
+      the AI's reasoning, which can itself reference a moment as
+      `[MM:SS]`/`[HH:MM:SS]` inline, also clickable. A whole-call summary
+      and an improvement-suggestion line sit below the rows. Empty state
+      is just a "Generate Scorecard" button; "Generate" fabricates a fake
+      result (no real AI call this round — see
       `updates/2026-11-02 SCORECARD - OPEN/wiki.md`), not random/no-op.
 - [x] Header: 3-area layout (logo / dynamic island / reserved), dynamic
       island shows the active record's state (clickable, changes it; each

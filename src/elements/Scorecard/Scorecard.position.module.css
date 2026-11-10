@@ -20,15 +20,17 @@
   margin-bottom: 0.5rem;
 }
 
-.reasoningButton {
-  width: 1.75rem;
-  height: 1.75rem;
-  flex-shrink: 0;
-}
-
 .list {
   display: flex;
   flex-direction: column;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
 }
 
 .suggestion {

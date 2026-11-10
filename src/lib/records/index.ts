@@ -104,11 +104,20 @@ function parseScorecard(text: string): Scorecard | null {
     ) {
       continue;
     }
+    // Tolerant upgrade from the pre-multi-timestamp shape: a persisted
+    // `timestampSeconds: number | null` becomes a one- (or zero-) entry
+    // `timestamps` array; already-upgraded files just keep their array.
+    const legacyTimestamp = (item as { timestampSeconds?: unknown }).timestampSeconds;
+    const timestamps = Array.isArray(item.timestamps)
+      ? item.timestamps.filter((value): value is number => typeof value === "number")
+      : typeof legacyTimestamp === "number"
+        ? [legacyTimestamp]
+        : [];
     items.push({
       criterion: item.criterion,
       rating: item.rating as ScorecardItem["rating"],
       reasoning: item.reasoning,
-      timestampSeconds: typeof item.timestampSeconds === "number" ? item.timestampSeconds : null,
+      timestamps,
     });
   }
   if (items.length === 0) return null;
@@ -116,6 +125,7 @@ function parseScorecard(text: string): Scorecard | null {
   return {
     generatedAt: candidate.generatedAt,
     items,
+    summary: typeof candidate.summary === "string" ? candidate.summary : "",
     improvementSuggestion: typeof candidate.improvementSuggestion === "string" ? candidate.improvementSuggestion : "",
   };
 }

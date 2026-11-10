@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { Scorecard as ScorecardData } from "@/lib/scorecard";
 import type { ScorecardCriterionDef } from "@/lib/settings";
 import { ScorecardRow } from "./children/ScorecardRow/ScorecardRow";
-import { ReasoningModal } from "./children/ReasoningModal/ReasoningModal";
 import position from "./Scorecard.position.module.css";
 import styles from "./Scorecard.styles.module.css";
 
@@ -18,12 +17,13 @@ type ScorecardProps = {
 
 // Renders whichever of 3 states applies: nothing generated yet (just a
 // Generate button), a generation in flight (fake delay this round — see
-// this update's wiki.md), or a real result (one row per criterion plus the
-// improvement suggestion). The document button next to the title opens
-// ReasoningModal — the only place the AI's per-item reasoning and
-// timestamps show up.
+// this update's wiki.md), or a real result (one row per criterion, a
+// whole-call summary, then the improvement suggestion). Each row expands
+// inline (click to open, one open at a time — see ScorecardRow) to show
+// its timestamp(s) and reasoning; there's no separate reasoning modal
+// anymore, that job moved into the row itself.
 export function Scorecard({ scorecard, isGenerating, onGenerate, onSeek, criteria }: ScorecardProps) {
-  const [isReasoningOpen, setIsReasoningOpen] = useState(false);
+  const [expandedCriterion, setExpandedCriterion] = useState<string | null>(null);
 
   if (!scorecard) {
     return (
@@ -52,24 +52,32 @@ export function Scorecard({ scorecard, isGenerating, onGenerate, onSeek, criteri
         <h2 className={`${styles.title} ${position.title}`} data-construction>
           Scorecard
         </h2>
-        <button
-          type="button"
-          className={`${styles.reasoningButton} ${position.reasoningButton}`}
-          data-construction
-          onClick={() => setIsReasoningOpen(true)}
-          title="View AI's reasoning"
-          aria-label="View AI's reasoning"
-        >
-          ▤
-        </button>
       </div>
       <ul className={position.list} data-construction>
         {scorecard.items.map((item) => (
           <li key={item.criterion}>
-            <ScorecardRow item={item} criteria={criteria} />
+            <ScorecardRow
+              item={item}
+              criteria={criteria}
+              isExpanded={expandedCriterion === item.criterion}
+              onToggle={() =>
+                setExpandedCriterion((current) => (current === item.criterion ? null : item.criterion))
+              }
+              onSeek={onSeek}
+            />
           </li>
         ))}
       </ul>
+      {scorecard.summary && (
+        <div className={position.summary} data-construction>
+          <p className={`${styles.summaryLabel} ${position.summaryLabel}`} data-construction>
+            Summary
+          </p>
+          <p className={`${styles.summaryText} ${position.summaryText}`} data-construction>
+            {scorecard.summary}
+          </p>
+        </div>
+      )}
       <div className={position.suggestion} data-construction>
         <p className={`${styles.suggestionLabel} ${position.suggestionLabel}`} data-construction>
           Focus next
@@ -78,14 +86,6 @@ export function Scorecard({ scorecard, isGenerating, onGenerate, onSeek, criteri
           {scorecard.improvementSuggestion}
         </p>
       </div>
-      {isReasoningOpen && (
-        <ReasoningModal
-          scorecard={scorecard}
-          criteria={criteria}
-          onSeek={onSeek}
-          onClose={() => setIsReasoningOpen(false)}
-        />
-      )}
     </div>
   );
 }

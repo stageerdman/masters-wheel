@@ -28,17 +28,21 @@
   font-weight: 600;
 }
 
-.reasoningButton {
-  background: transparent;
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  cursor: pointer;
+.summary {
+  border-top: 1px solid var(--color-border);
 }
 
-.reasoningButton:hover {
+.summaryLabel {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summaryText {
   color: var(--color-text);
-  border-color: var(--color-text-muted);
+  font-size: var(--text-size-label);
 }
 
 .suggestion {
