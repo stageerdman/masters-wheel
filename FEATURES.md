@@ -539,9 +539,22 @@ between the two lists. Each page gets its own section as pages get added.
       a dedicated drag & drop popup (same shape as the transcript upload
       modal, its own mutually-exclusive window-drop target) to set that
       record's hero file.
+- [x] Real transcription generation: `generate_transcript`/
+      `generate_voice_transcript` (`src-tauri/src/transcribe.rs`) detect a
+      source file's audio tracks, extract each kept track to mp3 via
+      ffmpeg, and transcribe it through ElevenLabs' cloud Speech-to-Text
+      API — runs as a cancellable background job, progress streamed to the
+      UI. Every extraction also runs through an on-device RNNoise
+      background-noise filter (`src-tauri/src/rnnoise.rs`, ffmpeg's
+      `arnndn`) before upload, so speech picked up from elsewhere in the
+      room (e.g. someone else talking near the mic) doesn't get
+      transcribed too — mirrors `~/dev/transcriber`'s own noise filter. The
+      model is downloaded once into the app's data dir on first use (same
+      caching pattern as the AI Assistant's embedding model) rather than
+      bundled or requiring manual setup; any failure to fetch/apply it
+      just skips the filter for that run, never fails the transcription.
 
 ### To build (real functionality — not started)
-- [ ] Real transcription generation
 - [ ] AI-assisted core lesson extraction; Core Lessons persistence (still
       in-memory only this round — deliberately deferred)
 - [ ] Attachments UI (the `attachments/` folder convention is decided, no

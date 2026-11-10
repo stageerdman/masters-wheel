@@ -221,6 +221,42 @@ new category is dictated" rule, rather than reusing `--color-bookmark-notes`
 (same hue, wrong category) or expanding the core-5 (the AI button reuses
 `--color-accent` directly since blue was already the core accent).
 
+## Background-noise filter on transcription (2026-11-10)
+Real-world bug: a Performance Review transcript picked up the user's wife
+talking in the background of a single-mic recording. `transcribe.rs` had no
+denoise step at all at the time — raw extracted audio went straight to
+ElevenLabs.
+
+Fixed by running every track/clip extraction through ffmpeg's `arnndn`
+filter (RNNoise) before upload — same mechanism `~/dev/transcriber` uses
+(`track_separation.denoise_pcm`, model `bd.rnnn`). Deliberately scoped to
+*this* filter only, not transcriber's much heavier mic-bleed/cross-track
+subtraction system — that targets multiple open mics in one room with an
+isolated reference track per speaker, which doesn't apply to "one mic also
+picked up someone else nearby."
+
+Two decisions made with the user, recorded here since they're easy to
+re-litigate without context:
+- **Model sourcing**: auto-download the model into the app's data directory
+  on first use (`rnnoise.rs::ensure_model`), not a vendored/gitignored file +
+  manual fetch script like transcriber's `scripts/fetch_rnnoise_model.sh`.
+  Mirrors the precedent already in this codebase for the AI Assistant's
+  embedding model (`knowledge/paths.rs::embedding_model_cache_dir`) — no
+  new setup step, nothing to bundle into the `.app`.
+- **No UI toggle.** Applied unconditionally to every extraction, no
+  settings surface. The source file is never touched (only the temp
+  extraction sent to ElevenLabs), so there's nothing destructive to guard
+  with a toggle, and no evidence yet that any real recording needs it off —
+  add a toggle only if that need actually shows up (see
+  `feedback_generalize_on_second_consumer` in project memory for why this
+  project waits for a second real need before adding controls).
+- Any failure to resolve/download/apply the model is fail-open (filter
+  silently skipped), matching transcriber's own "missing model → no-op"
+  behavior — never blocks a transcription.
+- Verified empirically (not just by reading code): downloaded the real
+  model and ran the exact `-af aresample=48000,arnndn=m=...` chain against
+  a synthetic ffmpeg source before shipping.
+
 ## Scope discipline
 - No real video upload, playback, transcription, or AI analysis — all four
   text types are fake/static or locally-editable only. Tracked in
