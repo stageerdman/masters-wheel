@@ -28,6 +28,10 @@
       "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     },
     {
+      "identifier": "fs:allow-size",
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
+    },
+    {
       "identifier": "fs:allow-copy-file",
       "allow": [
         { "path": "$DOCUMENT/Master's Wheel" },
