@@ -16,7 +16,7 @@ import {
 } from "@tauri-apps/plugin-fs";
 import { documentDir, join } from "@tauri-apps/api/path";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { SCORECARD_CRITERIA_ORDER, type Scorecard, type ScorecardItem } from "@/lib/scorecard";
+import type { Scorecard, ScorecardItem } from "@/lib/scorecard";
 import { BASE_DIR, spaceRecordsDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
 import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 
@@ -96,7 +96,7 @@ function parseScorecard(text: string): Scorecard | null {
     const item = entry as Partial<ScorecardItem>;
     if (
       typeof item.criterion !== "string" ||
-      !SCORECARD_CRITERIA_ORDER.includes(item.criterion) ||
+      item.criterion === "" ||
       typeof item.rating !== "number" ||
       item.rating < 0 ||
       item.rating > 4 ||
@@ -111,7 +111,7 @@ function parseScorecard(text: string): Scorecard | null {
       timestampSeconds: typeof item.timestampSeconds === "number" ? item.timestampSeconds : null,
     });
   }
-  if (items.length !== SCORECARD_CRITERIA_ORDER.length) return null;
+  if (items.length === 0) return null;
 
   return {
     generatedAt: candidate.generatedAt,

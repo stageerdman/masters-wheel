@@ -1,5 +1,14 @@
 # Scorecard — wiki
 
+## v2: criteria moved to Settings, not owned here anymore
+As of v2, the 11 criteria below are no longer fixed in this module — they
+became a user-editable per-Space list owned by `src/lib/settings`
+(`ScorecardCriterionDef`). See `update v2.md`'s Phase 1 and
+`updates/2026-11-10 SETTINGS-REDESIGN - OPEN/wiki.md` for the full
+reasoning (why ids are stable/never name-derived, how the original 11 seed
+so old `scorecard.json` files keep resolving). This module still owns the
+rating scale (0-4) and the generated/persisted `Scorecard` shape.
+
 ## Why a 5th bookmark kind, not a separate panel
 AI / Transcript / Notes / Core Lessons were already exactly this shape: one
 `ContentKind`, switched via `BookmarkRail`/`SplitRail`, rendered by the

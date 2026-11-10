@@ -1,13 +1,15 @@
 "use client";
 
 import { formatTimestamp } from "@/lib/transcript";
-import { SCORECARD_CRITERIA_META, type Scorecard as ScorecardData } from "@/lib/scorecard";
+import type { Scorecard as ScorecardData } from "@/lib/scorecard";
+import type { ScorecardCriterionDef } from "@/lib/settings";
 import { RatingPill } from "../RatingPill/RatingPill";
 import position from "./ReasoningModal.position.module.css";
 import styles from "./ReasoningModal.styles.module.css";
 
 type ReasoningModalProps = {
   scorecard: ScorecardData;
+  criteria: ScorecardCriterionDef[];
   onSeek: (seconds: number) => void;
   onClose: () => void;
 };
@@ -17,7 +19,7 @@ type ReasoningModalProps = {
 // video — reuses the same seek plumbing the Transcript tab already has.
 // A Skipped item has no moment in the call to point at, so its timestamp
 // chip is omitted rather than shown disabled.
-export function ReasoningModal({ scorecard, onSeek, onClose }: ReasoningModalProps) {
+export function ReasoningModal({ scorecard, criteria, onSeek, onClose }: ReasoningModalProps) {
   return (
     <div className={`${styles.backdrop} ${position.backdrop}`} data-construction onClick={onClose}>
       <div
@@ -41,12 +43,12 @@ export function ReasoningModal({ scorecard, onSeek, onClose }: ReasoningModalPro
         </div>
         <ul className={position.list} data-construction>
           {scorecard.items.map((item) => {
-            const criterion = SCORECARD_CRITERIA_META[item.criterion];
+            const criterion = criteria.find((candidate) => candidate.id === item.criterion);
             return (
               <li key={item.criterion} className={position.item} data-construction>
                 <div className={position.itemHeader} data-construction>
                   <span className={`${styles.itemLabel} ${position.itemLabel}`} data-construction>
-                    {criterion.label}
+                    {criterion?.name || "Untitled score"}
                   </span>
                   <RatingPill rating={item.rating} />
                   {item.timestampSeconds !== null && (

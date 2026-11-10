@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { useHeaderActions } from "@/elements/AppHeader/AppHeader.context";
-import { readSettings, writeSettings } from "@/lib/settings";
+import { readSettings, writeSettings, type ScorecardCriterionDef } from "@/lib/settings";
+import { BackgroundImage } from "./children/BackgroundImage/BackgroundImage";
+import { SettingsSidebar, type SettingsCategory } from "./children/SettingsSidebar/SettingsSidebar";
+import { ProfilePanel } from "./children/ProfilePanel/ProfilePanel";
+import { ScorePanel } from "./children/ScorePanel/ScorePanel";
 import position from "./Settings.position.module.css";
 import styles from "./Settings.styles.module.css";
 
@@ -11,9 +15,12 @@ const WRITE_DEBOUNCE_MS = 400;
 
 export function Settings() {
   const { setBrand } = useHeaderActions();
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>("profile");
   const [businessDescription, setBusinessDescription] = useState("");
+  const [scorecardCriteria, setScorecardCriteria] = useState<ScorecardCriterionDef[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const writeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const businessDescriptionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const scorecardCriteriaTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     setBrand({ label: "Settings", showLogo: true });
@@ -25,6 +32,7 @@ export function Settings() {
     readSettings().then((settings) => {
       if (cancelled) return;
       setBusinessDescription(settings.businessDescription);
+      setScorecardCriteria(settings.scorecardCriteria);
       setIsLoading(false);
     });
     return () => {
@@ -32,12 +40,23 @@ export function Settings() {
     };
   }, []);
 
-  function handleChange(value: string) {
+  function handleBusinessDescriptionChange(value: string) {
     setBusinessDescription(value);
     if (!isTauri()) return;
-    clearTimeout(writeTimer.current);
-    writeTimer.current = setTimeout(() => {
+    clearTimeout(businessDescriptionTimer.current);
+    businessDescriptionTimer.current = setTimeout(() => {
       writeSettings({ businessDescription: value }).catch((error) =>
+        console.error("Failed to write settings:", error)
+      );
+    }, WRITE_DEBOUNCE_MS);
+  }
+
+  function handleScorecardCriteriaChange(next: ScorecardCriterionDef[]) {
+    setScorecardCriteria(next);
+    if (!isTauri()) return;
+    clearTimeout(scorecardCriteriaTimer.current);
+    scorecardCriteriaTimer.current = setTimeout(() => {
+      writeSettings({ scorecardCriteria: next }).catch((error) =>
         console.error("Failed to write settings:", error)
       );
     }, WRITE_DEBOUNCE_MS);
@@ -47,17 +66,18 @@ export function Settings() {
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      <label className={`${styles.label} ${position.label}`} data-construction htmlFor="settings-business-description">
-        What are you selling, or what do you do in this workspace?
-      </label>
-      <textarea
-        id="settings-business-description"
-        className={`${styles.textarea} ${position.textarea}`}
-        data-construction
-        value={businessDescription}
-        onChange={(event) => handleChange(event.target.value)}
-        placeholder="e.g. I sell enterprise security software to mid-market IT teams."
-      />
+      <BackgroundImage />
+      <SettingsSidebar active={activeCategory} onSelect={setActiveCategory} />
+      <div className={position.content} data-construction>
+        {activeCategory === "profile" ? (
+          <ProfilePanel
+            businessDescription={businessDescription}
+            onBusinessDescriptionChange={handleBusinessDescriptionChange}
+          />
+        ) : (
+          <ScorePanel criteria={scorecardCriteria} onChange={handleScorecardCriteriaChange} />
+        )}
+      </div>
     </div>
   );
 }

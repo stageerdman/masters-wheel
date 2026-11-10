@@ -2,6 +2,7 @@ import { Transcript } from "@/elements/Transcript/Transcript";
 import { Scorecard } from "@/elements/Scorecard/Scorecard";
 import type { ContentKind, VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
+import type { ScorecardCriterionDef } from "@/lib/settings";
 import position from "./TextView.position.module.css";
 import styles from "./TextView.styles.module.css";
 
@@ -24,6 +25,7 @@ type TextViewProps = {
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
   isGeneratingScorecard: boolean;
   onGenerateScorecard: () => void;
+  scorecardCriteria: ScorecardCriterionDef[];
 };
 
 // Renders whichever text type is active.
@@ -46,6 +48,7 @@ export function TextView({
   onRenameTranscriptSpeaker,
   isGeneratingScorecard,
   onGenerateScorecard,
+  scorecardCriteria,
 }: TextViewProps) {
   if (kind === "ai") {
     return (
@@ -94,6 +97,7 @@ export function TextView({
         isGenerating={isGeneratingScorecard}
         onGenerate={onGenerateScorecard}
         onSeek={onSeekTranscript}
+        criteria={scorecardCriteria}
       />
     );
   }

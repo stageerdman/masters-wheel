@@ -1,0 +1,53 @@
+.root {
+  background: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface) 55%);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--color-glass-border);
+  border-radius: 8px;
+  color: var(--color-on-chip);
+  overflow: hidden;
+}
+
+.header {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: var(--text-size-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.header:hover {
+  background: color-mix(in srgb, var(--color-on-chip) 10%, transparent);
+}
+
+.header:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.label {
+  font-weight: 500;
+}
+
+.panel {
+  background: color-mix(in srgb, var(--color-text) 35%, transparent);
+  border-top: 1px solid var(--color-glass-border);
+}
+
+.textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--color-on-chip);
+  font-size: var(--text-size-body);
+  font-family: inherit;
+  resize: none;
+}
+
+.textarea::placeholder {
+  color: color-mix(in srgb, var(--color-on-chip) 65%, transparent);
+}
+
+.textarea:focus-visible {
+  outline: none;
+}

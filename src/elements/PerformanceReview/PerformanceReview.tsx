@@ -60,6 +60,7 @@ export function PerformanceReview() {
     renameTranscriptSpeaker,
     isGeneratingScorecard,
     onGenerateScorecard,
+    scorecardCriteria,
     isVideoUploadOpen,
     openVideoUpload,
     closeVideoUpload,
@@ -152,6 +153,7 @@ export function PerformanceReview() {
             onRenameTranscriptSpeaker={renameTranscriptSpeaker}
             isGeneratingScorecard={isGeneratingScorecard}
             onGenerateScorecard={onGenerateScorecard}
+            scorecardCriteria={scorecardCriteria}
           />
           <Detail
             video={selected}
@@ -171,6 +173,7 @@ export function PerformanceReview() {
             onRenameTranscriptSpeaker={renameTranscriptSpeaker}
             isGeneratingScorecard={isGeneratingScorecard}
             onGenerateScorecard={onGenerateScorecard}
+            scorecardCriteria={scorecardCriteria}
           />
         </>
       ) : (

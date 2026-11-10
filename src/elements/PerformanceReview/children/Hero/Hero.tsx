@@ -8,6 +8,7 @@ import { MetaPanel } from "./children/MetaPanel/MetaPanel";
 import { usePersistedActiveKind } from "./Hero.script";
 import { CONTENT_KIND_META, CONTENT_KIND_ORDER, type VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
+import type { ScorecardCriterionDef } from "@/lib/settings";
 import position from "./Hero.position.module.css";
 import styles from "./Hero.styles.module.css";
 
@@ -38,6 +39,7 @@ type HeroProps = {
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
   isGeneratingScorecard: boolean;
   onGenerateScorecard: () => void;
+  scorecardCriteria: ScorecardCriterionDef[];
 };
 
 export function Hero({
@@ -67,6 +69,7 @@ export function Hero({
   onRenameTranscriptSpeaker,
   isGeneratingScorecard,
   onGenerateScorecard,
+  scorecardCriteria,
 }: HeroProps) {
   const [active, setActive] = usePersistedActiveKind();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -164,6 +167,7 @@ export function Hero({
           onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
           isGeneratingScorecard={isGeneratingScorecard}
           onGenerateScorecard={onGenerateScorecard}
+          scorecardCriteria={scorecardCriteria}
         />
       </div>
     </section>

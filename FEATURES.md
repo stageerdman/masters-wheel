@@ -903,3 +903,20 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
       setup conversation will read from (see
       `updates/2026-11-06 TRAINING-ROOM - OPEN/update v1.md`'s Phase 15),
       not yet consumed by anything.
+- [x] Scorecard's scoring criteria are now a real, user-editable,
+      per-Space list ("Score 1", "Score 2", ... each with an editable
+      name + prompt) instead of 11 hardcoded criteria — `scorecardCriteria`
+      in `src/lib/settings`, seeded with the original 11 on first read so
+      existing scorecards keep resolving. Editing always keeps exactly one
+      blank row at the end to add the next score. See
+      `updates/2026-11-10 SETTINGS-REDESIGN - OPEN/update v1.md`.
+
+### Built (UI shell only — no real functionality behind it)
+- [x] Full-bleed themed background image (Hogwarts-Legacy-styled,
+      `public/settings-background.webp`) behind a left icon sidebar
+      (Profile / Score categories, Phosphor duotone icons) — see
+      `updates/2026-11-10 SETTINGS-REDESIGN - OPEN/update v1.md`. Profile's
+      business-description field and Score's criteria list are both real
+      (see "Built — real backend" above); only the visual shell itself
+      (background, sidebar, glass-tinted row chrome) is new UI with no
+      separate backend behind the shell itself.

@@ -1,93 +1,13 @@
-// Scorecard types + fixed criteria/rating metadata — the dictated 11
-// criteria and 5 rating levels for scoring a sales call. Kept separate
-// from src/lib/records (plain disk I/O) the same way src/lib/transcript is
-// separate from it: this module owns the shape and meaning of the data,
-// records owns reading/writing scorecard.json.
+// Scorecard types + rating metadata. The criteria scored (names + what
+// each one means) are user-defined per Space — see src/lib/settings'
+// `scorecardCriteria` — not fixed in code. This module owns the shape and
+// meaning of the *rating* data; records owns reading/writing
+// scorecard.json; settings owns the criteria list itself.
 
-export type ScorecardCriterionId =
-  | "frameSetting"
-  | "discoveryProblemAnchor"
-  | "discoveryCurrentState"
-  | "discoveryProblemImpacts"
-  | "discoveryIdealGoal"
-  | "discoveryConsequences"
-  | "discoveryWhyNow"
-  | "summary"
-  | "solution"
-  | "closing"
-  | "resolvingLimitation";
-
-export const SCORECARD_CRITERIA_ORDER: ScorecardCriterionId[] = [
-  "frameSetting",
-  "discoveryProblemAnchor",
-  "discoveryCurrentState",
-  "discoveryProblemImpacts",
-  "discoveryIdealGoal",
-  "discoveryConsequences",
-  "discoveryWhyNow",
-  "summary",
-  "solution",
-  "closing",
-  "resolvingLimitation",
-];
-
-export const SCORECARD_CRITERIA_META: Record<ScorecardCriterionId, { label: string; description: string }> = {
-  frameSetting: {
-    label: "Frame Setting",
-    description:
-      "It's clear what the client can expect from the call: what areas get covered, what result they'll have by the end, and that a decision can be made today.",
-  },
-  discoveryProblemAnchor: {
-    label: "Discovery — Problem Anchor",
-    description:
-      "A problem is clearly, explicitly named by the client — ideally the first thing asked in discovery — and repeated back to confirm it.",
-  },
-  discoveryCurrentState: {
-    label: "Discovery — Current State",
-    description:
-      "The contextual environment of the problem: how long it's lasted, what's been tried, what worked or didn't, and whether this is even solvable here.",
-  },
-  discoveryProblemImpacts: {
-    label: "Discovery — Problem Impacts",
-    description:
-      "How the problem actually shows up day to day — relationships, work, self-esteem — and what frustrates the client most about it.",
-  },
-  discoveryIdealGoal: {
-    label: "Discovery — Ideal Goal",
-    description:
-      "What the client truly wants to achieve — a number or stated goal, the emotion underneath why it matters, and the impact reaching it would have.",
-  },
-  discoveryConsequences: {
-    label: "Discovery — Consequences",
-    description:
-      "What happens if this problem just continues — what the client is afraid of, and why resolving it now instead of later actually matters.",
-  },
-  discoveryWhyNow: {
-    label: "Discovery — Why Now",
-    description:
-      "Whether the client is ready to start today, and the emotional reason they want to start now rather than wait any longer.",
-  },
-  summary: {
-    label: "Summary",
-    description:
-      "Shows the client their situation was understood and processed, ending with a real check — \"did I get that right?\" — not just a replay of what they said.",
-  },
-  solution: {
-    label: "Solution",
-    description:
-      "Presents the solution with no hedging, using the client's own words, in up to 3 pillars that map directly to what they said they want.",
-  },
-  closing: {
-    label: "Closing",
-    description:
-      "Leads the client to a decision right now — surfacing hesitations before the price, then stating the price plainly, with no extra talk around it.",
-  },
-  resolvingLimitation: {
-    label: "Resolving Limitation",
-    description:
-      "Catching objections, doubts, or contradictions the moment they appear and actually resolving them — not just noticing and moving past them.",
-  },
-};
+// An opaque, stable id referencing a ScorecardCriterionDef in that Space's
+// settings — never the criterion's display name, so renaming a score
+// never orphans historical scorecards that reference its id.
+export type ScorecardCriterionId = string;
 
 // 0 doesn't carry a score (see finalScore below) — it's for a deliberate,
 // legitimate omission (e.g. the client was irrelevant, or recording
@@ -139,7 +59,7 @@ export type ScorecardItem = {
 
 export type Scorecard = {
   generatedAt: string;
-  // Always exactly one item per SCORECARD_CRITERIA_ORDER entry, same order.
+  // One item per that Space's configured scorecard criteria, same order.
   items: ScorecardItem[];
   improvementSuggestion: string;
 };

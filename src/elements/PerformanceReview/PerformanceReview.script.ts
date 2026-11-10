@@ -34,6 +34,7 @@ import {
 import { parseTranscript, renameSpeaker, serializeTranscript } from "@/lib/transcript";
 import { generateFakeScorecard } from "@/lib/scorecard/generate";
 import type { Scorecard } from "@/lib/scorecard";
+import { readSettings, type ScorecardCriterionDef } from "@/lib/settings";
 import { setActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
 import {
   GENERATE_CANCELLED,
@@ -70,6 +71,10 @@ export function usePerformanceReviewData() {
   // record, not the rich job-tracking transcript generation has — there's
   // no real background process to report progress on.
   const [scorecardGenerating, setScorecardGenerating] = useState<Record<string, boolean>>({});
+  // That Space's configured scoring criteria (Settings page's Score
+  // rows) — needed here only to resolve a persisted item's `criterion`
+  // id back to a display name/prompt; not re-fetched per record.
+  const [scorecardCriteria, setScorecardCriteria] = useState<ScorecardCriterionDef[]>([]);
   const [isTranscriptUploadOpen, setIsTranscriptUploadOpen] = useState(false);
   const [transcriptUploadError, setTranscriptUploadError] = useState<string | null>(null);
   const [isGenerateTranscriptOpen, setIsGenerateTranscriptOpen] = useState(false);
@@ -104,6 +109,19 @@ export function usePerformanceReviewData() {
         setSelectedId((current) => current ?? loaded[0]?.id ?? null);
       })
       .catch((error) => console.error("Failed to load records:", error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Loads that Space's configured scorecard criteria once — only needed to
+  // resolve a scorecard item's `criterion` id back to a display name.
+  useEffect(() => {
+    let cancelled = false;
+    readSettings().then((settings) => {
+      if (cancelled) return;
+      setScorecardCriteria(settings.scorecardCriteria);
+    });
     return () => {
       cancelled = true;
     };
@@ -487,16 +505,18 @@ export function usePerformanceReviewData() {
 
   const generateScorecard = useCallback((id: string) => {
     setScorecardGenerating((prev) => ({ ...prev, [id]: true }));
-    setTimeout(() => {
-      const fresh = generateFakeScorecard();
-      setScorecards((prev) => ({ ...prev, [id]: fresh }));
-      setScorecardGenerating((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      writeScorecard(id, fresh).catch((error) => console.error("Failed to write scorecard:", id, error));
-    }, GENERATE_SCORECARD_DELAY_MS);
+    readSettings().then((settings) => {
+      setTimeout(() => {
+        const fresh = generateFakeScorecard(settings.scorecardCriteria);
+        setScorecards((prev) => ({ ...prev, [id]: fresh }));
+        setScorecardGenerating((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        writeScorecard(id, fresh).catch((error) => console.error("Failed to write scorecard:", id, error));
+      }, GENERATE_SCORECARD_DELAY_MS);
+    });
   }, []);
 
   // Deletes a record entirely (its whole on-disk folder) and drops it from
@@ -631,6 +651,7 @@ export function usePerformanceReviewData() {
     retryGenerateTranscript,
     dismissGenerateTranscriptError,
     renameTranscriptSpeaker,
+    scorecardCriteria,
     isGeneratingScorecard: selectedId ? (scorecardGenerating[selectedId] ?? false) : false,
     onGenerateScorecard: () => {
       if (selectedId) generateScorecard(selectedId);

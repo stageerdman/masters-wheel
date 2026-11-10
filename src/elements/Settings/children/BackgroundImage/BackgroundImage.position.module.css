@@ -1,0 +1,5 @@
+/* `fill` (next/image) already applies position:absolute/inset:0 inline;
+   this only needs to set the stacking layer relative to .content. */
+.root {
+  z-index: 0;
+}

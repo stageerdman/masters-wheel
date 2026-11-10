@@ -5,6 +5,7 @@ import { TextView } from "@/elements/TextView/TextView";
 import { useSplitRail } from "@/lib/splitRail";
 import { CONTENT_KIND_META, CONTENT_KIND_ORDER, type VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
+import type { ScorecardCriterionDef } from "@/lib/settings";
 import position from "./Detail.position.module.css";
 import styles from "./Detail.styles.module.css";
 
@@ -26,6 +27,7 @@ type DetailProps = {
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
   isGeneratingScorecard: boolean;
   onGenerateScorecard: () => void;
+  scorecardCriteria: ScorecardCriterionDef[];
 };
 
 export function Detail({
@@ -46,6 +48,7 @@ export function Detail({
   onRenameTranscriptSpeaker,
   isGeneratingScorecard,
   onGenerateScorecard,
+  scorecardCriteria,
 }: DetailProps) {
   const {
     railRef,
@@ -87,6 +90,7 @@ export function Detail({
             onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
             isGeneratingScorecard={isGeneratingScorecard}
             onGenerateScorecard={onGenerateScorecard}
+            scorecardCriteria={scorecardCriteria}
           />
         </div>
         {isSplit && bottomKind && (
@@ -116,6 +120,7 @@ export function Detail({
                 onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
                 isGeneratingScorecard={isGeneratingScorecard}
                 onGenerateScorecard={onGenerateScorecard}
+                scorecardCriteria={scorecardCriteria}
               />
             </div>
           </>
