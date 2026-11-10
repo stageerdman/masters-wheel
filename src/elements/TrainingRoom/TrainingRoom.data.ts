@@ -4,6 +4,8 @@
 // `updates/2026-11-06 TRAINING-ROOM - OPEN/` for the roadmap.
 
 import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
+import { parseWordTimings } from "@/lib/training";
+import type { DiarizedWord } from "@/lib/transcript/generate";
 import type { RoleplayState } from "./children/ChatRoleplaySession/ChatRoleplaySession.data";
 
 // Detail's content kinds. Voice Training still only ever shows "notes"
@@ -59,28 +61,38 @@ export const TOOL_TYPE_META: Record<
   { glyph: string; color: string; label: string; description: string; locked: boolean }
 > = {
   voiceTraining: {
-    glyph: "♪",
+    // Two wavy strokes settling into alignment — the imitated voice and
+    // the original voice becoming one, same idea as the "i-waves" crest
+    // in DisciplinePicker.
+    glyph: "≈",
     color: "var(--color-action-training-ground)",
     label: "Voice Training",
     description: "Listen to the voice of the person you want to sound like, then repeat it back the same way.",
     locked: false,
   },
   chatRoleplay: {
-    glyph: "❝",
+    // A circle holding a circle — the AI prospect's "other world" meeting
+    // yours, same idea as the "i-circles-chat" crest in DisciplinePicker.
+    glyph: "◎",
     color: "var(--color-discipline-chat-roleplay)",
     label: "Chat Roleplay",
     description: "Type your way through a conversation with an AI prospect and see how your wording lands.",
     locked: false,
   },
   voiceRoleplay: {
-    glyph: "☏",
+    // Same circles-within-circles family as chatRoleplay's glyph, kept
+    // visually distinct (a ring rather than a filled bullseye) since this
+    // one is spoken/live rather than typed — see "i-circles-voice".
+    glyph: "⊚",
     color: "var(--color-discipline-voice-roleplay)",
     label: "Voice Roleplay",
     description: "Speak live against an AI prospect that pushes back in real time, no script to lean on.",
     locked: true,
   },
   mindsetShifting: {
-    glyph: "✦",
+    // An open, radiating star — the soul/spirit expanding outward, same
+    // idea as the "i-soul" crest in DisciplinePicker.
+    glyph: "✺",
     color: "var(--color-discipline-mindset-shifting)",
     label: "Mindset Shifting",
     description: "Reframe the story you tell yourself before a call, not just the words you say.",
@@ -123,6 +135,14 @@ export type TrainingClip = {
   // generationByClip, same "ephemeral, job-tracked" shape as Performance
   // Review's generationByRecord.
   transcriptRaw: string | null;
+  // ElevenLabs' real per-word timestamps behind transcriptRaw — see
+  // StoredClipMeta's own comment in src/lib/training. `null` until
+  // generated, or for a clip transcribed before this field existed (falls
+  // back to LyricsTranscript's even-split approximation).
+  wordTimings: DiarizedWord[] | null;
+  // Which "Generate transcript" choice produced transcriptRaw — see
+  // StoredClipMeta's own comment in src/lib/training.
+  diarize: boolean | null;
 };
 
 // Learning's own file kind — "document" (pdf/epub) is store-and-download
@@ -148,6 +168,11 @@ export type LearningFile = {
   // video/audio only; always null for "document" — PDF/EPUB text
   // extraction is explicitly future work, not this phase.
   transcriptRaw: string | null;
+  // Same real per-word timing as TrainingClip's own wordTimings — shared
+  // generateTranscript call, same shape.
+  wordTimings: DiarizedWord[] | null;
+  // Same as TrainingClip's own diarize.
+  diarize: boolean | null;
 };
 
 // One ordered block of Learning's single notes document — "single" per
@@ -208,6 +233,8 @@ function parseLearningFile(raw: unknown): LearningFile | null {
     extension: typeof candidate.extension === "string" ? candidate.extension : "",
     sizeBytes: typeof candidate.sizeBytes === "number" ? candidate.sizeBytes : 0,
     transcriptRaw: typeof candidate.transcriptRaw === "string" ? candidate.transcriptRaw : null,
+    wordTimings: parseWordTimings(candidate.wordTimings),
+    diarize: typeof candidate.diarize === "boolean" ? candidate.diarize : null,
   };
 }
 

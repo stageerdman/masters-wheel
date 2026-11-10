@@ -12,10 +12,10 @@ type DisciplinePickerProps = {
 };
 
 const CREST_BY_TOOL_TYPE: Record<TrainingToolType, string> = {
-  voiceTraining: "#i-speaker",
-  chatRoleplay: "#i-chat",
-  voiceRoleplay: "#i-mask",
-  mindsetShifting: "#i-eye",
+  voiceTraining: "#i-waves",
+  chatRoleplay: "#i-circles-chat",
+  voiceRoleplay: "#i-circles-voice",
+  mindsetShifting: "#i-soul",
   learning: "#i-book",
 };
 
@@ -50,51 +50,92 @@ export function DisciplinePicker({ onClose, onSelect }: DisciplinePickerProps) {
             <stop offset="70%" stopColor="#5c5138" />
             <stop offset="100%" stopColor="#cdb378" />
           </linearGradient>
-          <mask id="discipline-mask-chat" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-            <rect width="100" height="100" fill="#fff" />
-            <circle cx="34" cy="43" r="5" fill="#000" />
-            <circle cx="50" cy="43" r="5" fill="#000" />
-            <circle cx="66" cy="43" r="5" fill="#000" />
-          </mask>
-          <mask id="discipline-mask-face" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-            <rect width="100" height="100" fill="#fff" />
-            <ellipse cx="36" cy="46" rx="8" ry="10" transform="rotate(-10 36 46)" fill="#000" />
-            <ellipse cx="64" cy="46" rx="8" ry="10" transform="rotate(10 64 46)" fill="#000" />
-            <ellipse cx="50" cy="74" rx="14" ry="5" fill="#000" />
-          </mask>
-          <mask id="discipline-mask-eye" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-            <rect width="100" height="100" fill="#fff" />
-            <circle cx="50" cy="50" r="14" fill="#000" />
-          </mask>
         </defs>
-        {/* Voice Training — a speaker with soundwaves: your voice carried back to you. */}
-        <symbol id="i-speaker" viewBox="0 0 100 100">
-          <path d="M30 38 L30 62 L45 62 L63 77 L63 23 L45 38 Z" />
-          <path d="M70 40 A15 15 0 0 1 70 60" fill="none" stroke="url(#discipline-gold-foil)" strokeWidth="6" strokeLinecap="round" />
-          <path d="M78 31 A28 28 0 0 1 78 69" fill="none" stroke="url(#discipline-gold-foil)" strokeWidth="6" strokeLinecap="round" />
-        </symbol>
-        {/* Chat Roleplay — a speech bubble: a typed conversation. */}
-        <symbol id="i-chat" viewBox="0 0 100 100">
+        {/* Voice Training — two offset waveforms (the imitated voice, the
+            original voice) settling into one merged wave: aligning two
+            voices into one. */}
+        <symbol id="i-waves" viewBox="0 0 100 100">
           <path
-            mask="url(#discipline-mask-chat)"
-            d="M12 20 H88 a8 8 0 0 1 8 8 V62 a8 8 0 0 1 -8 8 H40 L18 88 V70 H12 a8 8 0 0 1 -8 -8 V28 a8 8 0 0 1 8 -8 Z"
+            d="M4 28 Q15 16 26 28 Q36 44 44 50"
+            fill="none"
+            stroke="url(#discipline-gold-foil)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            opacity="0.45"
+          />
+          <path
+            d="M4 72 Q15 84 26 72 Q36 56 44 50"
+            fill="none"
+            stroke="url(#discipline-gold-foil)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            opacity="0.45"
+          />
+          <path
+            d="M44 50 Q58 24 72 50 Q86 76 96 50"
+            fill="none"
+            stroke="url(#discipline-gold-foil)"
+            strokeWidth="6"
+            strokeLinecap="round"
           />
         </symbol>
-        {/* Voice Roleplay — a drama mask: playing a role out loud. */}
-        <symbol id="i-mask" viewBox="0 0 100 100">
+        {/* Chat Roleplay — overlapping circles: your circle meeting the AI
+            prospect's, with the three small dots (the old speech-bubble
+            ellipsis) marking the typed exchange where they overlap. */}
+        <symbol id="i-circles-chat" viewBox="0 0 100 100">
+          <circle cx="50" cy="30" r="24" fill="none" stroke="url(#discipline-gold-foil)" strokeWidth="3.5" />
+          <circle cx="32" cy="62" r="24" fill="none" stroke="url(#discipline-gold-foil)" strokeWidth="3.5" />
+          <circle cx="68" cy="62" r="24" fill="none" stroke="url(#discipline-gold-foil)" strokeWidth="3.5" />
+          <circle cx="44" cy="54" r="2.6" fill="url(#discipline-gold-foil)" />
+          <circle cx="50" cy="54" r="2.6" fill="url(#discipline-gold-foil)" />
+          <circle cx="56" cy="54" r="2.6" fill="url(#discipline-gold-foil)" />
+        </symbol>
+        {/* Voice Roleplay — the same overlapping circles as Chat Roleplay
+            (still an AI prospect's world meeting yours), with a small
+            live-voice pulse instead of dots where they overlap, since this
+            one is spoken, not typed. */}
+        <symbol id="i-circles-voice" viewBox="0 0 100 100">
+          <circle cx="50" cy="30" r="24" fill="none" stroke="url(#discipline-gold-foil)" strokeWidth="3.5" />
+          <circle cx="32" cy="62" r="24" fill="none" stroke="url(#discipline-gold-foil)" strokeWidth="3.5" />
+          <circle cx="68" cy="62" r="24" fill="none" stroke="url(#discipline-gold-foil)" strokeWidth="3.5" />
+          <rect x="45" y="50" width="3" height="10" rx="1.5" fill="url(#discipline-gold-foil)" />
+          <rect x="50.5" y="44" width="3" height="16" rx="1.5" fill="url(#discipline-gold-foil)" />
+          <rect x="56" y="50" width="3" height="10" rx="1.5" fill="url(#discipline-gold-foil)" />
+        </symbol>
+        {/* Mindset Shifting — a figure with concentric arcs rising above
+            it: the soul expanding, not just the words you say. */}
+        <symbol id="i-soul" viewBox="0 0 100 100">
+          <circle cx="50" cy="34" r="9" />
+          <path d="M50 43 C38 50 32 62 32 76 C32 86 40 92 50 92 C60 92 68 86 68 76 C68 62 62 50 50 43 Z" />
           <path
-            mask="url(#discipline-mask-face)"
-            d="M50 14 C24 14 14 32 14 52 C14 76 30 92 50 92 C70 92 86 76 86 52 C86 32 76 14 50 14 Z"
+            d="M30 20 A28 28 0 0 1 70 20"
+            fill="none"
+            stroke="url(#discipline-gold-foil)"
+            strokeWidth="3.2"
+            strokeLinecap="round"
+          />
+          <path
+            d="M20 12 A38 38 0 0 1 80 12"
+            fill="none"
+            stroke="url(#discipline-gold-foil)"
+            strokeWidth="3.2"
+            strokeLinecap="round"
+            opacity="0.8"
           />
         </symbol>
-        {/* Mindset Shifting — an open eye: reframing how you see it. */}
-        <symbol id="i-eye" viewBox="0 0 100 100">
-          <path mask="url(#discipline-mask-eye)" d="M8 50 C26 20 74 20 92 50 C74 80 26 80 8 50 Z" />
-        </symbol>
-        {/* Learning — an open book: anything worth studying. */}
+        {/* Learning — an open book, restyled to the same outline-only
+            weight as the crests above it; still an open book: anything
+            worth studying. */}
         <symbol id="i-book" viewBox="0 0 100 100">
-          <path d="M50 30 C38 24 24 22 14 24 V74 C24 72 38 74 50 80 C62 74 76 72 86 74 V24 C76 22 62 24 50 30 Z" />
-          <path d="M50 30 V80" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M50 30 C38 24 24 22 14 24 V74 C24 72 38 74 50 80 C62 74 76 72 86 74 V24 C76 22 62 24 50 30 Z"
+            fill="none"
+            stroke="url(#discipline-gold-foil)"
+            strokeWidth="4"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <path d="M50 30 V80" fill="none" stroke="url(#discipline-gold-foil)" strokeWidth="3" strokeLinecap="round" />
         </symbol>
         {/* Card decoration: corner scrollwork, a 4-point sparkle, a small lock, a checkmark badge. */}
         <symbol id="discipline-i-scroll" viewBox="0 0 24 24">
