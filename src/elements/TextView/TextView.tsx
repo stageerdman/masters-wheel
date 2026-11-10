@@ -23,9 +23,12 @@ type TextViewProps = {
   onDismissGenerateTranscriptError: () => void;
   onSeekTranscript: (seconds: number) => void;
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
+  canUndoTranscript: boolean;
+  onUndoTranscript: () => void;
   isGeneratingScorecard: boolean;
   onGenerateScorecard: () => void;
   scorecardCriteria: ScorecardCriterionDef[];
+  scorecardError: string | null;
 };
 
 // Renders whichever text type is active.
@@ -46,9 +49,12 @@ export function TextView({
   onDismissGenerateTranscriptError,
   onSeekTranscript,
   onRenameTranscriptSpeaker,
+  canUndoTranscript,
+  onUndoTranscript,
   isGeneratingScorecard,
   onGenerateScorecard,
   scorecardCriteria,
+  scorecardError,
 }: TextViewProps) {
   if (kind === "ai") {
     return (
@@ -74,6 +80,8 @@ export function TextView({
         onDismissGenerateError={onDismissGenerateTranscriptError}
         onSeek={onSeekTranscript}
         onRenameSpeaker={onRenameTranscriptSpeaker}
+        canUndo={canUndoTranscript}
+        onUndo={onUndoTranscript}
       />
     );
   }
@@ -98,6 +106,7 @@ export function TextView({
         onGenerate={onGenerateScorecard}
         onSeek={onSeekTranscript}
         criteria={scorecardCriteria}
+        error={scorecardError}
       />
     );
   }

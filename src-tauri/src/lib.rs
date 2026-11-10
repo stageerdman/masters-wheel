@@ -1,5 +1,6 @@
 mod assistant;
 mod avatar;
+mod claude_cli;
 mod knowledge;
 mod media_server;
 pub mod mcp;
@@ -52,6 +53,7 @@ pub fn run() {
       assistant::ask_agent,
       assistant::name_chat,
       assistant::debug_log,
+      claude_cli::run_claude_once,
       knowledge::commands::ingest_knowledge_file,
       knowledge::commands::remove_knowledge_file,
       avatar::read_image_as_data_url,

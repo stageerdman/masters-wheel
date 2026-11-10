@@ -21,60 +21,9 @@
 // would otherwise never see at all) the whole raw response.
 
 use serde::{Deserialize, Serialize};
-use std::env::temp_dir;
 use std::path::Path;
-use std::process::{Command, Stdio};
 
-use crate::util::resolve_binary;
-
-// Runs one blocking `claude -p --output-format json` call and returns its
-// `result` text + the CLI's own session id (for a later `--resume`).
-// Shared by every command below — same cwd/permission/tools flags as
-// `assistant::name_chat`, generalized to accept a caller-built system
-// prompt and an optional resume id.
-fn run_claude(system_prompt: &str, message: &str, resume_session_id: Option<&str>) -> Result<(String, String), String> {
-    let binary = resolve_binary("claude");
-    let mut command = Command::new(&binary);
-    command
-        .current_dir(temp_dir())
-        .arg("-p")
-        .arg(message)
-        .arg("--output-format")
-        .arg("json")
-        .arg("--system-prompt")
-        .arg(system_prompt)
-        .arg("--permission-mode")
-        .arg("dontAsk")
-        .arg("--tools")
-        .arg("")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    if let Some(id) = resume_session_id.filter(|id| !id.is_empty()) {
-        command.arg("--resume").arg(id);
-    }
-
-    let output = command
-        .output()
-        .map_err(|e| format!("The Claude Code CLI isn't available ({e}). Make sure `claude` is installed and you're logged in."))?;
-
-    if !output.status.success() {
-        let stderr_text = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(if stderr_text.is_empty() { "Claude didn't return a reply.".to_string() } else { stderr_text });
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let event: serde_json::Value =
-        serde_json::from_str(stdout.trim()).map_err(|e| format!("Couldn't parse reply: {e}"))?;
-    let is_error = event.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false);
-    let result = event.get("result").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-    let session_id = event.get("session_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-
-    if is_error || result.is_empty() {
-        return Err("Claude didn't return a reply.".to_string());
-    }
-    Ok((result, session_id))
-}
+use crate::claude_cli::run_claude;
 
 // Pulls the text after a `LABEL:` prefix on its own line out of a labeled-
 // line response, trimmed. Only looks at the first matching line — every

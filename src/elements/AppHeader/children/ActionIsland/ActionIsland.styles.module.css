@@ -15,6 +15,11 @@
   opacity: 0.7;
 }
 
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .aiButton {
   color: var(--color-accent);
 }

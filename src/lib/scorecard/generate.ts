@@ -1,74 +1,141 @@
-// Fake scorecard fabrication — this round's "Generate Scorecard" doesn't
-// call real AI (deliberately deferred, see this update's wiki.md); it
-// fabricates a plausible-looking result for whichever criteria that Space
-// has configured (see src/lib/settings' `scorecardCriteria` — criteria
-// are user-defined, not fixed in code, so this can't hand-write bespoke
-// reasoning per criterion anymore). Swapping this for a real
-// transcript-analysis pass later doesn't change anything downstream —
-// callers only depend on the `Scorecard` shape.
+// Real scorecard generation — shells out (via the Rust `run_claude_once`
+// command, src-tauri/src/claude_cli.rs) to the user's own authenticated
+// local `claude` CLI, the same no-API-key pattern `assistant.rs`/
+// `roleplay.rs` already use. No Anthropic API key anywhere in this app.
+//
+// Output format: plain labeled lines, not JSON content — same choice
+// `roleplay.rs` already made and documented (empirically more reliable
+// than asking the model to emit JSON). Every criterion block and the
+// trailing summary/improvement fields are parsed defensively: a
+// malformed or missing field is just skipped, never throws — same
+// tolerance convention as every other parser in this app. Rust stays a
+// dumb transport layer; all scorecard-shape/rubric knowledge and the
+// reply parser live here, not duplicated into Rust.
 
-import { formatTimestamp } from "@/lib/transcript";
+import { invoke } from "@tauri-apps/api/core";
+import { parseTimestampToSeconds } from "@/lib/transcript";
 import type { ScorecardCriterionDef } from "@/lib/settings";
-import type { Scorecard, ScorecardItem } from "./index";
+import { SCORECARD_RATING_ORDER, SCORECARD_RATING_META, type Scorecard, type ScorecardItem } from "./index";
 
-// Cycled across criteria in order so every generation includes the full
-// rating range at least once (incl. a legitimate Skip), same spread the
-// old hand-written fixture had — just generic rather than bespoke per id.
-const RATING_CYCLE: ScorecardItem["rating"][] = [0, 3, 2, 4, 3, 2, 4, 1, 3, 2, 1];
+const RUBRIC_TEXT = SCORECARD_RATING_ORDER.map(
+  (rating) => `${rating} ${SCORECARD_RATING_META[rating].label} - ${SCORECARD_RATING_META[rating].description}`
+).join("\n");
 
-// Reasoning text may itself reference a moment in the call as [MM:SS] —
-// ScorecardRow's remarkTimestamps plugin makes that substring clickable
-// too, independent of the structured timestamps[] chips above it.
-const REASONING_BY_RATING: Record<ScorecardItem["rating"], (name: string, at: string) => string> = {
-  0: (name) => `Skipped — no clean moment in the call to work ${name.toLowerCase()} in.`,
-  1: (name, at) =>
-    `There was an attempt at ${name.toLowerCase()} around [${at}], but it stayed messy and didn't land — the client's response made that clear.`,
-  2: (name, at) => `${name} got a real but partial pass at [${at}] — some result, but well short of what this section needs.`,
-  3: (name, at) => `Close to a textbook ${name.toLowerCase()} at [${at}] — the client's answer here is genuinely usable going forward.`,
-  4: (name, at) =>
-    `${name} landed exactly as intended at [${at}] — held the line until the client gave the specific answer this section is built to surface.`,
-};
+function buildScorecardPrompt(
+  criteria: ScorecardCriterionDef[],
+  businessDescription: string,
+  transcriptRaw: string
+): { systemPrompt: string; message: string } {
+  const criteriaBlock = criteria
+    .map((criterion, index) => `${index + 1}. id="${criterion.id}" name="${criterion.name}"\n   What to look for: ${criterion.prompt}`)
+    .join("\n");
 
-const FAKE_SUMMARY =
-  "A generally solid call: discovery surfaced a real, specific problem and urgency, but the summary before the pitch ran long and lost some of the client's buy-in right before the close.";
+  const systemPrompt = `You are a sales-call analyst. Score a recorded sales call's transcript against a fixed set of criteria, using exactly this rubric:
 
-const IMPROVEMENT_SUGGESTION =
-  "Right now the highest-leverage fix is whichever section scored lowest — tightening just that one spot will likely move the close rate more than anything else in this call.";
+${RUBRIC_TEXT}
 
-// Small jitter so repeated "generations" don't look byte-identical, without
-// risking an unrealistic ordering (each item still lands within a few
-// seconds of its fixed base).
-function jitter(seconds: number): number {
-  return Math.max(0, Math.round(seconds + (Math.random() - 0.5) * 6));
+What the business sells (ground your analysis in this, not a generic example):
+${businessDescription.trim() || "(not specified)"}
+
+Score the call against EXACTLY these criteria, in this order, using each one's own definition of what to look for:
+${criteriaBlock}
+
+The transcript (sent as the next message) is already timestamped per line as [mm:ss] or [h:mm:ss] — when you cite a moment, use the exact timestamp shown on that line.
+
+For EVERY criterion listed above, in the same order, output a block in EXACTLY this format:
+
+CRITERION: <the id exactly as given above>
+RATING: <0, 1, 2, 3, or 4>
+TIMESTAMPS: <comma-separated mm:ss moments where this happened, or "none" if Skipped with nothing to point at — more than one moment is expected for a criterion that recurs, e.g. several objections>
+REASONING: <one paragraph, on a single line with no line breaks, explaining why this score — may reference moments inline as [mm:ss]>
+
+After every criterion block, output a line containing only ===, then:
+
+SUMMARY: <one short paragraph summarizing the whole call, on a single line>
+IMPROVEMENT: <one short paragraph: the single highest-leverage thing to improve next time, on a single line>
+
+Output nothing else — no preamble, no markdown headings, no code fences.`;
+
+  return { systemPrompt, message: transcriptRaw };
 }
 
-export function generateFakeScorecard(criteria: ScorecardCriterionDef[]): Scorecard {
-  const items: ScorecardItem[] = criteria.map((criterion, index) => {
-    const rating = RATING_CYCLE[index % RATING_CYCLE.length];
-    const name = criterion.name || `Score ${index + 1}`;
-    if (rating === 0) {
-      return { criterion: criterion.id, rating, reasoning: REASONING_BY_RATING[0](name, ""), timestamps: [] };
+// Same scan-for-first-matching-line tolerance as Rust's extract_label in
+// src-tauri/src/roleplay.rs/claude_cli.rs.
+function extractLabel(text: string, label: string): string | null {
+  const prefix = `${label}:`;
+  for (const line of text.split("\n")) {
+    const trimmed = line.trimStart();
+    if (trimmed.startsWith(prefix)) {
+      return trimmed.slice(prefix.length).trim();
     }
-    const baseSeconds = 180 + index * 150;
-    // The last scored criterion stands in for a phase that recurs during
-    // the call (e.g. several objections) — multiple independently
-    // clickable timestamps instead of just one.
-    const isRepeated = index === criteria.length - 2;
-    const timestamps = isRepeated
-      ? [jitter(baseSeconds), jitter(baseSeconds + 220), jitter(baseSeconds + 410)]
-      : [jitter(baseSeconds)];
-    return {
-      criterion: criterion.id,
+  }
+  return null;
+}
+
+function parseRating(raw: string | null): ScorecardItem["rating"] | null {
+  if (raw === null) return null;
+  const value = Number(raw.trim());
+  return (SCORECARD_RATING_ORDER as number[]).includes(value) ? (value as ScorecardItem["rating"]) : null;
+}
+
+function parseTimestampList(raw: string | null): number[] {
+  if (!raw || raw.trim().toLowerCase() === "none") return [];
+  return raw
+    .split(",")
+    .map((token) => parseTimestampToSeconds(token.trim()))
+    .filter((value): value is number => value !== null);
+}
+
+// Splits the whole reply on a line that is exactly "===" into the
+// criteria section and the trailing summary/improvement section. No
+// separator found (a malformed reply) just means the tail is empty —
+// summary/improvement default to "" rather than throwing.
+function splitOnSeparator(raw: string): [string, string] {
+  const lines = raw.split("\n");
+  const index = lines.findIndex((line) => line.trim() === "===");
+  if (index === -1) return [raw, ""];
+  return [lines.slice(0, index).join("\n"), lines.slice(index + 1).join("\n")];
+}
+
+function parseScorecardReply(
+  raw: string,
+  criteria: ScorecardCriterionDef[]
+): Pick<Scorecard, "items" | "summary" | "improvementSuggestion"> {
+  const [criteriaSection, tailSection] = splitOnSeparator(raw);
+  const blocks = criteriaSection.split(/^CRITERION:/m).slice(1);
+
+  const items: ScorecardItem[] = [];
+  for (const body of blocks) {
+    const block = `CRITERION:${body}`;
+    const criterionId = extractLabel(block, "CRITERION");
+    if (!criterionId || !criteria.some((candidate) => candidate.id === criterionId)) continue;
+    const rating = parseRating(extractLabel(block, "RATING"));
+    if (rating === null) continue;
+    items.push({
+      criterion: criterionId,
       rating,
-      reasoning: REASONING_BY_RATING[rating](name, formatTimestamp(timestamps[0])),
-      timestamps,
-    };
-  });
+      reasoning: extractLabel(block, "REASONING") ?? "",
+      timestamps: parseTimestampList(extractLabel(block, "TIMESTAMPS")),
+    });
+  }
 
   return {
-    generatedAt: new Date().toISOString(),
     items,
-    summary: FAKE_SUMMARY,
-    improvementSuggestion: IMPROVEMENT_SUGGESTION,
+    summary: extractLabel(tailSection, "SUMMARY") ?? "",
+    improvementSuggestion: extractLabel(tailSection, "IMPROVEMENT") ?? "",
   };
+}
+
+export async function generateScorecard(
+  criteria: ScorecardCriterionDef[],
+  businessDescription: string,
+  transcriptRaw: string
+): Promise<Scorecard> {
+  const { systemPrompt, message } = buildScorecardPrompt(criteria, businessDescription, transcriptRaw);
+  const raw = await invoke<string>("run_claude_once", { systemPrompt, message });
+  const { items, summary, improvementSuggestion } = parseScorecardReply(raw, criteria);
+  if (items.length === 0) {
+    throw new Error("Claude's reply didn't match the expected format — try generating again.");
+  }
+  return { generatedAt: new Date().toISOString(), items, summary, improvementSuggestion };
 }

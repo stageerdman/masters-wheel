@@ -25,9 +25,12 @@ type DetailProps = {
   onDismissGenerateTranscriptError: () => void;
   onSeekTranscript: (seconds: number) => void;
   onRenameTranscriptSpeaker: (from: string, to: string) => void;
+  canUndoTranscript: boolean;
+  onUndoTranscript: () => void;
   isGeneratingScorecard: boolean;
   onGenerateScorecard: () => void;
   scorecardCriteria: ScorecardCriterionDef[];
+  scorecardError: string | null;
 };
 
 export function Detail({
@@ -46,9 +49,12 @@ export function Detail({
   onDismissGenerateTranscriptError,
   onSeekTranscript,
   onRenameTranscriptSpeaker,
+  canUndoTranscript,
+  onUndoTranscript,
   isGeneratingScorecard,
   onGenerateScorecard,
   scorecardCriteria,
+  scorecardError,
 }: DetailProps) {
   const {
     railRef,
@@ -88,9 +94,12 @@ export function Detail({
             onDismissGenerateTranscriptError={onDismissGenerateTranscriptError}
             onSeekTranscript={onSeekTranscript}
             onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
+            canUndoTranscript={canUndoTranscript}
+            onUndoTranscript={onUndoTranscript}
             isGeneratingScorecard={isGeneratingScorecard}
             onGenerateScorecard={onGenerateScorecard}
             scorecardCriteria={scorecardCriteria}
+            scorecardError={scorecardError}
           />
         </div>
         {isSplit && bottomKind && (
@@ -118,9 +127,12 @@ export function Detail({
                 onDismissGenerateTranscriptError={onDismissGenerateTranscriptError}
                 onSeekTranscript={onSeekTranscript}
                 onRenameTranscriptSpeaker={onRenameTranscriptSpeaker}
+                canUndoTranscript={canUndoTranscript}
+                onUndoTranscript={onUndoTranscript}
                 isGeneratingScorecard={isGeneratingScorecard}
                 onGenerateScorecard={onGenerateScorecard}
                 scorecardCriteria={scorecardCriteria}
+                scorecardError={scorecardError}
               />
             </div>
           </>

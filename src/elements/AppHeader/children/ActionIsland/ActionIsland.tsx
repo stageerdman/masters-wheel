@@ -1,3 +1,6 @@
+"use client";
+
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { StateMenu } from "./children/StateMenu/StateMenu";
 import type { HeaderIslandOption } from "@/elements/AppHeader/AppHeader.context";
 import position from "./ActionIsland.position.module.css";
@@ -9,6 +12,9 @@ type ActionIslandProps = {
   onStateChange: (id: string) => void;
   reviewed: boolean;
   onToggleReviewed: () => void;
+  hasScorecard: boolean;
+  isGeneratingScorecard: boolean;
+  onGenerateScorecard: () => void;
 };
 
 export function ActionIsland({
@@ -17,17 +23,34 @@ export function ActionIsland({
   onStateChange,
   reviewed,
   onToggleReviewed,
+  hasScorecard,
+  isGeneratingScorecard,
+  onGenerateScorecard,
 }: ActionIslandProps) {
+  async function handleGenerateScorecard() {
+    if (isGeneratingScorecard) return;
+    if (hasScorecard) {
+      const confirmed = await confirm("Regenerate the scorecard? This replaces the current analysis.", {
+        title: "Regenerate scorecard",
+        kind: "warning",
+      });
+      if (!confirmed) return;
+    }
+    onGenerateScorecard();
+  }
+
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
       <button
         type="button"
         className={`${styles.aiButton} ${position.button}`}
         data-construction
-        title="Let AI re-analyze"
-        aria-label="Let AI re-analyze"
+        disabled={isGeneratingScorecard}
+        onClick={handleGenerateScorecard}
+        title={isGeneratingScorecard ? "Generating scorecard…" : hasScorecard ? "Regenerate scorecard" : "Generate scorecard"}
+        aria-label={isGeneratingScorecard ? "Generating scorecard…" : hasScorecard ? "Regenerate scorecard" : "Generate scorecard"}
       >
-        AI
+        SC
       </button>
       <StateMenu options={stateOptions} activeId={activeStateId} onChange={onStateChange} />
       <button

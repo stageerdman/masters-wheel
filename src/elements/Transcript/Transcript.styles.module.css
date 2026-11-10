@@ -1,3 +1,20 @@
 .root {
   background: transparent;
 }
+
+.toolbarButton {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+  cursor: pointer;
+}
+
+.toolbarButton:hover {
+  color: var(--color-text);
+}
+
+.toolbarButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { formatTimestamp, parseTranscript, speakersOf } from "@/lib/transcript";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import { TranscriptLine } from "./children/TranscriptLine/TranscriptLine";
@@ -30,15 +31,21 @@ type TranscriptProps = {
   onDismissGenerateError: () => void;
   onSeek: (seconds: number) => void;
   onRenameSpeaker: (from: string, to: string) => void;
+  canUndo: boolean;
+  onUndo: () => void;
 };
 
 // Renders a parsed transcript.md: color-coded per speaker, click a line to
 // seek the video there, right-click a line to rename its speaker (renames
 // every line by that speaker, in both the UI and transcript.md — see
-// PerformanceReview.script.ts's renameTranscriptSpeaker). No transcript yet
-// falls back to the upload/generate prompt — unless a Generate Transcript
-// job is running (or just failed) for this record, in which case that
-// takes over the same slot instead (see TranscriptGenerating).
+// PerformanceReview.script.ts's renameTranscriptSpeaker). Renaming onto a
+// name that already belongs to a *different* speaker confirms first,
+// since that merges two real speakers into one. A small toolbar above the
+// lines offers one step of undo for that (or any rename) and re-running
+// transcription from scratch. No transcript yet falls back to the
+// upload/generate prompt — unless a Generate Transcript job is running
+// (or just failed) for this record, in which case that takes over the
+// same slot instead (see TranscriptGenerating).
 export function Transcript({
   rawText,
   generation,
@@ -49,6 +56,8 @@ export function Transcript({
   onDismissGenerateError,
   onSeek,
   onRenameSpeaker,
+  canUndo,
+  onUndo,
 }: TranscriptProps) {
   const [menu, setMenu] = useState<SpeakerMenuState | null>(null);
 
@@ -86,8 +95,59 @@ export function Transcript({
     });
   }
 
+  // Renaming onto a name that already belongs to a *different* speaker
+  // merges them into one — that can't be split back apart by a plain
+  // undo of this one rename (the other speaker's own lines are affected
+  // too), so it confirms first. An ordinary rename (new name, or the same
+  // speaker) proceeds immediately.
+  async function handleRenameSubmit(name: string) {
+    const from = menu?.speaker;
+    if (!from) return;
+    const collides = name !== from && speakers.includes(name);
+    if (collides) {
+      const confirmed = await confirm(`Merge "${from}" into the existing speaker "${name}"?`, {
+        title: "Merge speakers",
+        kind: "warning",
+      });
+      if (!confirmed) return;
+    }
+    onRenameSpeaker(from, name);
+    setMenu(null);
+  }
+
+  async function handleRegenerate() {
+    const confirmed = await confirm("Regenerate the transcript? This discards the current one, including any renames.", {
+      title: "Regenerate transcript",
+      kind: "warning",
+    });
+    if (confirmed) onRequestGenerate();
+  }
+
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
+      <div className={position.toolbar} data-construction>
+        <button
+          type="button"
+          className={`${styles.toolbarButton} ${position.toolbarButton}`}
+          data-construction
+          disabled={!canUndo}
+          onClick={onUndo}
+          title="Undo last rename"
+          aria-label="Undo last rename"
+        >
+          ↺
+        </button>
+        <button
+          type="button"
+          className={`${styles.toolbarButton} ${position.toolbarButton}`}
+          data-construction
+          onClick={handleRegenerate}
+          title="Regenerate transcript"
+          aria-label="Regenerate transcript"
+        >
+          ⟳
+        </button>
+      </div>
       <ul className={position.list} data-construction>
         {parsed.entries.map((entry, index) => (
           <li key={index}>
@@ -108,10 +168,7 @@ export function Transcript({
           x={menu.x}
           y={menu.y}
           initialName={menu.speaker}
-          onSubmit={(name) => {
-            onRenameSpeaker(menu.speaker, name);
-            setMenu(null);
-          }}
+          onSubmit={(name) => void handleRenameSubmit(name)}
           onClose={() => setMenu(null)}
         />
       )}

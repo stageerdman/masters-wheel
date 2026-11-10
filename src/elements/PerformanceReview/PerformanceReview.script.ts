@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { confirm } from "@tauri-apps/plugin-dialog";
+import { confirm, message } from "@tauri-apps/plugin-dialog";
 import {
   createRecordFromFile,
   deleteHeroFile,
@@ -32,7 +32,7 @@ import {
   type RecordSummary,
 } from "@/lib/records";
 import { parseTranscript, renameSpeaker, serializeTranscript } from "@/lib/transcript";
-import { generateFakeScorecard } from "@/lib/scorecard/generate";
+import { generateScorecard as generateRealScorecard } from "@/lib/scorecard/generate";
 import type { Scorecard } from "@/lib/scorecard";
 import { readSettings, type ScorecardCriterionDef } from "@/lib/settings";
 import { setActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
@@ -66,15 +66,23 @@ export function usePerformanceReviewData() {
   const [docs, setDocs] = useState<Record<string, DocPair>>({});
   const [lessons, setLessons] = useState<Record<string, string>>({});
   const [transcripts, setTranscripts] = useState<Record<string, string | null>>({});
+  // One level of undo for a transcript speaker rename, keyed by record id
+  // — the pre-rename raw text, cleared once undone (not a stack).
+  const [transcriptUndoSnapshot, setTranscriptUndoSnapshot] = useState<Record<string, string>>({});
   const [scorecards, setScorecards] = useState<Record<string, Scorecard | null>>({});
-  // Fake generation (see this update's wiki.md) only needs a flag per
-  // record, not the rich job-tracking transcript generation has — there's
-  // no real background process to report progress on.
+  // A real `claude` CLI call per record, not a rich job-tracking setup
+  // like transcript generation has — no cancel, just a boolean + an error
+  // slot (scorecardError below) per record.
   const [scorecardGenerating, setScorecardGenerating] = useState<Record<string, boolean>>({});
+  const [scorecardError, setScorecardError] = useState<Record<string, string>>({});
   // That Space's configured scoring criteria (Settings page's Score
-  // rows) — needed here only to resolve a persisted item's `criterion`
-  // id back to a display name/prompt; not re-fetched per record.
+  // rows) — resolves a persisted item's `criterion` id back to a display
+  // name/prompt, and is also what real generation scores against.
   const [scorecardCriteria, setScorecardCriteria] = useState<ScorecardCriterionDef[]>([]);
+  // Grounds real scorecard generation the same way it grounds Chat
+  // Roleplay's setup conversation (see roleplay.rs) — loaded once
+  // alongside scorecardCriteria below, same settings.json read.
+  const [businessDescription, setBusinessDescription] = useState("");
   const [isTranscriptUploadOpen, setIsTranscriptUploadOpen] = useState(false);
   const [transcriptUploadError, setTranscriptUploadError] = useState<string | null>(null);
   const [isGenerateTranscriptOpen, setIsGenerateTranscriptOpen] = useState(false);
@@ -121,6 +129,7 @@ export function usePerformanceReviewData() {
     readSettings().then((settings) => {
       if (cancelled) return;
       setScorecardCriteria(settings.scorecardCriteria);
+      setBusinessDescription(settings.businessDescription);
     });
     return () => {
       cancelled = true;
@@ -479,7 +488,9 @@ export function usePerformanceReviewData() {
   }
 
   // Renames every line spoken by `from` to `to`, in both the UI and the
-  // transcript.md source file.
+  // transcript.md source file. Snapshots the pre-rename text first (one
+  // level, not a stack) so a mistaken rename — especially one that merges
+  // two different real speakers into one — can be undone.
   const renameTranscriptSpeaker = useCallback(
     (from: string, to: string) => {
       if (!selectedId || !to.trim() || from === to) return;
@@ -489,6 +500,7 @@ export function usePerformanceReviewData() {
       const parsed = parseTranscript(current);
       if (!parsed) return;
       const canonical = serializeTranscript(renameSpeaker(parsed, from, to.trim()));
+      setTranscriptUndoSnapshot((prev) => ({ ...prev, [id]: current }));
       setTranscripts((prev) => ({ ...prev, [id]: canonical }));
       writeTranscript(id, canonical).catch((error) =>
         console.error("Failed to write renamed transcript:", id, error)
@@ -497,27 +509,67 @@ export function usePerformanceReviewData() {
     [selectedId, transcripts]
   );
 
-  // Fabricates a scorecard after a short fake "thinking" delay (no real AI
-  // call this round — see this update's wiki.md) and persists it to
-  // scorecard.json, same write-then-keep-in-state shape as
-  // startGenerateTranscript's success path above.
-  const GENERATE_SCORECARD_DELAY_MS = 1200;
+  // Restores the one step back from renameTranscriptSpeaker's snapshot,
+  // then clears it — a single undo, not a redo-able history.
+  const undoTranscriptRename = useCallback(
+    (id: string) => {
+      const snapshot = transcriptUndoSnapshot[id];
+      if (snapshot === undefined) return;
+      setTranscripts((prev) => ({ ...prev, [id]: snapshot }));
+      setTranscriptUndoSnapshot((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      writeTranscript(id, snapshot).catch((error) =>
+        console.error("Failed to write undone transcript:", id, error)
+      );
+    },
+    [transcriptUndoSnapshot]
+  );
 
-  const generateScorecard = useCallback((id: string) => {
-    setScorecardGenerating((prev) => ({ ...prev, [id]: true }));
-    readSettings().then((settings) => {
-      setTimeout(() => {
-        const fresh = generateFakeScorecard(settings.scorecardCriteria);
-        setScorecards((prev) => ({ ...prev, [id]: fresh }));
-        setScorecardGenerating((prev) => {
-          const next = { ...prev };
-          delete next[id];
-          return next;
+  // Real generation: a single `claude -p` call (see src/lib/scorecard/
+  // generate.ts + src-tauri/src/claude_cli.rs), not a fake delay. Needs a
+  // transcript to analyze — surfaces a plain info dialog and bails rather
+  // than calling out with nothing to score. On success, same
+  // write-then-keep-in-state shape as startGenerateTranscript's success
+  // path above; on failure, the error lands in scorecardError instead of
+  // just being logged, so the panel can show it and offer "Try again".
+  const generateScorecard = useCallback(
+    (id: string) => {
+      const transcriptRaw = transcripts[id];
+      if (!transcriptRaw) {
+        void message("This call needs a transcript before generating a scorecard.", {
+          title: "No transcript yet",
+          kind: "info",
         });
-        writeScorecard(id, fresh).catch((error) => console.error("Failed to write scorecard:", id, error));
-      }, GENERATE_SCORECARD_DELAY_MS);
-    });
-  }, []);
+        return;
+      }
+      setScorecardGenerating((prev) => ({ ...prev, [id]: true }));
+      setScorecardError((prev) => {
+        if (!(id in prev)) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      generateRealScorecard(scorecardCriteria, businessDescription, transcriptRaw)
+        .then((fresh) => {
+          setScorecards((prev) => ({ ...prev, [id]: fresh }));
+          writeScorecard(id, fresh).catch((error) => console.error("Failed to write scorecard:", id, error));
+        })
+        .catch((error) => {
+          setScorecardError((prev) => ({ ...prev, [id]: String(error?.message ?? error) }));
+        })
+        .finally(() => {
+          setScorecardGenerating((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+        });
+    },
+    [transcripts, scorecardCriteria, businessDescription]
+  );
 
   // Deletes a record entirely (its whole on-disk folder) and drops it from
   // the list. If it was the selected record, falls back to whichever
@@ -651,8 +703,13 @@ export function usePerformanceReviewData() {
     retryGenerateTranscript,
     dismissGenerateTranscriptError,
     renameTranscriptSpeaker,
+    canUndoTranscript: selectedId ? selectedId in transcriptUndoSnapshot : false,
+    onUndoTranscript: () => {
+      if (selectedId) undoTranscriptRename(selectedId);
+    },
     scorecardCriteria,
     isGeneratingScorecard: selectedId ? (scorecardGenerating[selectedId] ?? false) : false,
+    scorecardError: selectedId ? (scorecardError[selectedId] ?? null) : null,
     onGenerateScorecard: () => {
       if (selectedId) generateScorecard(selectedId);
     },

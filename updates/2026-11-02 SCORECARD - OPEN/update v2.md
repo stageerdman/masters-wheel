@@ -71,7 +71,7 @@ Two follow-ups on top of v1's shipped Scorecard:
       data now lives inline per row, so the separate modal duplicated it.
 - [x] `tsc --noEmit`, `npm run lint`, `npm run build` all clean.
 
-### Phase 3 — tracking + verification
+### Phase 3 — tracking + verification (Phases 1-2)
 - [x] `FEATURES.md` updated (Scorecard bullet under Performance Review).
 - [x] SSR sanity check via `curl` against a disposable `npm run dev`
       instance (none was already running) — `/performance-review` and
@@ -82,12 +82,69 @@ Two follow-ups on top of v1's shipped Scorecard:
       summary rendering) — no browser tool per CLAUDE.md's verification
       constraint. Please check this yourself in the real app.
 
+### Phase 4 — real AI generation + header trigger
+Closes the "fake fabrication" deferral from v1 — `generateFakeScorecard`
+is gone; "Generate Scorecard" and the header's new "SC" button (see
+`updates/2026-11-10 TRANSCRIPT-SAFETY - OPEN/update v1.md`'s sibling work
+on the same header component) both call the real local `claude` CLI now.
+- [x] `src-tauri/src/claude_cli.rs` (new): extracted `roleplay.rs`'s
+      private `run_claude` sync helper here (generalize-on-second-consumer
+      — scorecard generation is the second real need for "run claude
+      once, get text back"), plus a new thin
+      `#[tauri::command] run_claude_once(system_prompt, message) ->
+      Result<String, String>` wrapper that discards the session id (no
+      `--resume` needed for a one-shot call). `roleplay.rs` now imports
+      `run_claude` from here instead of defining it locally — its own
+      `extract_label`/`extract_bullets_after` stay put (only used there).
+- [x] `src/lib/scorecard/generate.ts` fully repurposed (the fake fixture
+      is gone): `buildScorecardPrompt` restates the rubric via
+      `SCORECARD_RATING_META` (no duplicated prose) plus the dynamic
+      criteria list + business description, instructing the model to
+      output plain **labeled lines** per criterion
+      (`CRITERION:`/`RATING:`/`TIMESTAMPS:`/`REASONING:`), then a `===`
+      separator, then `SUMMARY:`/`IMPROVEMENT:` — not JSON content, same
+      empirically-justified choice `roleplay.rs` already made (see its
+      module doc). `parseScorecardReply` parses that defensively (a
+      malformed/missing block is skipped, never throws) using the same
+      first-matching-line tolerance as Rust's `extract_label`. Calls
+      `invoke("run_claude_once", ...)`.
+- [x] `PerformanceReview.script.ts`'s `generateScorecard`: guards on no
+      transcript yet (`message()` info dialog, bails), now also loads
+      `businessDescription` from the same `readSettings()` read already
+      fetching `scorecardCriteria`. New `scorecardError` state on
+      failure, surfaced by `Scorecard.tsx` as an inline error + "Try
+      again" (empty state) or a thin banner above the rows (regenerating
+      an existing scorecard).
+- [x] Header's "AI re-analyze" button (`ActionIsland.tsx`, previously a
+      pure no-op) → "SC", wired to `onGenerateScorecard`; confirms first
+      via `confirm()` if a scorecard already exists (regeneration
+      replaces it). `hasScorecard`/`isGeneratingScorecard`/
+      `onGenerateScorecard` threaded through `HeaderIsland`
+      (`AppHeader.context.tsx`) the same way `reviewed`/`onToggleReviewed`
+      already were.
+- [x] `cargo test --release roleplay` (11 tests) still passes after the
+      extraction; `tsc --noEmit`, `npm run lint`, `npm run build` all
+      clean.
+- [ ] **Not verified this session**: an actual `claude` CLI round-trip
+      (depends on your own authenticated local session) — the header
+      button's regenerate-confirm dialog, and a real multi-criterion reply
+      parsing correctly end-to-end. Please try a real generation yourself.
+
 ## Decisions
 - Deletion of a Score row wasn't explicitly requested but was added as a
   minimal necessary affordance in the Settings UI (see the Settings
   update) — without it a mistaken entry could never be corrected.
 - `generateFakeScorecard`'s old hand-written per-criterion fake reasoning
   (one bespoke sentence per fixed id) was replaced with a generic
-  rating-keyed template, since criteria are no longer a known fixed set —
-  real AI generation (still deferred, see v1's wiki.md) won't have this
-  limitation.
+  rating-keyed template, since criteria are no longer a known fixed set.
+- Real generation (Phase 4) uses plain labeled-line output, not JSON
+  content from the model — reusing `roleplay.rs`'s own empirically-tested
+  choice rather than re-opening that question. All parsing (both the
+  reply format and `[MM:SS]`/timestamp conversion) lives in TypeScript;
+  Rust (`claude_cli.rs`) stays a dumb transport layer, same division
+  already established between `src/lib/scorecard` and `src/lib/records`.
+- No cancel/progress-job tracking for scorecard generation (unlike
+  transcript generation's job registry) — a plain boolean + `.catch()`,
+  matching `roleplay.rs`'s simpler one-shot-await pattern rather than
+  `transcribe.rs`'s heavier tracked-job one. Revisit if a real call
+  regularly runs long enough that users actually want to cancel it.

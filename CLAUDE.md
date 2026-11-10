@@ -208,7 +208,12 @@ phase of work.
   `src-tauri/src/`: `transcribe.rs` (ffmpeg/ffprobe + ElevenLabs cloud
   Speech-to-Text via `curl`), `assistant.rs` + `mcp/` (how the AI is
   handled — see below), `knowledge/` (local RAG: `fastembed` +
-  `sqlite-vec` per agent).
+  `sqlite-vec` per agent), `claude_cli.rs` (the shared one-shot — no
+  streaming, no MCP, no chat session — local `claude` CLI call every
+  other internal AI need uses: `roleplay.rs`'s Chat Roleplay roles and
+  real Scorecard generation both call it; replies are plain labeled
+  lines, not JSON content, an empirically-tested choice — see
+  `updates/2026-11-02 SCORECARD - OPEN/update v2.md`).
 - **How the AI Assistant/Agents are handled**: there's no Anthropic API
   key anywhere — `assistant.rs` shells out to the user's own
   already-authenticated local `claude -p` CLI (`--output-format
@@ -265,9 +270,10 @@ phase of work.
   — a tool result has to fit the CLI's MCP output-size limit.
 
 ### What's deliberately not built yet
-- Real AI-generated analysis: `ai_analysis.md` and the Scorecard both exist
-  and persist real data, but nothing populates them with a real model pass
-  yet — "Generate Scorecard" currently fabricates a plausible fake result.
+- Real AI-generated analysis: `ai_analysis.md` exists and persists real
+  data, but nothing populates it with a real model pass yet. (The
+  Scorecard's own generation is real now — see "Current architecture at a
+  glance" below.)
 - Auth, a remote database, Windows/Linux packaging, code signing/
   notarization — all out of scope so far; `.env`/`secrets` in `.project`
   stay empty until a phase actually needs one.

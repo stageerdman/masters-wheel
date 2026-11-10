@@ -10,6 +10,15 @@
 .empty {
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
+}
+
+.statusSubtext {
+  margin-top: -0.25rem;
+}
+
+.errorText {
+  margin-bottom: 0.5rem;
 }
 
 .header {

@@ -58,9 +58,12 @@ export function PerformanceReview() {
     retryGenerateTranscript,
     dismissGenerateTranscriptError,
     renameTranscriptSpeaker,
+    canUndoTranscript,
+    onUndoTranscript,
     isGeneratingScorecard,
     onGenerateScorecard,
     scorecardCriteria,
+    scorecardError,
     isVideoUploadOpen,
     openVideoUpload,
     closeVideoUpload,
@@ -103,10 +106,13 @@ export function PerformanceReview() {
       },
       reviewed: selected?.reviewed ?? false,
       onToggleReviewed: toggleReviewed,
+      hasScorecard: Boolean(selected?.scorecard),
+      isGeneratingScorecard,
+      onGenerateScorecard,
     });
     return () => setIsland(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id, selected?.state, selected?.closedDate, selected?.reviewed]);
+  }, [selected?.id, selected?.state, selected?.closedDate, selected?.reviewed, selected?.scorecard, isGeneratingScorecard]);
 
   useEffect(() => {
     setBrand({ label: "Performance Review", showLogo: true });
@@ -151,9 +157,12 @@ export function PerformanceReview() {
             onRequestVideoUpload={openVideoUpload}
             onSeekTranscript={seekTranscript}
             onRenameTranscriptSpeaker={renameTranscriptSpeaker}
+            canUndoTranscript={canUndoTranscript}
+            onUndoTranscript={onUndoTranscript}
             isGeneratingScorecard={isGeneratingScorecard}
             onGenerateScorecard={onGenerateScorecard}
             scorecardCriteria={scorecardCriteria}
+            scorecardError={scorecardError}
           />
           <Detail
             video={selected}
@@ -171,9 +180,12 @@ export function PerformanceReview() {
             onDismissGenerateTranscriptError={() => selectedId && dismissGenerateTranscriptError(selectedId)}
             onSeekTranscript={seekTranscript}
             onRenameTranscriptSpeaker={renameTranscriptSpeaker}
+            canUndoTranscript={canUndoTranscript}
+            onUndoTranscript={onUndoTranscript}
             isGeneratingScorecard={isGeneratingScorecard}
             onGenerateScorecard={onGenerateScorecard}
             scorecardCriteria={scorecardCriteria}
+            scorecardError={scorecardError}
           />
         </>
       ) : (

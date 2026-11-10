@@ -48,6 +48,9 @@ export function AppHeader() {
             onStateChange={island.onStateChange}
             reviewed={island.reviewed}
             onToggleReviewed={island.onToggleReviewed}
+            hasScorecard={island.hasScorecard}
+            isGeneratingScorecard={island.isGeneratingScorecard}
+            onGenerateScorecard={island.onGenerateScorecard}
           />
         )}
       </div>

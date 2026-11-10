@@ -421,15 +421,17 @@ between the two lists. Each page gets its own section as pages get added.
       the AI's reasoning, which can itself reference a moment as
       `[MM:SS]`/`[HH:MM:SS]` inline, also clickable. A whole-call summary
       and an improvement-suggestion line sit below the rows. Empty state
-      is just a "Generate Scorecard" button; "Generate" fabricates a fake
-      result (no real AI call this round — see
-      `updates/2026-11-02 SCORECARD - OPEN/wiki.md`), not random/no-op.
+      is just a "Generate Scorecard" button (real generation — see
+      "Built (real functionality)" below); on failure shows the error
+      inline with a "Try again" button instead of silently doing nothing.
 - [x] Header: 3-area layout (logo / dynamic island / reserved), dynamic
       island shows the active record's state (clickable, changes it; each
       option's hover tooltip explains what that status means; an empty,
       still-clickable slot when unclassified — no placeholder glyph),
-      plus an inert AI-reanalyze button, an inert "send to training
-      ground" button, and a real "mark as reviewed" check toggle
+      plus an "SC" button that generates/regenerates the scorecard
+      (confirms first if one already exists — regenerating replaces the
+      current analysis), an inert "send to training ground" button, and a
+      real "mark as reviewed" check toggle
 
 ### Built (real functionality)
 - [x] Real local storage: every record is a real folder under
@@ -438,8 +440,8 @@ between the two lists. Each page gets its own section as pages get added.
       amount/currency, description); `user_notes.md`/`ai_analysis.md` are
       created lazily — only once the user actually types something
       non-empty; `scorecard.json` is written once a scorecard has been
-      generated (the generation itself is still fake this round — see
-      "To build" below)
+      generated (real generation — see the Scorecard generation entry
+      below)
 - [x] Adding a record: click the always-last "Add record" row (native file
       dialog) or drag a file anywhere onto the page (Tauri's native
       window-level drag-drop, not a sandboxed HTML5 drop, with a visible
@@ -476,7 +478,21 @@ between the two lists. Each page gets its own section as pages get added.
       rewritten to one canonical, standardized timestamp format on disk.
       Lines are color-coded per speaker, clicking a line seeks + plays the
       real video, right-click renames a speaker everywhere (UI and the
-      source file).
+      source file). Renaming onto a name that already belongs to a
+      *different* speaker (merging two speakers into one) confirms first;
+      a small toolbar above the lines offers one level of undo for that
+      (or any rename) and a confirm-guarded "regenerate transcript" button
+      that re-runs transcription from the record's existing hero video —
+      previously only reachable from the empty state, now available once
+      a transcript already exists too.
+- [x] Scorecard generation is real: a single local `claude` CLI call (see
+      `src/lib/scorecard/generate.ts` + `src-tauri/src/claude_cli.rs`,
+      same no-API-key shell-out pattern as the AI Assistant/Chat
+      Roleplay), scoring the real transcript against that Space's
+      configured criteria (Settings page) and that Space's business
+      description. Needs a transcript first (an info dialog says so if
+      there isn't one yet). A failed generation shows its error with a
+      "Try again" button rather than failing silently.
 - [x] Right-clicking a record in Navigation opens a context menu: "Open
       folder in Finder" (reveals the record's real on-disk folder),
       "Remove video" (shown only if a hero file exists — deletes just
@@ -493,10 +509,8 @@ between the two lists. Each page gets its own section as pages get added.
 - [ ] Real transcription generation
 - [ ] Real AI analysis generation (the slot is now a real, editable file —
       something still has to actually write useful content into it; the
-      header's AI button is still a no-op placeholder)
-- [ ] Real Scorecard generation (currently fabricates a fixed fake result
-      — `src/lib/scorecard/generate.ts` — rather than actually analyzing
-      the transcript)
+      header's button next to it is now the real Scorecard generate/
+      regenerate trigger, not an AI-analysis one)
 - [ ] AI-assisted core lesson extraction; Core Lessons persistence (still
       in-memory only this round — deliberately deferred)
 - [ ] Attachments UI (the `attachments/` folder convention is decided, no

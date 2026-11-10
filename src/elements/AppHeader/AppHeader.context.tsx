@@ -22,6 +22,9 @@ export type HeaderIsland = {
   onStateChange: (id: string) => void;
   reviewed: boolean;
   onToggleReviewed: () => void;
+  hasScorecard: boolean;
+  isGeneratingScorecard: boolean;
+  onGenerateScorecard: () => void;
 } | null;
 
 export type HeaderBrand = {

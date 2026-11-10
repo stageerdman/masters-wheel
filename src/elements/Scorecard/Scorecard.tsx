@@ -13,25 +13,48 @@ type ScorecardProps = {
   onGenerate: () => void;
   onSeek: (seconds: number) => void;
   criteria: ScorecardCriterionDef[];
+  error: string | null;
 };
 
-// Renders whichever of 3 states applies: nothing generated yet (just a
-// Generate button), a generation in flight (fake delay this round — see
-// this update's wiki.md), or a real result (one row per criterion, a
-// whole-call summary, then the improvement suggestion). Each row expands
-// inline (click to open, one open at a time — see ScorecardRow) to show
-// its timestamp(s) and reasoning; there's no separate reasoning modal
-// anymore, that job moved into the row itself.
-export function Scorecard({ scorecard, isGenerating, onGenerate, onSeek, criteria }: ScorecardProps) {
+// Renders whichever state applies: nothing generated yet (just a Generate
+// button, or an error + "Try again" if the last attempt failed), a real
+// `claude` CLI call in flight (can take up to a minute or two — see
+// src/lib/scorecard/generate.ts), or a real result (one row per
+// criterion, a whole-call summary, then the improvement suggestion).
+// Each row expands inline (click to open, one open at a time — see
+// ScorecardRow) to show its timestamp(s) and reasoning. Regenerating an
+// existing scorecard (the header's "SC" button) shows the same
+// generating/error state as a thin banner above the rows rather than
+// hiding them.
+export function Scorecard({ scorecard, isGenerating, onGenerate, onSeek, criteria, error }: ScorecardProps) {
   const [expandedCriterion, setExpandedCriterion] = useState<string | null>(null);
 
   if (!scorecard) {
     return (
       <div className={`${styles.root} ${position.root} ${position.empty}`} data-construction>
         {isGenerating ? (
-          <p className={`${styles.statusText} ${position.statusText}`} data-construction>
-            Generating scorecard…
-          </p>
+          <>
+            <p className={`${styles.statusText} ${position.statusText}`} data-construction>
+              Generating scorecard…
+            </p>
+            <p className={`${styles.statusSubtext} ${position.statusSubtext}`} data-construction>
+              This can take a minute.
+            </p>
+          </>
+        ) : error ? (
+          <>
+            <p className={`${styles.errorText} ${position.errorText}`} data-construction>
+              {error}
+            </p>
+            <button
+              type="button"
+              className={`${styles.generateButton} ${position.generateButton}`}
+              data-construction
+              onClick={onGenerate}
+            >
+              Try again
+            </button>
+          </>
         ) : (
           <button
             type="button"
@@ -53,6 +76,16 @@ export function Scorecard({ scorecard, isGenerating, onGenerate, onSeek, criteri
           Scorecard
         </h2>
       </div>
+      {isGenerating && (
+        <p className={`${styles.statusText} ${position.statusText}`} data-construction>
+          Regenerating…
+        </p>
+      )}
+      {!isGenerating && error && (
+        <p className={`${styles.errorText} ${position.errorText}`} data-construction>
+          {error}
+        </p>
+      )}
       <ul className={position.list} data-construction>
         {scorecard.items.map((item) => (
           <li key={item.criterion}>
