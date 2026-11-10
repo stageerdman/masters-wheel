@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "space-data",
-  "description": "Every Space's data (Agents, chat history, Performance Review records) plus the spaces.json registry itself: fs + dialog access scoped to the Master's Wheel storage root only.",
+  "description": "Every Space's data (Agents, chat history, Performance Review records) plus the spaces.json registry itself: fs + dialog access scoped to the Master's Wheel storage root only. copy-file is the one exception — it also needs to reach arbitrary user files, since it's always one end of either an upload (copying a user-picked file in) or a download (copying a stored file out to a user-picked destination).",
   "windows": ["main"],
   "permissions": [
     "dialog:allow-open",
@@ -29,7 +29,12 @@
     },
     {
       "identifier": "fs:allow-copy-file",
-      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
+      "allow": [
+        { "path": "$DOCUMENT/Master's Wheel" },
+        { "path": "$DOCUMENT/Master's Wheel/**" },
+        { "path": "$HOME/**" },
+        { "path": "/Volumes/**" }
+      ]
     },
     {
       "identifier": "fs:allow-remove",
