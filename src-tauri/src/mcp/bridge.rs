@@ -95,10 +95,29 @@ pub enum TagKind {
 
 type ResourceId = (ResourceKind, String);
 
+// A one-shot "Allow" or "Decline" the user gave for one specific
+// resource during the *current* turn (one ask_agent call, i.e. one
+// `claude -p` invocation) — cleared at the start of every new turn by
+// Bridge::start_turn. Exists because a long transcript/document comes
+// back in bounded chunks (see get_performance_review.rs's pagination):
+// without this, "Allow" — whose own card copy says "read X once" — only
+// ever covered the single HTTP round trip for the very first chunk,
+// forcing a brand-new card (and up to another 180s timeout) for every
+// later chunk of the exact same document. That repeated, easy-to-miss
+// card is the real cause of a long analysis looking permanently stuck
+// partway through. Distinct from `always_allowed`, which persists across
+// turns/sessions by the user's own explicit choice.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum TurnDecision {
+    Allowed,
+    Declined,
+}
+
 #[derive(Default)]
 struct SessionAccess {
     tags: HashMap<ResourceId, TagKind>,
     always_allowed: HashSet<ResourceId>,
+    turn_decisions: HashMap<ResourceId, TurnDecision>,
 }
 
 impl SessionAccess {
@@ -123,6 +142,16 @@ impl SessionAccess {
         } else {
             AccessResult { preauthorized: false, via: None }
         }
+    }
+
+    // Whatever the user already decided for this exact resource earlier
+    // in the current turn, if anything — see TurnDecision above.
+    fn turn_decision(&self, resource_kind: ResourceKind, resource_id: &str) -> Option<TurnDecision> {
+        self.turn_decisions.get(&(resource_kind, resource_id.to_string())).copied()
+    }
+
+    fn record_turn_decision(&mut self, resource_kind: ResourceKind, resource_id: &str, decision: TurnDecision) {
+        self.turn_decisions.insert((resource_kind, resource_id.to_string()), decision);
     }
 }
 
@@ -195,6 +224,16 @@ impl Bridge {
                 .insert((pending.resource_kind, pending.resource_id.clone()));
         }
         let _ = pending.sender.send(decision.to_string());
+    }
+
+    // Clears any Allow/Decline cached for this session's current turn —
+    // called once per ask_agent call, right before its `claude -p`
+    // subprocess spawns (see assistant.rs), so the *next* user message
+    // genuinely asks again for a resource rather than silently inheriting
+    // whatever was decided for it last turn.
+    pub fn start_turn(&self, session_id: &str) {
+        let mut sessions = self.state.sessions.lock().expect("bridge sessions mutex");
+        sessions.entry(session_id.to_string()).or_default().turn_decisions.clear();
     }
 }
 
@@ -321,6 +360,30 @@ fn handle_permission_request(request: Request, state: &Arc<BridgeState>, app: &A
         return;
     };
 
+    // Cloned up front, before payload's fields get moved into the
+    // emit below — reused both for the cache check here and to record
+    // the decision once it's known, further down.
+    let resource_kind = payload.resource_kind;
+    let resource_id = payload.resource_id.clone();
+    let session_id = payload.session_id.clone();
+
+    // Already decided earlier this same turn — see TurnDecision's doc
+    // comment. Resolve instantly: no new card, no 180s wait, no risk of
+    // the user missing a second/third/… card for a document they
+    // already said yes (or no) to once.
+    let cached = {
+        let sessions = state.sessions.lock().expect("bridge sessions mutex");
+        sessions.get(&session_id).and_then(|access| access.turn_decision(resource_kind, &resource_id))
+    };
+    if let Some(decision) = cached {
+        let decision_str = match decision {
+            TurnDecision::Allowed => "allow",
+            TurnDecision::Declined => "decline",
+        };
+        respond_json(request, &PermissionDecisionResult { decision: decision_str.to_string() });
+        return;
+    }
+
     let request_id = format!("{}-{}", std::process::id(), REQUEST_COUNTER.fetch_add(1, Ordering::SeqCst));
     let (sender, receiver) = mpsc::channel::<String>();
     state.pending.lock().expect("bridge pending mutex").insert(
@@ -353,6 +416,19 @@ fn handle_permission_request(request: Request, state: &Arc<BridgeState>, app: &A
             "decline".to_string()
         }
     };
+    // Cache whatever was just decided (a real click, or a timeout's
+    // implicit decline) so every later chunk of this same document, for
+    // the rest of this turn, resolves from the branch above instead of
+    // asking — and instead of silently re-running the same 180s timeout
+    // for every chunk the user never gets a chance to see.
+    let turn_decision = if decision == "decline" { TurnDecision::Declined } else { TurnDecision::Allowed };
+    state
+        .sessions
+        .lock()
+        .expect("bridge sessions mutex")
+        .entry(session_id)
+        .or_default()
+        .record_turn_decision(resource_kind, &resource_id, turn_decision);
     respond_json(request, &PermissionDecisionResult { decision });
 }
 
@@ -404,6 +480,7 @@ mod tests {
         SessionAccess {
             tags: tags.iter().map(|(kind, id, state)| ((*kind, id.to_string()), *state)).collect(),
             always_allowed: always_allowed.iter().map(|(kind, id)| (*kind, id.to_string())).collect(),
+            turn_decisions: HashMap::new(),
         }
     }
 
@@ -501,6 +578,70 @@ mod tests {
 
         let sessions = state.sessions.lock().unwrap();
         assert!(sessions.get("s1").is_none(), "no SessionAccess should be created for a plain decline");
+    }
+
+    #[test]
+    fn no_turn_decision_cached_by_default() {
+        let access = access_with(&[], &[]);
+        assert_eq!(access.turn_decision(PR, "r1"), None);
+    }
+
+    #[test]
+    fn recorded_turn_decision_is_read_back_for_the_exact_resource() {
+        let mut access = access_with(&[], &[]);
+        access.record_turn_decision(PR, "r1", TurnDecision::Allowed);
+        assert_eq!(access.turn_decision(PR, "r1"), Some(TurnDecision::Allowed));
+        // A plain Allow is per-resource, not blanket — a second,
+        // never-decided resource in the same session still asks.
+        assert_eq!(access.turn_decision(PR, "r2"), None);
+    }
+
+    #[test]
+    fn a_declined_turn_decision_is_distinguishable_from_allowed() {
+        let mut access = access_with(&[], &[]);
+        access.record_turn_decision(PR, "r1", TurnDecision::Declined);
+        assert_eq!(access.turn_decision(PR, "r1"), Some(TurnDecision::Declined));
+    }
+
+    #[test]
+    fn a_turn_decision_never_makes_resolve_report_preauthorized() {
+        // This is the whole point: a plain Allow must keep going through
+        // the ask-and-cache path (so the user's card still shows the
+        // very first time), never silently join tags/always-allowed —
+        // only Bridge::start_turn's caller-side short-circuit (inside
+        // handle_permission_request) consults turn_decision at all.
+        let mut access = access_with(&[], &[]);
+        access.record_turn_decision(PR, "r1", TurnDecision::Allowed);
+        assert_eq!(access.resolve(PR, "r1"), AccessResult { preauthorized: false, via: None });
+    }
+
+    #[test]
+    fn start_turn_clears_cached_turn_decisions_for_that_session() {
+        let state = Arc::new(BridgeState::default());
+        let bridge = Bridge { state: state.clone() };
+        {
+            let mut sessions = state.sessions.lock().unwrap();
+            sessions.entry("s1".to_string()).or_default().record_turn_decision(PR, "r1", TurnDecision::Allowed);
+        }
+
+        bridge.start_turn("s1");
+
+        let sessions = state.sessions.lock().unwrap();
+        assert_eq!(sessions.get("s1").unwrap().turn_decision(PR, "r1"), None);
+    }
+
+    #[test]
+    fn start_turn_never_touches_tags_or_always_allowed() {
+        let state = Arc::new(BridgeState::default());
+        let bridge = Bridge { state: state.clone() };
+        bridge.sync_tags("s1".to_string(), vec![(PR, "r1".to_string(), TagKind::Active)], vec![(PR, "r2".to_string())]);
+
+        bridge.start_turn("s1");
+
+        let sessions = state.sessions.lock().unwrap();
+        let access = sessions.get("s1").unwrap();
+        assert_eq!(access.resolve(PR, "r1"), AccessResult { preauthorized: true, via: Some("tag-active") });
+        assert_eq!(access.resolve(PR, "r2"), AccessResult { preauthorized: true, via: Some("always-allowed") });
     }
 
     #[test]

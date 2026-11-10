@@ -147,6 +147,44 @@ instead of asking for a transcript. Rebuilt and reinstalled.
 Both fixed, `cargo check`/`cargo test` (16 tests)/`tsc --noEmit`/
 `npm run lint`/`npm run build` clean, rebuilt and reinstalled.
 
+## Fix — a real "stuck fetching forever" report, traced to "Allow" only ever covering one chunk
+Live report (user): the assistant said something like "Fetching the call
+transcript for [name]..." and then just never continued — and separately,
+sometimes answered with raw technical-looking text instead of a real
+analysis. Both traced to the same root cause, found by inspecting the
+actual record involved (a 2-hour call, 154KB transcript — `get_performance_review`
+pages text in 16,000-character chunks, so reading the whole thing takes
+~10 separate tool calls) against `bridge.rs`'s gating code, not by
+guessing: `Bridge::respond` only ever persisted `always_allowed` for the
+`"always-allow"` decision — a plain `"allow"` just unblocked the *one*
+in-flight HTTP call and left no trace anywhere. Every document crossing
+one page triggered a brand-new, easy-to-miss permission card for the next
+chunk of the *same* document the user had just said yes to, each capable
+of silently eating another full 180s timeout before auto-declining. A
+decline partway through a multi-chunk read is also the likely source of
+the "technical language" replies — the model getting a clean result for
+several chunks and then a sudden access-declined result for the next one.
+
+**Fix**: `mcp/bridge.rs` gained a `TurnDecision` cache (`Allowed`/
+`Declined`) scoped to one chat turn, keyed by resource — recorded the
+moment a `/permission-request` resolves (real click or timeout) and
+consulted before a resource's *next* request is even asked, so chunk 2
+through N of the same document reuse chunk 1's decision instantly: no new
+card, no repeat 180s wait. `Bridge::start_turn` clears this cache; wired
+into `assistant.rs`'s `ask_agent` right before each `claude -p` spawn, so
+the *next user message* still asks fresh — only "Always Allow" is meant
+to survive across turns. Deliberately left `SessionAccess::resolve`/the
+`/access` endpoint untouched (still used for the tag/always-allow fast
+path with its own 10 existing tests) — the short-circuit lives entirely
+inside `handle_permission_request`, the one place that was actually
+missing it. 6 new Rust unit tests (24 total in this file, 52 overall),
+`cargo check`/`tsc --noEmit` clean. Not separately hand-verified against
+the real CLI with an actual oversized transcript (would need a genuine
+~180s+ multi-chunk run) — the logic bug itself (confirmed by reading
+`Bridge::respond` directly: `always_allowed` only grows on
+`"always-allow"`, never `"allow"`) and its unit tests are the evidence
+this was broken and is now fixed; rebuilt and reinstalled either way.
+
 ## Next
 Try it for real: open the AI Assistant, go to Performance Review and open
 a record (watch the dashed "suggested" tag appear above the chat), ask
