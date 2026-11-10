@@ -44,6 +44,7 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_opener::init())
+    .plugin(tauri_plugin_clipboard_manager::init())
     .manage(transcribe::TranscribeJobs::default())
     .invoke_handler(tauri::generate_handler![
       transcribe::probe_audio_tracks,
@@ -58,7 +59,6 @@ pub fn run() {
       knowledge::commands::remove_knowledge_file,
       avatar::read_image_as_data_url,
       mcp::bridge::sync_mcp_tags,
-      mcp::bridge::respond_to_mcp_permission,
       roleplay::generate_setup_reply,
       roleplay::generate_persona,
       roleplay::generate_roleplay_turn,

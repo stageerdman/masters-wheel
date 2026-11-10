@@ -47,7 +47,6 @@ export function ChatPage() {
     visibleTags,
     recordSummaries,
     trainingSessionSummaries,
-    respondToPermission,
   } = useAIAssistant();
 
   // useAIAssistant's own agent/record/session-loading effects only run
@@ -144,7 +143,6 @@ export function ChatPage() {
                 density="comfortable"
                 agents={agents}
                 respondingAgent={respondingAgent}
-                onRespondToPermission={respondToPermission}
               />
               <Composer
                 value={composerValue}

@@ -1,4 +1,4 @@
-import type { ChatTag, PermissionRequestPayload, SearchResultsPayload, TaggedResourceKind } from "@/lib/mcp/types";
+import type { ChatTag, SearchResultsPayload } from "@/lib/mcp/types";
 
 export type ChatMessageRole = "user" | "assistant" | "system";
 
@@ -11,15 +11,11 @@ export type ChatMessage = {
    * reply in the same session (see dispatch.ts). */
   agentId?: string;
   createdAt: string;
-  /** Set only for a permission-request card (see src/lib/mcp/types.ts) —
-   * MessageList renders PermissionRequest instead of Message for one of
-   * these. Absent on every ordinary message. */
-  permissionRequest?: PermissionRequestPayload;
   /** Set only for a search-results card — a snapshot of one
    * search_performance_reviews call's own result, appended the moment
    * it comes back mid-reply (see assistant.rs's "search-results" event
    * and AIAssistant.script.ts's dispatchAgentReply). Absent on every
-   * ordinary message; nothing to respond to, unlike permissionRequest. */
+   * ordinary message; nothing to respond to. */
   searchResults?: SearchResultsPayload;
 };
 
@@ -51,12 +47,9 @@ export type ChatSession = {
   /** Which resources (Performance Review records, Training Room
    * sessions) are in scope for this chat right now — "suggested" follows
    * page navigation, "active" sticks once the AI has actually read that
-   * resource. Scoped to this one session only, by explicit user choice —
-   * switching chats starts with none. See src/lib/mcp/types.ts and
+   * resource. Purely a context/UI signal (see src/lib/mcp/types.ts) —
+   * reading a resource's content is never gated. Scoped to this one
+   * session only — switching chats starts with none. See
    * AIAssistant.script.ts's tag management. */
   tags: ChatTag[];
-  /** Resources the user picked "Always Allow" for in this chat — never
-   * rendered as their own chips (see TagBar), just silently skips the
-   * permission prompt for that resource for the rest of this session. */
-  alwaysAllowedResources: { resourceKind: TaggedResourceKind; resourceId: string }[];
 };

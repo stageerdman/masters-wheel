@@ -1,0 +1,44 @@
+.root {
+  background: var(--color-surface);
+}
+
+.statusText {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.statusSubtext {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}
+
+.errorText {
+  color: var(--color-rating-poor);
+  font-size: var(--text-size-label);
+}
+
+.generateButton {
+  background: var(--color-accent);
+  color: var(--color-on-chip);
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.generateButton:hover {
+  opacity: 0.9;
+}
+
+.title {
+  color: var(--color-text);
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+}
+
+.count {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}

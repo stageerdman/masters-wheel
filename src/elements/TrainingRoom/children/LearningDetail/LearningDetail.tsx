@@ -76,6 +76,8 @@ export function LearningDetail({
       ) : (
         <TranscriptPanel
           transcriptRaw={file.transcriptRaw}
+          wordTimings={file.wordTimings}
+          diarize={file.diarize}
           generation={generationByMedia[file.id] ?? null}
           currentTime={learningMediaTime[file.id] ?? 0}
           onSeek={(seconds) => onSeekMedia(file.id, seconds)}

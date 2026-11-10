@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { formatTimestamp, parseTranscript, speakersOf } from "@/lib/transcript";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
+import { ContextMenu, type ContextMenuItem } from "@/elements/ContextMenu/ContextMenu";
 import { TranscriptLine } from "./children/TranscriptLine/TranscriptLine";
 import { TranscriptEmptyState } from "./children/TranscriptEmptyState/TranscriptEmptyState";
 import { TranscriptGenerating } from "./children/TranscriptGenerating/TranscriptGenerating";
@@ -19,6 +21,7 @@ const SPEAKER_COLORS = [
   "var(--color-speaker-4)",
 ];
 
+type LineMenuState = { x: number; y: number; speaker: string; text: string };
 type SpeakerMenuState = { x: number; y: number; speaker: string };
 
 type TranscriptProps = {
@@ -36,16 +39,17 @@ type TranscriptProps = {
 };
 
 // Renders a parsed transcript.md: color-coded per speaker, click a line to
-// seek the video there, right-click a line to rename its speaker (renames
-// every line by that speaker, in both the UI and transcript.md — see
-// PerformanceReview.script.ts's renameTranscriptSpeaker). Renaming onto a
-// name that already belongs to a *different* speaker confirms first,
-// since that merges two real speakers into one. A small toolbar above the
-// lines offers one step of undo for that (or any rename) and re-running
-// transcription from scratch. No transcript yet falls back to the
-// upload/generate prompt — unless a Generate Transcript job is running
-// (or just failed) for this record, in which case that takes over the
-// same slot instead (see TranscriptGenerating).
+// seek the video there, right-click a line for a small menu — Rename opens
+// the existing speaker-rename popover (renames every line by that speaker,
+// in both the UI and transcript.md — see PerformanceReview.script.ts's
+// renameTranscriptSpeaker); Copy puts that line's full text on the
+// clipboard. Renaming onto a name that already belongs to a *different*
+// speaker confirms first, since that merges two real speakers into one. A
+// small toolbar above the lines offers one step of undo for that (or any
+// rename) and re-running transcription from scratch. No transcript yet
+// falls back to the upload/generate prompt — unless a Generate Transcript
+// job is running (or just failed) for this record, in which case that
+// takes over the same slot instead (see TranscriptGenerating).
 export function Transcript({
   rawText,
   generation,
@@ -59,7 +63,8 @@ export function Transcript({
   canUndo,
   onUndo,
 }: TranscriptProps) {
-  const [menu, setMenu] = useState<SpeakerMenuState | null>(null);
+  const [lineMenu, setLineMenu] = useState<LineMenuState | null>(null);
+  const [renameMenu, setRenameMenu] = useState<SpeakerMenuState | null>(null);
 
   const parsed = useMemo(() => (rawText ? parseTranscript(rawText) : null), [rawText]);
   const speakers = useMemo(() => (parsed ? speakersOf(parsed) : []), [parsed]);
@@ -86,12 +91,13 @@ export function Transcript({
     return SPEAKER_COLORS[index % SPEAKER_COLORS.length];
   }
 
-  function handleContextMenu(event: ReactMouseEvent, speaker: string) {
+  function handleContextMenu(event: ReactMouseEvent, speaker: string, text: string) {
     event.preventDefault();
-    setMenu({
+    setLineMenu({
       x: Math.min(event.clientX, window.innerWidth - 200),
       y: Math.min(event.clientY, window.innerHeight - 100),
       speaker,
+      text,
     });
   }
 
@@ -101,7 +107,7 @@ export function Transcript({
   // too), so it confirms first. An ordinary rename (new name, or the same
   // speaker) proceeds immediately.
   async function handleRenameSubmit(name: string) {
-    const from = menu?.speaker;
+    const from = renameMenu?.speaker;
     if (!from) return;
     const collides = name !== from && speakers.includes(name);
     if (collides) {
@@ -112,8 +118,23 @@ export function Transcript({
       if (!confirmed) return;
     }
     onRenameSpeaker(from, name);
-    setMenu(null);
+    setRenameMenu(null);
   }
+
+  const lineMenuItems: ContextMenuItem[] = lineMenu
+    ? [
+        {
+          id: "rename",
+          label: "Rename",
+          onSelect: () => setRenameMenu({ x: lineMenu.x, y: lineMenu.y, speaker: lineMenu.speaker }),
+        },
+        {
+          id: "copy",
+          label: "Copy",
+          onSelect: () => void writeText(lineMenu.text),
+        },
+      ]
+    : [];
 
   async function handleRegenerate() {
     const confirmed = await confirm("Regenerate the transcript? This discards the current one, including any renames.", {
@@ -158,18 +179,21 @@ export function Transcript({
               color={colorFor(entry.speaker)}
               showSpeaker={index === 0 || parsed.entries[index - 1].speaker !== entry.speaker}
               onSeek={() => onSeek(entry.seconds)}
-              onContextMenu={(event) => handleContextMenu(event, entry.speaker)}
+              onContextMenu={(event) => handleContextMenu(event, entry.speaker, entry.text)}
             />
           </li>
         ))}
       </ul>
-      {menu && (
+      {lineMenu && (
+        <ContextMenu x={lineMenu.x} y={lineMenu.y} items={lineMenuItems} onClose={() => setLineMenu(null)} />
+      )}
+      {renameMenu && (
         <SpeakerContextMenu
-          x={menu.x}
-          y={menu.y}
-          initialName={menu.speaker}
+          x={renameMenu.x}
+          y={renameMenu.y}
+          initialName={renameMenu.speaker}
           onSubmit={(name) => void handleRenameSubmit(name)}
-          onClose={() => setMenu(null)}
+          onClose={() => setRenameMenu(null)}
         />
       )}
     </div>

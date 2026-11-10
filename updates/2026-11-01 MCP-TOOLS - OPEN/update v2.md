@@ -140,3 +140,70 @@ If all three check out, this round is done — no further phases planned
 unless the click-through surfaces a real bug (same pattern v1's Phase
 A–C fixes followed: build, hand-verify what can be verified without the
 browser, then fix whatever the user's own first real use turns up).
+
+## Phase F — dropped the Decline/Allow/Always Allow permission gate entirely
+
+### Decided with the user
+The whole per-record interactive permission system (the Decline/Allow/
+Always Allow card, `mcp/bridge.rs`'s `SessionAccess`/`TurnDecision`/
+pending-request machinery, `search_performance_reviews`'
+`content_access_required`) was solving a problem the user says never
+actually existed — it only ever guarded against the model reading
+"irrelevant" records, which its own judgment already handles via
+`list_performance_reviews`' description field and
+`search_performance_reviews`, not an interactive gate. Explicit
+instruction: "drop this shit, not needed for now. It solves problem
+we've never had." Every Performance Review record and Training Room
+session is now always readable by `get_performance_review`/
+`get_training_session` — no prompt, no per-chat or global allow-list.
+
+What's kept, because it's a genuinely different feature (context, not
+permission): a record/session currently open on screen still auto-tags
+as "suggested" and gets woven into the system prompt as "in view" (see
+`knowledge::prompt::build_tagged_context`); the first time the AI
+actually reads it, `mcp/bridge.rs`'s `/mark-used` promotes that tag to
+"active" so it keeps showing as a chip and feeding this chat's context
+after the user navigates away. That stickiness was the one part of the
+old system worth keeping.
+
+### What changed
+- `mcp/bridge.rs`: removed `SessionAccess`'s `always_allowed`/
+  `turn_decisions`, the `/access` and `/permission-request` endpoints,
+  `PendingRequest`/`respond`/`start_turn`, and the
+  `respond_to_mcp_permission` Tauri command. Kept `/mark-used` and
+  `sync_mcp_tags`/`tags_for_session` — now purely a tag/context store,
+  not an access-control one.
+- `mcp/permission.rs`: replaced `check_access`/`peek_access`/`Access`
+  with one fire-and-forget `mark_read` that just tells the bridge a
+  resource was read (to promote its tag) — never blocks, never asks.
+- `mcp/server.rs`: `get_performance_review`/`get_training_session` call
+  `mark_read` and read directly, no Decline branch. Tool descriptions no
+  longer mention permission.
+- `search_performance_reviews.rs`: every content match now returns a
+  real snippet; removed `content_access_required` and the no-longer-
+  async `peek_access` call (the function itself is sync again).
+- `knowledge/prompt.rs`'s `TOOL_USE_RULE`: no longer tells the model a
+  read "may need the user's permission" or explains
+  `content_access_required`.
+- `mcp/config.rs`: `AGENT_ID_ENV`/`write_config_file`'s `agent_id` param
+  removed — it only ever existed to label the permission card, which no
+  longer exists.
+- Frontend: deleted the `PermissionRequest` card element entirely;
+  removed `permissionRequest`/`alwaysAllowedResources` from
+  `ChatMessage`/`ChatSession`, `PermissionDecision`/`PermissionRequestStatus`/
+  `PermissionRequestPayload`/`PermissionDocument` from `lib/mcp/types.ts`,
+  and the matching bridge.ts/AIAssistant.script.ts wiring
+  (`onMcpPermissionRequest`, `respondToMcpPermission`,
+  `respondToPermission`) across every `MessageList` call site (floating
+  widget, `/chat`, Mindset Shifting, AI Trainer pane). `SearchResults`
+  no longer renders a "needs your permission" note per match.
+
+### Status
+Done. `cargo check`/`cargo test` (35 tests, same count — 5 bridge tests
+simplified down from the old 11 rather than dropped outright) and
+`tsc --noEmit`/`npm run lint`/`npm run build` all clean. `npm run
+app:build` rebuilt and reinstalled to `/Applications/Master's Wheel.app`.
+Not click-tested in the real app per this project's no-browser-automation
+rule — ask an agent to read a record with nothing tagged and confirm no
+card ever appears, and that a record discussed once keeps answering
+follow-ups without re-reading it.

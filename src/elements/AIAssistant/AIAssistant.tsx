@@ -47,7 +47,6 @@ export function AIAssistant() {
     visibleTags,
     recordSummaries,
     trainingSessionSummaries,
-    respondToPermission,
   } = useAIAssistant();
   const {
     windowRef,
@@ -117,7 +116,6 @@ export function AIAssistant() {
           trainingSessionSummaries={trainingSessionSummaries}
           visibleTags={visibleTags}
           onRemoveTag={removeTag}
-          onRespondToPermission={respondToPermission}
         />
       )}
     </div>

@@ -9,15 +9,9 @@ import { listRecords, type RecordSummary } from "@/lib/records";
 import { listSessions as listTrainingSessions, type SessionSummary as TrainingSessionSummary } from "@/lib/training";
 import { useActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
 import { useActiveSpace } from "@/lib/spaces";
-import { onMcpPermissionRequest, onMcpTagUsed, respondToMcpPermission, syncMcpTags } from "@/lib/mcp/bridge";
+import { onMcpTagUsed, syncMcpTags } from "@/lib/mcp/bridge";
 import { promoteTag, removeTag as removeTagFromList, withSuggestedTag } from "@/lib/mcp/tags";
-import type {
-  ChatTag,
-  PermissionDecision,
-  PermissionRequestStatus,
-  SearchResultMatch,
-  TaggedResourceKind,
-} from "@/lib/mcp/types";
+import type { ChatTag, SearchResultMatch, TaggedResourceKind } from "@/lib/mcp/types";
 
 export type AssistantPhase = "closed" | "open" | "closing";
 export type { ChatMessage, ChatMessageRole, ChatSession, Agent };
@@ -36,7 +30,6 @@ function makeNewSession(id: string = NEW_SESSION_ID): ChatSession {
     contextUsage: {},
     isDraft: true,
     tags: [],
-    alwaysAllowedResources: [],
   };
 }
 
@@ -341,51 +334,23 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
       : null;
   const visibleTags: ChatTag[] = withSuggestedTag(activeSession.tags, suggestedResource);
 
-  // Pushes the active session's tag/always-allow state to the Rust
-  // bridge (src-tauri/src/mcp/bridge.rs) — a real external-system sync,
-  // not a setState call, so it belongs in an effect. Includes the
-  // computed "suggested" tag, not just what's stored, since that's what
-  // actually grants silent access to a not-yet-active suggestion (see
-  // mcp/permission.rs). Only the active session needs to stay live here —
-  // sendMessage captures its target session synchronously before this
-  // could change out from under it.
+  // Pushes the active session's tag state to the Rust bridge
+  // (src-tauri/src/mcp/bridge.rs) — a real external-system sync, not a
+  // setState call, so it belongs in an effect. Includes the computed
+  // "suggested" tag, not just what's stored, since that's what
+  // assistant.rs weaves into the system prompt as "currently in view"
+  // (see knowledge::prompt). Only the active session needs to stay live
+  // here — sendMessage captures its target session synchronously before
+  // this could change out from under it.
   useEffect(() => {
-    void syncMcpTags(activeSessionId, visibleTags, activeSession.alwaysAllowedResources);
-  }, [activeSessionId, visibleTags, activeSession.alwaysAllowedResources]);
+    void syncMcpTags(activeSessionId, visibleTags);
+  }, [activeSessionId, visibleTags]);
 
-  // Two long-lived subscriptions to the bridge's events — mount once,
-  // route by the sessionId each event itself carries (never assumed to
-  // be the currently active session; a reply the user has since
-  // navigated away from can still trigger either of these).
-  useEffect(() => {
-    const unlistenPromise = onMcpPermissionRequest((event) => {
-      appendMessageToSession(event.sessionId, {
-        id: crypto.randomUUID(),
-        role: "system",
-        text: "",
-        createdAt: new Date().toISOString(),
-        agentId: event.agentId,
-        permissionRequest: {
-          requestId: event.requestId,
-          agentId: event.agentId,
-          resourceKind: event.resourceKind,
-          resourceId: event.resourceId,
-          resourceTitle: event.resourceTitle,
-          document: event.document,
-          status: "pending",
-        },
-      });
-    });
-    return () => {
-      void unlistenPromise.then((unlisten) => unlisten());
-    };
-    // Mount once — appendMessageToSession is stable in behavior (reads
-    // fresh state via setSessions's functional form) even though it's
-    // redefined every render; re-subscribing on every render would be
-    // wrong, not just unnecessary.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // A "suggested" tag the AI actually reads gets promoted to "active" —
+  // see mcp/permission.rs's mark_read and bridge.rs's `/mark-used`. Mount
+  // once, route by the sessionId the event itself carries (never assumed
+  // to be the currently active session; a reply the user has since
+  // navigated away from can still trigger this).
   useEffect(() => {
     const unlistenPromise = onMcpTagUsed((event) => {
       updateAndPersistSession(event.sessionId, (session) => ({
@@ -396,40 +361,13 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
     return () => {
       void unlistenPromise.then((unlisten) => unlisten());
     };
-    // Mount once, same reasoning as the onMcpPermissionRequest subscription
-    // above — updateAndPersistSession now also closes over storageRoot
-    // (stable for this hook instance's whole lifetime; AITrainerPane
-    // remounts on session change rather than ever passing a new one in),
-    // re-subscribing whenever it's redefined would be wrong, not just
-    // unnecessary.
+    // Mount once — updateAndPersistSession now also closes over
+    // storageRoot (stable for this hook instance's whole lifetime;
+    // AITrainerPane remounts on session change rather than ever passing
+    // a new one in), re-subscribing whenever it's redefined would be
+    // wrong, not just unnecessary.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // The Decline/Allow/Always Allow buttons on a PermissionRequest card.
-  // Resolves the bridge's blocked tool call immediately and, separately,
-  // collapses the card by updating its stored status — found by message
-  // id, not the active session, for the same reason the event listeners
-  // above don't assume it either.
-  function respondToPermission(messageId: string, decision: PermissionDecision) {
-    const owningSession = sessions.find((session) => session.messages.some((message) => message.id === messageId));
-    const request = owningSession?.messages.find((message) => message.id === messageId)?.permissionRequest;
-    if (!owningSession || !request) return;
-    void respondToMcpPermission(request.requestId, decision);
-    const status: PermissionRequestStatus =
-      decision === "decline" ? "declined" : decision === "allow" ? "allowed" : "always-allowed";
-    updateAndPersistSession(owningSession.id, (session) => ({
-      ...session,
-      alwaysAllowedResources:
-        decision === "always-allow"
-          ? [...session.alwaysAllowedResources, { resourceKind: request.resourceKind, resourceId: request.resourceId }]
-          : session.alwaysAllowedResources,
-      messages: session.messages.map((message) =>
-        message.id === messageId && message.permissionRequest
-          ? { ...message, permissionRequest: { ...message.permissionRequest, status } }
-          : message,
-      ),
-    }));
-  }
 
   // The × button on a tag chip. A stored (active) tag is actually
   // removed from the session; a merely-suggested one (never stored) is
@@ -569,8 +507,8 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
       updateMessageInSession(sessionId, replyId, (message) => ({ ...message, text: message.text + progress.delta }));
     });
     // Appended as its own card the moment the tool result actually
-    // comes back — mid-reply, same as a PermissionRequest card, not
-    // held until the final reply text finishes streaming.
+    // comes back — mid-reply, not held until the final reply text
+    // finishes streaming.
     const unlistenSearch = await onSearchResultsProgress((progress) => {
       if (progress.jobId !== jobId) return;
       appendMessageToSession(sessionId, {
@@ -717,7 +655,6 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
       contextUsage: {},
       agentId,
       tags: [],
-      alwaysAllowedResources: [],
     };
     setSessions((current) => [session, ...current]);
     setActiveSessionId(session.id);
@@ -807,6 +744,5 @@ export function useAIAssistant(storageRoot?: string, trainingSessionId?: string)
     visibleTags,
     recordSummaries,
     trainingSessionSummaries,
-    respondToPermission,
   };
 }

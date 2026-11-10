@@ -18,10 +18,8 @@ type HeroProps = {
   videoRef: RefObject<HTMLVideoElement | null>;
   notes: string;
   lessons: string;
-  aiAnalysis: string;
   onNotesChange: (value: string) => void;
   onLessonsChange: (value: string) => void;
-  onAiAnalysisChange: (value: string) => void;
   onOfferedAmountChange: (value: number | null) => void;
   onOfferedCurrencyChange: (value: string | null) => void;
   onDescriptionChange: (value: string) => void;
@@ -43,6 +41,9 @@ type HeroProps = {
   onGenerateScorecard: () => void;
   scorecardCriteria: ScorecardCriterionDef[];
   scorecardError: string | null;
+  isGeneratingQuestionAnalysis: boolean;
+  onGenerateQuestionAnalysis: () => void;
+  questionAnalysisError: string | null;
 };
 
 export function Hero({
@@ -51,10 +52,8 @@ export function Hero({
   videoRef,
   notes,
   lessons,
-  aiAnalysis,
   onNotesChange,
   onLessonsChange,
-  onAiAnalysisChange,
   onOfferedAmountChange,
   onOfferedCurrencyChange,
   onDescriptionChange,
@@ -76,6 +75,9 @@ export function Hero({
   onGenerateScorecard,
   scorecardCriteria,
   scorecardError,
+  isGeneratingQuestionAnalysis,
+  onGenerateQuestionAnalysis,
+  questionAnalysisError,
 }: HeroProps) {
   const [active, setActive] = usePersistedActiveKind();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -159,10 +161,8 @@ export function Hero({
           video={video}
           notes={notes}
           lessons={lessons}
-          aiAnalysis={aiAnalysis}
           onNotesChange={onNotesChange}
           onLessonsChange={onLessonsChange}
-          onAiAnalysisChange={onAiAnalysisChange}
           onRequestTranscriptUpload={onRequestTranscriptUpload}
           onRequestGenerateTranscript={onRequestGenerateTranscript}
           transcriptGeneration={transcriptGeneration}
@@ -177,6 +177,9 @@ export function Hero({
           onGenerateScorecard={onGenerateScorecard}
           scorecardCriteria={scorecardCriteria}
           scorecardError={scorecardError}
+          isGeneratingQuestionAnalysis={isGeneratingQuestionAnalysis}
+          onGenerateQuestionAnalysis={onGenerateQuestionAnalysis}
+          questionAnalysisError={questionAnalysisError}
         />
       </div>
     </section>

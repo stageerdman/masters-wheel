@@ -232,8 +232,8 @@ between the two lists. Each page gets its own section as pages get added.
       at this app's own re-exec'd binary — see
       `src-tauri/src/mcp/server.rs`): `list_performance_reviews`/
       `get_performance_review` (Performance Review's metadata-only list +
-      gated real notes/transcript/analysis content) and, since this was
-      generalized (2026-11-09, see
+      gated real notes/transcript/question-analysis content) and, since
+      this was generalized (2026-11-09, see
       `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`), the same pair
       for Training Room — `list_training_sessions`/`get_training_session`
       — covering every discipline, not just Performance Review records.
@@ -245,30 +245,28 @@ between the two lists. Each page gets its own section as pages get added.
       actually read that resource. Both removable via a hover-revealed
       ×. Scoped to one chat session — switching chats starts with none,
       switching back restores them.
-- [x] Reading an untagged, un-always-allowed resource (either kind)
-      triggers an inline permission card (`PermissionRequest`) with
-      Decline / Allow / Always Allow, backed by a local bridge
-      (`src-tauri/src/mcp/bridge.rs`) that actually blocks the tool call
-      until the user answers (or 180s elapses, auto-declining). Resolved
-      cards collapse to one line ("You declined/allowed/always allow…").
-- [x] Reading a suggested-tagged resource promotes it to active
-      automatically, no prompt.
+- [x] Reading any resource (either kind) is always allowed — no
+      Decline/Allow/Always Allow prompt (removed 2026-11-10, see
+      `updates/2026-11-01 MCP-TOOLS - OPEN/update v2.md`'s Phase F: it
+      only ever guarded against "irrelevant" reads, which the model's
+      own judgment already handles). Reading a suggested-tagged resource
+      still promotes it to active automatically, via the same local
+      bridge (`src-tauri/src/mcp/bridge.rs`), purely so it keeps feeding
+      this chat's context after the user navigates away — not a
+      permission grant.
 - [x] `search_performance_reviews` (2026-11-10, see
       `updates/2026-11-01 MCP-TOOLS - OPEN/update v2.md`): a literal
       word/phrase search across every record's title, description,
-      notes, transcript, and AI analysis — lets the AI find which
+      notes, transcript, and question analysis — lets the AI find which
       call(s) something was actually said in (e.g. "find calls where I
       used temperature check") without opening records one at a time.
-      Content matches stay gated exactly like `get_performance_review`
-      (a non-blocking peek of this session's existing access, not a new
-      interactive prompt per match); qualitative/subjective questions
-      (e.g. "which call was tough for me") are answered by the model
-      reasoning over `list_performance_reviews`' already-ungated
+      Every content match returns a real snippet; qualitative/subjective
+      questions (e.g. "which call was tough for me") are answered by the
+      model reasoning over `list_performance_reviews`' already-ungated
       `description` field instead, no search needed. Results render as
       a dedicated `SearchResults` chat card (title/date/description or
       snippet per match), appended the moment the tool result comes
-      back mid-reply — same "inline card" pattern `PermissionRequest`
-      already established.
+      back mid-reply.
 
 ### To build (real functionality — not started)
 - [ ] More MCP tools beyond Performance Review/Training Room (e.g.
@@ -417,8 +415,8 @@ between the two lists. Each page gets its own section as pages get added.
       postponed/failed/not qualified, or no icon at all for a freshly
       added, unclassified record), date + title rows, description shown
       as a hover tooltip
-- [x] Hero: title (click to rename inline), bookmark rail (AI analysis /
-      Transcript / Notes / Core Lessons)
+- [x] Hero: title (click to rename inline), bookmark rail (Question
+      Analysis / Transcript / Notes / Core Lessons)
 - [x] Hero: Core Lessons (locally editable, not persisted — deliberately
       deferred this round, see this update's wiki.md)
 - [x] Hero: collapsible meta panel (3-dot toggle under the title) —
@@ -453,11 +451,12 @@ between the two lists. Each page gets its own section as pages get added.
 - [x] Real local storage: every record is a real folder under
       `~/Documents/Master's Wheel/`, created on demand; `meta.json` holds
       structured fields (title, meeting date, closed date, state, offered
-      amount/currency, description); `user_notes.md`/`ai_analysis.md` are
-      created lazily — only once the user actually types something
-      non-empty; `scorecard.json` is written once a scorecard has been
-      generated (real generation — see the Scorecard generation entry
-      below)
+      amount/currency, description); `user_notes.md` is created lazily —
+      only once the user actually types something non-empty;
+      `scorecard.json`/`question_analysis.json` are written once a
+      scorecard/question analysis has actually been generated (real
+      generation — see the Scorecard generation and Question Analysis
+      entries below)
 - [x] Adding a record: click the always-last "Add record" row (native file
       dialog) or drag a file anywhere onto the page (Tauri's native
       window-level drag-drop, not a sandboxed HTML5 drop, with a visible
@@ -471,8 +470,8 @@ between the two lists. Each page gets its own section as pages get added.
       recordings in this library (~1.5GB+) fail to load at all. If a
       record has no hero file, Hero shows an "Upload video" button
       instead of the player (see the upload entry below).
-- [x] AI analysis and Notes are both real, editable `.md` files on disk
-      (debounced writes), not in-memory fakes
+- [x] Notes is a real, editable `.md` file on disk (debounced writes), not
+      an in-memory fake
 - [x] Title, meeting date, closed date, state, offered amount/currency,
       and description all persist to `meta.json` (debounced writes).
       Closed date auto-fills with today the moment state first becomes
@@ -509,6 +508,26 @@ between the two lists. Each page gets its own section as pages get added.
       description. Needs a transcript first (an info dialog says so if
       there isn't one yet). A failed generation shows its error with a
       "Try again" button rather than failing silently.
+- [x] Question Analysis (replaces the old, always-empty "AI" bookmark —
+      see this update's wiki.md) extracts every question the salesperson
+      asked on the call and a clean one-line outcome for its answer, even
+      when the real question was messy/rambling or the real answer was
+      long or split across several replies. Same local `claude` CLI
+      shell-out pattern as Scorecard generation (see
+      `src/lib/questionAnalysis/generate.ts`), but deliberately calls it
+      with a cheap/simple model+effort override (`haiku`/`low`, see
+      `src-tauri/src/claude_cli.rs`) since this is mechanical extraction,
+      not a judgment call — needs a transcript first, same guard and
+      empty/error states as Scorecard. Persists to
+      `question_analysis.json`; each extracted question's timestamp is
+      clickable and seeks the real video. The card header shows a live
+      total question count. Extracted text always stays in whatever
+      language the transcript itself is in (never translated, even
+      mid-call language switches). Exposed over MCP too:
+      `get_performance_review`'s `questions` document and
+      `search_performance_reviews` both read/search it, so an agent can
+      look up what was asked/learned on a call without touching the raw
+      transcript.
 - [x] Right-clicking a record in Navigation opens a context menu: "Open
       folder in Finder" (reveals the record's real on-disk folder),
       "Remove video" (shown only if a hero file exists — deletes just
@@ -523,10 +542,6 @@ between the two lists. Each page gets its own section as pages get added.
 
 ### To build (real functionality — not started)
 - [ ] Real transcription generation
-- [ ] Real AI analysis generation (the slot is now a real, editable file —
-      something still has to actually write useful content into it; the
-      header's button next to it is now the real Scorecard generate/
-      regenerate trigger, not an AI-analysis one)
 - [ ] AI-assisted core lesson extraction; Core Lessons persistence (still
       in-memory only this round — deliberately deferred)
 - [ ] Attachments UI (the `attachments/` folder convention is decided, no
@@ -574,12 +589,20 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
       can't decode WebM's VP8/VP9/Opus at all — it loaded as a real file
       but showed the native "can't play this" icon until this fix.
 - [x] Lyrics-style synced transcript (new `LyricsTranscript` element):
-      word-by-word highlight driven by the clip's real `timeupdate`,
-      click any word to seek — built on real per-line timestamps but
-      *approximated* per-word spans (ElevenLabs' real word timings exist
-      but are currently discarded at serialize time everywhere, not just
-      here — see the wiki for why this is a shared, not Training-Room-
-      specific, gap).
+      word-by-word highlight driven by the clip's real `timeupdate`, click
+      any word to seek — now **real per-word timing**, not approximated.
+      ElevenLabs' per-word timestamps (`transcribe.rs`'s `WordTiming`) still
+      get coalesced into speaker blocks for the displayed
+      `transcript.md`-shaped text (one `[mm:ss]` per block, as before), but
+      the flat per-word array is no longer thrown away: it's persisted as
+      its own `wordTimings` field alongside `transcriptRaw` on the clip/file
+      (`session.json`, `src/lib/training`'s `StoredClipMeta`), and
+      `LyricsTranscript` buckets those real words into each displayed line
+      by time window instead of splitting the line evenly. Falls back to
+      the old even-split approximation only for a clip transcribed before
+      this field existed. Performance Review's own transcript pipeline is
+      untouched — this was scoped to Training Room (Voice Training +
+      Learning, which share the same generation call).
 - [x] "Generate transcript" is real: the same ElevenLabs cloud Speech-to-
       Text pipeline Performance Review uses (`src-tauri/src/transcribe.rs`,
       `src/lib/transcript/generate.ts`), minus that pipeline's multi-track
@@ -769,10 +792,10 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
       uses (`DetailContentKind` extended to `"notes" | "trainer"`).
 - [x] The Trainer can actually read the roleplay transcript it's coaching
       on: a new, deliberately **ungated** MCP tool
-      `get_roleplay_transcript` (Phase 21, 2026-11-08) — no Decline/Allow
-      card, since this pane is already scoped to exactly one training
-      session, unlike the general AI Assistant's tag-gated
-      `get_performance_review`. Supports reading any past round or the
+      `get_roleplay_transcript` (Phase 21, 2026-11-08) — this pane is
+      already scoped to exactly one training session, unlike the general
+      AI Assistant's `get_performance_review`. Supports reading any past
+      round or the
       live one, optionally including each turn's private "thought" (the
       Trainer's own access — unrelated to the separate guarantee that a
       trainee's thought never reaches the *roleplay* AI).
@@ -843,14 +866,13 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
 
 ### Built (real functionality — AI Assistant tag/MCP access, every discipline, 2026-11-09)
 - [x] The floating AI Assistant can now see/read any Training Room
-      session's notes/transcript the same tag-suggested → permission-
-      card → gated-tool-call way it already handles Performance Review
-      records — generalized in place, not a separate mechanism; see the
-      AI Assistant section above and
+      session's notes/transcript the same way it already handles
+      Performance Review records — generalized in place, not a separate
+      mechanism; see the AI Assistant section above and
       `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md` for the full
       design writeup. Opening any session (any discipline) surfaces a
-      "suggested" tag in the AI Assistant; the first real read prompts a
-      permission card, then promotes to "active."
+      "suggested" tag in the AI Assistant; the first real read promotes
+      it to "active" (no prompt — see Phase F above).
 
 ### To build (real functionality — not started)
 - [ ] Persisting real per-word timestamps (ElevenLabs returns them, still

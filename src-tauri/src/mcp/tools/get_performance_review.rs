@@ -1,4 +1,5 @@
-// The gated tool: real notes/transcript/analysis content for one record.
+// The gated tool: real notes/transcript/question-analysis content for one
+// record.
 // Permission is checked by mcp/permission.rs before any content is read
 // at all — see that module for the tag/always-allow/ask-the-user logic.
 //
@@ -30,7 +31,7 @@ pub struct GetPerformanceReviewInput {
     /// The record_id field from one of list_performance_reviews's results.
     pub record_id: String,
     /// Which parts to read — any of "meta", "notes", "transcript",
-    /// "analysis". Omit to get all four.
+    /// "questions". Omit to get all four.
     #[serde(default = "default_documents")]
     pub documents: Vec<String>,
     /// Character offset into each requested text document (notes/
@@ -48,7 +49,7 @@ pub struct GetPerformanceReviewInput {
 }
 
 fn default_documents() -> Vec<String> {
-    vec!["meta".into(), "notes".into(), "transcript".into(), "analysis".into()]
+    vec!["meta".into(), "notes".into(), "transcript".into(), "questions".into()]
 }
 
 fn default_limit() -> usize {
@@ -76,6 +77,28 @@ impl DocumentSlice {
     }
 }
 
+// One extracted question-the-salesperson-asked + the clean outcome of its
+// answer — mirrors the shape TS writes to question_analysis.json (see
+// src/lib/questionAnalysis/index.ts). Naturally bounded (a call has at
+// most a few dozen questions), so unlike notes/transcript this is never
+// char-paginated — same free pass `meta` already gets.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct QuestionAnswerPair {
+    pub question: String,
+    pub answer: String,
+    // The file on disk is written by TS (camelCase, see
+    // src/lib/questionAnalysis/index.ts's QuestionAnswerPair) — read that
+    // key on the way in, but keep this tool's own JSON output snake_case
+    // like every other field here (has_more, total_length, etc.).
+    #[serde(rename(deserialize = "timestampSeconds"))]
+    pub timestamp_seconds: Option<f64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct QuestionAnalysisFile {
+    pairs: Vec<QuestionAnswerPair>,
+}
+
 #[derive(Debug, Default, Serialize)]
 pub struct PerformanceReviewContent {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -85,7 +108,7 @@ pub struct PerformanceReviewContent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transcript: Option<DocumentSlice>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub analysis: Option<DocumentSlice>,
+    pub questions: Option<Vec<QuestionAnswerPair>>,
 }
 
 // Best-effort title lookup for the permission prompt — falls back to the
@@ -129,10 +152,11 @@ pub fn read(record_id: &str, documents: &[String], offset: usize, limit: usize) 
                     .ok()
                     .map(|text| DocumentSlice::new(&text, offset, limit));
             }
-            "analysis" => {
-                out.analysis = std::fs::read_to_string(dir.join("ai_analysis.md"))
+            "questions" => {
+                out.questions = std::fs::read_to_string(dir.join("question_analysis.json"))
                     .ok()
-                    .map(|text| DocumentSlice::new(&text, offset, limit));
+                    .and_then(|text| serde_json::from_str::<QuestionAnalysisFile>(&text).ok())
+                    .map(|file| file.pairs);
             }
             _ => {}
         }

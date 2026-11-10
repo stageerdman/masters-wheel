@@ -23,7 +23,6 @@ static CONFIG_COUNTER: AtomicU64 = AtomicU64::new(0);
 const MCP_SERVER_ENV: &str = "MASTERS_WHEEL_MCP_SERVER";
 const BRIDGE_PORT_ENV: &str = "MASTERS_WHEEL_BRIDGE_PORT";
 const CHAT_SESSION_ID_ENV: &str = "MASTERS_WHEEL_CHAT_SESSION_ID";
-const AGENT_ID_ENV: &str = "MASTERS_WHEEL_AGENT_ID";
 // Read by mcp/paths.rs, which has no AppHandle of its own (see that
 // file's doc comment) — this is the only channel it has to learn which
 // Space's records root the active chat is using.
@@ -63,17 +62,15 @@ pub const ALLOWED_TOOLS: &[&str] = &[
 /// it's meaningless outside one specific training session.
 pub const TRAINING_ALLOWED_TOOLS: &[&str] = &["mcp__masters_wheel__get_roleplay_transcript"];
 
-// chat_session_id/agent_id/records_root/training_root flow into the
-// mcp_server subprocess's env so mcp/permission.rs knows which chat (for
-// tag/always-allow lookups) and which agent (shown on the permission
-// card) a tool call is answering for, and mcp/paths.rs knows which
-// Space's records/training sessions to read — the subprocess has no
-// other way to know any of these. `training_session_path` is only ever
-// `Some` for an AITrainerPane call (see assistant.rs's `ask_agent`) —
-// distinct from `training_root`, which is always set.
+// chat_session_id/records_root/training_root flow into the mcp_server
+// subprocess's env so mcp/permission.rs knows which chat to mark a
+// resource "read" for, and mcp/paths.rs knows which Space's records/
+// training sessions to read — the subprocess has no other way to know
+// either. `training_session_path` is only ever `Some` for an
+// AITrainerPane call (see assistant.rs's `ask_agent`) — distinct from
+// `training_root`, which is always set.
 pub fn write_config_file(
     chat_session_id: &str,
-    agent_id: &str,
     records_root: &str,
     training_root: &str,
     training_session_path: Option<&str>,
@@ -83,7 +80,6 @@ pub fn write_config_file(
         MCP_SERVER_ENV: "1",
         BRIDGE_PORT_ENV: bridge::PORT.to_string(),
         CHAT_SESSION_ID_ENV: chat_session_id,
-        AGENT_ID_ENV: agent_id,
         RECORDS_ROOT_ENV: records_root,
         TRAINING_ROOT_ENV: training_root,
     });

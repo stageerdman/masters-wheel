@@ -64,9 +64,6 @@ function parseSession(id: string, text: string): ChatSession | null {
         ? (candidate.contextUsage as ChatSession["contextUsage"])
         : {},
     tags: Array.isArray(candidate.tags) ? (candidate.tags as ChatSession["tags"]) : [],
-    alwaysAllowedResources: Array.isArray(candidate.alwaysAllowedResources)
-      ? (candidate.alwaysAllowedResources as ChatSession["alwaysAllowedResources"])
-      : [],
   };
 }
 

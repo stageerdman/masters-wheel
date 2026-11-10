@@ -1,12 +1,17 @@
 "use client";
 
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { LyricsTranscript } from "@/elements/TrainingRoom/children/Hero/children/LyricsTranscript/LyricsTranscript";
-import type { VoiceTranscriptGenerationState } from "@/lib/transcript/generate";
+import type { DiarizedWord, VoiceTranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./TranscriptPanel.position.module.css";
 import styles from "./TranscriptPanel.styles.module.css";
 
 type TranscriptPanelProps = {
   transcriptRaw: string | null;
+  wordTimings: DiarizedWord[] | null;
+  // Which choice produced transcriptRaw — Regenerate repeats it rather
+  // than asking again. `null` falls back to the plain, non-diarized choice.
+  diarize: boolean | null;
   generation: VoiceTranscriptGenerationState | null;
   currentTime: number;
   onSeek: (seconds: number) => void;
@@ -29,6 +34,8 @@ function statusText(stage: "extracting" | "uploading"): string {
 // copies.
 export function TranscriptPanel({
   transcriptRaw,
+  wordTimings,
+  diarize,
   generation,
   currentTime,
   onSeek,
@@ -37,8 +44,32 @@ export function TranscriptPanel({
   onRetry,
   onDismiss,
 }: TranscriptPanelProps) {
+  async function handleRegenerate() {
+    const confirmed = await confirm("Regenerate this transcript? This discards the current one.", {
+      title: "Regenerate transcript",
+      kind: "warning",
+    });
+    if (confirmed) onGenerate(diarize ?? false);
+  }
+
   if (transcriptRaw) {
-    return <LyricsTranscript rawText={transcriptRaw} currentTime={currentTime} onSeek={onSeek} />;
+    return (
+      <div className={position.transcriptWithToolbar} data-construction>
+        <div className={position.toolbar} data-construction>
+          <button
+            type="button"
+            className={`${styles.toolbarButton} ${position.toolbarButton}`}
+            data-construction
+            onClick={() => void handleRegenerate()}
+            title="Regenerate transcript"
+            aria-label="Regenerate transcript"
+          >
+            ⟳
+          </button>
+        </div>
+        <LyricsTranscript rawText={transcriptRaw} currentTime={currentTime} onSeek={onSeek} wordTimings={wordTimings} />
+      </div>
+    );
   }
 
   if (generation?.status === "running") {

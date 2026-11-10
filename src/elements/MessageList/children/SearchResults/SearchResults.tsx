@@ -38,11 +38,6 @@ function MatchRow({ match }: { match: SearchResultMatch }) {
             {body}
           </p>
         ) : null}
-        {match.content_access_required ? (
-          <p className={`${styles.note} ${position.note}`} data-construction>
-            Matched inside this call&rsquo;s real content — not shown yet, needs your permission to open.
-          </p>
-        ) : null}
       </div>
     </div>
   );
@@ -50,8 +45,8 @@ function MatchRow({ match }: { match: SearchResultMatch }) {
 
 // Renders in place of an ordinary Message bubble (see MessageList.tsx)
 // whenever message.searchResults is set — a snapshot of one
-// search_performance_reviews call's own result. Unlike PermissionRequest
-// there's nothing to respond to here, so this never changes once shown.
+// search_performance_reviews call's own result. Nothing to respond to
+// here, so this never changes once shown.
 export function SearchResults({ results }: SearchResultsProps) {
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>

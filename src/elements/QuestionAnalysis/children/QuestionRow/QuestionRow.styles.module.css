@@ -1,0 +1,28 @@
+.root {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.question {
+  color: var(--color-text);
+  font-size: var(--text-size-body);
+  font-weight: 600;
+}
+
+.answer {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.timestamp {
+  background: transparent;
+  border: 1px solid var(--color-bookmark-questions);
+  border-radius: 999px;
+  color: var(--color-bookmark-questions);
+  font-size: var(--text-size-micro);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.timestamp:hover {
+  background: color-mix(in srgb, var(--color-bookmark-questions) 14%, transparent);
+}

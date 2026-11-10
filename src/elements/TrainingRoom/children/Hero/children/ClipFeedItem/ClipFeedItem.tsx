@@ -71,6 +71,8 @@ export function ClipFeedItem({
       <div className={position.transcriptSlot} data-construction>
         <TranscriptPanel
           transcriptRaw={clip.transcriptRaw}
+          wordTimings={clip.wordTimings}
+          diarize={clip.diarize}
           generation={generation}
           currentTime={currentTime}
           onSeek={seekTo}

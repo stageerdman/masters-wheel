@@ -19,13 +19,15 @@ import {
   heroStreamUrl,
   importTranscriptFile,
   listRecords,
-  readDoc,
+  readNotes,
+  readQuestionAnalysis,
   readScorecard,
   readTranscript,
   revealRecordInFinder,
   setHeroFile,
-  writeDoc,
   writeMeta,
+  writeNotes,
+  writeQuestionAnalysis,
   writeScorecard,
   writeTranscript,
   type RecordMetaFields,
@@ -34,6 +36,8 @@ import {
 import { parseTranscript, renameSpeaker, serializeTranscript } from "@/lib/transcript";
 import { generateScorecard as generateRealScorecard } from "@/lib/scorecard/generate";
 import type { Scorecard } from "@/lib/scorecard";
+import { generateQuestionAnalysis as generateRealQuestionAnalysis } from "@/lib/questionAnalysis/generate";
+import type { QuestionAnalysis } from "@/lib/questionAnalysis";
 import { readSettings, type ScorecardCriterionDef } from "@/lib/settings";
 import { setActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
 import {
@@ -49,8 +53,6 @@ import { type CallState, type VideoRecord } from "./PerformanceReview.data";
 
 const WRITE_DEBOUNCE_MS = 400;
 
-type DocPair = { notes: string; aiAnalysis: string };
-
 function isCallState(value: string | null): value is CallState {
   return (
     value === "closed" ||
@@ -63,7 +65,7 @@ function isCallState(value: string | null): value is CallState {
 
 export function usePerformanceReviewData() {
   const [summaries, setSummaries] = useState<RecordSummary[]>([]);
-  const [docs, setDocs] = useState<Record<string, DocPair>>({});
+  const [docs, setDocs] = useState<Record<string, string>>({});
   const [lessons, setLessons] = useState<Record<string, string>>({});
   const [transcripts, setTranscripts] = useState<Record<string, string | null>>({});
   // One level of undo for a transcript speaker rename, keyed by record id
@@ -75,6 +77,11 @@ export function usePerformanceReviewData() {
   // slot (scorecardError below) per record.
   const [scorecardGenerating, setScorecardGenerating] = useState<Record<string, boolean>>({});
   const [scorecardError, setScorecardError] = useState<Record<string, string>>({});
+  const [questionAnalyses, setQuestionAnalyses] = useState<Record<string, QuestionAnalysis | null>>({});
+  // Same boolean-+-error-slot shape as scorecardGenerating/scorecardError
+  // above — one real `claude` CLI call per record, no job tracking needed.
+  const [questionAnalysisGenerating, setQuestionAnalysisGenerating] = useState<Record<string, boolean>>({});
+  const [questionAnalysisError, setQuestionAnalysisError] = useState<Record<string, string>>({});
   // That Space's configured scoring criteria (Settings page's Score
   // rows) — resolves a persisted item's `criterion` id back to a display
   // name/prompt, and is also what real generation scores against.
@@ -136,15 +143,15 @@ export function usePerformanceReviewData() {
     };
   }, []);
 
-  // Lazily load notes/AI-analysis for the selected record, once, caching
-  // the result so flipping between records doesn't re-read from disk.
+  // Lazily load notes for the selected record, once, caching the result
+  // so flipping between records doesn't re-read from disk.
   useEffect(() => {
-    if (!selectedId || !isTauri() || docs[selectedId]) return;
+    if (!selectedId || !isTauri() || selectedId in docs) return;
     let cancelled = false;
-    Promise.all([readDoc(selectedId, "notes"), readDoc(selectedId, "analysis")])
-      .then(([notes, aiAnalysis]) => {
+    readNotes(selectedId)
+      .then((notes) => {
         if (cancelled) return;
-        setDocs((prev) => ({ ...prev, [selectedId]: { notes, aiAnalysis } }));
+        setDocs((prev) => ({ ...prev, [selectedId]: notes }));
       })
       .catch(() => {});
     return () => {
@@ -185,6 +192,23 @@ export function usePerformanceReviewData() {
       cancelled = true;
     };
   }, [selectedId, scorecards]);
+
+  // Lazily load the selected record's question_analysis.json, once,
+  // caching the result (including the null "not generated yet" case) —
+  // same pattern as the scorecard lazy-load just above.
+  useEffect(() => {
+    if (!selectedId || !isTauri() || selectedId in questionAnalyses) return;
+    let cancelled = false;
+    readQuestionAnalysis(selectedId)
+      .then((loaded) => {
+        if (cancelled) return;
+        setQuestionAnalyses((prev) => ({ ...prev, [selectedId]: loaded }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, questionAnalyses]);
 
   // Tracks how many times each record has been opened — fires once per
   // actual selection change (including the initial auto-selection on
@@ -267,8 +291,8 @@ export function usePerformanceReviewData() {
     title: summary.title,
     heroFileName: summary.heroFileName,
     transcriptRaw: transcripts[summary.id] ?? null,
-    notes: docs[summary.id]?.notes ?? "",
-    aiAnalysis: docs[summary.id]?.aiAnalysis ?? "",
+    notes: docs[summary.id] ?? "",
+    questionAnalysis: questionAnalyses[summary.id] ?? null,
     lessons: lessons[summary.id] ?? "",
     offeredAmount: summary.offeredAmount,
     offeredCurrency: summary.offeredCurrency,
@@ -280,11 +304,10 @@ export function usePerformanceReviewData() {
 
   const selected = videos.find((video) => video.id === selectedId) ?? null;
 
-  function scheduleDocWrite(id: string, kind: "notes" | "analysis", text: string) {
-    const key = `${id}:${kind}`;
-    clearTimeout(docTimers.current[key]);
-    docTimers.current[key] = setTimeout(() => {
-      writeDoc(id, kind, text).catch((error) => console.error("Failed to write record doc:", id, kind, error));
+  function scheduleNotesWrite(id: string, text: string) {
+    clearTimeout(docTimers.current[id]);
+    docTimers.current[id] = setTimeout(() => {
+      writeNotes(id, text).catch((error) => console.error("Failed to write record notes:", id, error));
     }, WRITE_DEBOUNCE_MS);
   }
 
@@ -305,17 +328,8 @@ export function usePerformanceReviewData() {
   const onNotesChange = useCallback(
     (value: string) => {
       if (!selectedId) return;
-      setDocs((prev) => ({ ...prev, [selectedId]: { aiAnalysis: prev[selectedId]?.aiAnalysis ?? "", notes: value } }));
-      scheduleDocWrite(selectedId, "notes", value);
-    },
-    [selectedId]
-  );
-
-  const onAiAnalysisChange = useCallback(
-    (value: string) => {
-      if (!selectedId) return;
-      setDocs((prev) => ({ ...prev, [selectedId]: { notes: prev[selectedId]?.notes ?? "", aiAnalysis: value } }));
-      scheduleDocWrite(selectedId, "analysis", value);
+      setDocs((prev) => ({ ...prev, [selectedId]: value }));
+      scheduleNotesWrite(selectedId, value);
     },
     [selectedId]
   );
@@ -571,6 +585,46 @@ export function usePerformanceReviewData() {
     [transcripts, scorecardCriteria, businessDescription]
   );
 
+  // Real generation for the Question Analysis card — same shape as
+  // generateScorecard just above (transcript-required guard, cheap/fast
+  // `claude` CLI call, write-then-keep-in-state on success, error slot on
+  // failure), see src/lib/questionAnalysis/generate.ts.
+  const generateQuestionAnalysis = useCallback(
+    (id: string) => {
+      const transcriptRaw = transcripts[id];
+      if (!transcriptRaw) {
+        void message("This call needs a transcript before generating a question analysis.", {
+          title: "No transcript yet",
+          kind: "info",
+        });
+        return;
+      }
+      setQuestionAnalysisGenerating((prev) => ({ ...prev, [id]: true }));
+      setQuestionAnalysisError((prev) => {
+        if (!(id in prev)) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      generateRealQuestionAnalysis(transcriptRaw)
+        .then((fresh) => {
+          setQuestionAnalyses((prev) => ({ ...prev, [id]: fresh }));
+          writeQuestionAnalysis(id, fresh).catch((error) => console.error("Failed to write question analysis:", id, error));
+        })
+        .catch((error) => {
+          setQuestionAnalysisError((prev) => ({ ...prev, [id]: String(error?.message ?? error) }));
+        })
+        .finally(() => {
+          setQuestionAnalysisGenerating((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+        });
+    },
+    [transcripts]
+  );
+
   // Deletes a record entirely (its whole on-disk folder) and drops it from
   // the list. If it was the selected record, falls back to whichever
   // record is now first rather than leaving the selection dangling.
@@ -679,7 +733,6 @@ export function usePerformanceReviewData() {
     setSelectedId,
     heroSrc,
     onNotesChange,
-    onAiAnalysisChange,
     onLessonsChange,
     updateMetaField,
     toggleReviewed,
@@ -712,6 +765,11 @@ export function usePerformanceReviewData() {
     scorecardError: selectedId ? (scorecardError[selectedId] ?? null) : null,
     onGenerateScorecard: () => {
       if (selectedId) generateScorecard(selectedId);
+    },
+    isGeneratingQuestionAnalysis: selectedId ? (questionAnalysisGenerating[selectedId] ?? false) : false,
+    questionAnalysisError: selectedId ? (questionAnalysisError[selectedId] ?? null) : null,
+    onGenerateQuestionAnalysis: () => {
+      if (selectedId) generateQuestionAnalysis(selectedId);
     },
     isVideoUploadOpen,
     openVideoUpload,

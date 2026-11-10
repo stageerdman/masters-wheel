@@ -25,6 +25,7 @@ import { documentDir, join } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 import { BASE_DIR, spaceTrainingDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
 import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
+import type { DiarizedWord } from "@/lib/transcript/generate";
 
 function trainingRoot(): string {
   return spaceTrainingDir(getActiveSpaceFolder());
@@ -50,7 +51,52 @@ export type StoredClipMeta = {
   fileName: string;
   displayName: string;
   transcriptRaw: string | null;
+  // ElevenLabs' real per-word timestamps for transcriptRaw, kept alongside
+  // the canonical display text rather than inside it — transcriptRaw's own
+  // [mm:ss] line timestamps get rounded to whole seconds on serialize/parse
+  // (see src/lib/transcript/index.ts), which is fine for a line heading but
+  // too coarse for a word-by-word highlight. LyricsTranscript buckets these
+  // real words into each displayed line by time window instead of faking
+  // even spacing across the line. `null` until "Generate transcript" has
+  // run, or for a clip transcribed before this field existed.
+  wordTimings: DiarizedWord[] | null;
+  // Which "Generate transcript" choice produced transcriptRaw — lets a
+  // later Regenerate button repeat the same choice without asking again.
+  // `null` until generated (or for a clip transcribed before this field
+  // existed, where Regenerate just falls back to the plain, non-diarized
+  // choice).
+  diarize: boolean | null;
 };
+
+// Shared validator for the per-word timing array stored on both a Voice
+// Training clip (StoredClipMeta above) and a Learning file
+// (TrainingRoom.data.ts's LearningFile) — same shape, same generation call
+// (TrainingRoom.script.ts's generateTranscript), so one parser covers both
+// rather than duplicating the field-by-field checks.
+export function parseWordTimings(raw: unknown): DiarizedWord[] | null {
+  if (!Array.isArray(raw)) return null;
+  const words: DiarizedWord[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") return null;
+    const candidate = entry as Partial<DiarizedWord>;
+    if (
+      typeof candidate.start !== "number" ||
+      typeof candidate.end !== "number" ||
+      typeof candidate.text !== "string" ||
+      typeof candidate.leadSpace !== "boolean"
+    ) {
+      return null;
+    }
+    words.push({
+      start: candidate.start,
+      end: candidate.end,
+      text: candidate.text,
+      leadSpace: candidate.leadSpace,
+      speakerId: typeof candidate.speakerId === "string" ? candidate.speakerId : null,
+    });
+  }
+  return words;
+}
 
 export type SessionMetaFields = {
   toolType: string;
@@ -98,6 +144,8 @@ function parseClip(raw: unknown): StoredClipMeta | null {
     fileName: candidate.fileName,
     displayName: typeof candidate.displayName === "string" ? candidate.displayName : candidate.fileName,
     transcriptRaw: typeof candidate.transcriptRaw === "string" ? candidate.transcriptRaw : null,
+    wordTimings: parseWordTimings(candidate.wordTimings),
+    diarize: typeof candidate.diarize === "boolean" ? candidate.diarize : null,
   };
 }
 

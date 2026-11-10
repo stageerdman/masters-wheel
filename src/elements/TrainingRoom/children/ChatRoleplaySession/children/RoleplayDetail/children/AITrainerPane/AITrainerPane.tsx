@@ -54,7 +54,6 @@ export function AITrainerPane({ sessionId }: AITrainerPaneProps) {
     agents,
     selectAgent,
     startChatWithAgent,
-    respondToPermission,
   } = useAIAssistant(trainerChatsDir(sessionId), sessionId);
 
   useEffect(() => {
@@ -147,7 +146,6 @@ export function AITrainerPane({ sessionId }: AITrainerPaneProps) {
                 density="compact"
                 agents={agents}
                 respondingAgent={respondingAgent}
-                onRespondToPermission={respondToPermission}
               />
               <Composer
                 value={composerValue}

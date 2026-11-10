@@ -116,6 +116,8 @@ async function clipFromMeta(sessionId: string, clip: StoredClipMeta): Promise<Tr
     fileName: clip.displayName,
     storedFileName: clip.fileName,
     transcriptRaw: clip.transcriptRaw,
+    wordTimings: clip.wordTimings,
+    diarize: clip.diarize,
   };
 }
 
@@ -156,6 +158,8 @@ function clipToMeta(clip: TrainingClip): StoredClipMeta {
     fileName: clip.storedFileName,
     displayName: clip.fileName,
     transcriptRaw: clip.transcriptRaw,
+    wordTimings: clip.wordTimings,
+    diarize: clip.diarize,
   };
 }
 
@@ -170,6 +174,8 @@ function learningFileToMeta(file: LearningFile): Omit<LearningFile, "src"> {
     extension: file.extension,
     sizeBytes: file.sizeBytes,
     transcriptRaw: file.transcriptRaw,
+    wordTimings: file.wordTimings,
+    diarize: file.diarize,
   };
 }
 
@@ -447,6 +453,8 @@ export function useTrainingRoomData() {
         fileName: displayName,
         storedFileName,
         transcriptRaw: null,
+        wordTimings: null,
+        diarize: null,
       };
       setSessions((prev) =>
         prev.map((session) => {
@@ -506,6 +514,8 @@ export function useTrainingRoomData() {
         extension,
         sizeBytes,
         transcriptRaw: null,
+        wordTimings: null,
+        diarize: null,
       };
       setSessions((prev) =>
         prev.map((session) => {
@@ -631,13 +641,15 @@ export function useTrainingRoomData() {
             prev.map((candidate) => {
               if (candidate.id !== sessionId) return candidate;
               if (candidate.clips.some((c) => c.id === mediaId)) {
-                const nextClips = candidate.clips.map((c) => (c.id === mediaId ? { ...c, transcriptRaw: canonical } : c));
+                const nextClips = candidate.clips.map((c) =>
+                  c.id === mediaId ? { ...c, transcriptRaw: canonical, wordTimings: words, diarize } : c
+                );
                 const lastUpdatedAt = writeNow(sessionId, { clips: nextClips.map(clipToMeta) });
                 return { ...candidate, clips: nextClips, lastUpdatedAt };
               }
               if (candidate.learning) {
                 const nextFiles = candidate.learning.files.map((f) =>
-                  f.id === mediaId ? { ...f, transcriptRaw: canonical } : f
+                  f.id === mediaId ? { ...f, transcriptRaw: canonical, wordTimings: words, diarize } : f
                 );
                 const nextLearning: LearningState = { ...candidate.learning, files: nextFiles };
                 const lastUpdatedAt = writeNow(sessionId, { learning: learningStateToMeta(nextLearning) });

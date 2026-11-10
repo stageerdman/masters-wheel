@@ -13,10 +13,8 @@ type DetailProps = {
   video: VideoRecord;
   notes: string;
   lessons: string;
-  aiAnalysis: string;
   onNotesChange: (value: string) => void;
   onLessonsChange: (value: string) => void;
-  onAiAnalysisChange: (value: string) => void;
   onRequestTranscriptUpload: () => void;
   onRequestGenerateTranscript: () => void;
   transcriptGeneration: TranscriptGenerationState | null;
@@ -31,16 +29,17 @@ type DetailProps = {
   onGenerateScorecard: () => void;
   scorecardCriteria: ScorecardCriterionDef[];
   scorecardError: string | null;
+  isGeneratingQuestionAnalysis: boolean;
+  onGenerateQuestionAnalysis: () => void;
+  questionAnalysisError: string | null;
 };
 
 export function Detail({
   video,
   notes,
   lessons,
-  aiAnalysis,
   onNotesChange,
   onLessonsChange,
-  onAiAnalysisChange,
   onRequestTranscriptUpload,
   onRequestGenerateTranscript,
   transcriptGeneration,
@@ -55,6 +54,9 @@ export function Detail({
   onGenerateScorecard,
   scorecardCriteria,
   scorecardError,
+  isGeneratingQuestionAnalysis,
+  onGenerateQuestionAnalysis,
+  questionAnalysisError,
 }: DetailProps) {
   const {
     railRef,
@@ -82,10 +84,8 @@ export function Detail({
             video={video}
             notes={notes}
             lessons={lessons}
-            aiAnalysis={aiAnalysis}
             onNotesChange={onNotesChange}
             onLessonsChange={onLessonsChange}
-            onAiAnalysisChange={onAiAnalysisChange}
             onRequestTranscriptUpload={onRequestTranscriptUpload}
             onRequestGenerateTranscript={onRequestGenerateTranscript}
             transcriptGeneration={transcriptGeneration}
@@ -100,6 +100,9 @@ export function Detail({
             onGenerateScorecard={onGenerateScorecard}
             scorecardCriteria={scorecardCriteria}
             scorecardError={scorecardError}
+            isGeneratingQuestionAnalysis={isGeneratingQuestionAnalysis}
+            onGenerateQuestionAnalysis={onGenerateQuestionAnalysis}
+            questionAnalysisError={questionAnalysisError}
           />
         </div>
         {isSplit && bottomKind && (
@@ -115,10 +118,8 @@ export function Detail({
                 video={video}
                 notes={notes}
                 lessons={lessons}
-                aiAnalysis={aiAnalysis}
                 onNotesChange={onNotesChange}
                 onLessonsChange={onLessonsChange}
-                onAiAnalysisChange={onAiAnalysisChange}
                 onRequestTranscriptUpload={onRequestTranscriptUpload}
                 onRequestGenerateTranscript={onRequestGenerateTranscript}
                 transcriptGeneration={transcriptGeneration}
@@ -133,6 +134,9 @@ export function Detail({
                 onGenerateScorecard={onGenerateScorecard}
                 scorecardCriteria={scorecardCriteria}
                 scorecardError={scorecardError}
+                isGeneratingQuestionAnalysis={isGeneratingQuestionAnalysis}
+                onGenerateQuestionAnalysis={onGenerateQuestionAnalysis}
+                questionAnalysisError={questionAnalysisError}
               />
             </div>
           </>

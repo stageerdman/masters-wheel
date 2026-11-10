@@ -171,7 +171,7 @@ pub async fn generate_setup_reply(
 ) -> Result<SetupReply, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<SetupReply, String> {
         let system_prompt = build_setup_system_prompt(&business_description);
-        let (result, session_id) = run_claude(&system_prompt, &message, resume_session_id.as_deref())?;
+        let (result, session_id) = run_claude(&system_prompt, &message, resume_session_id.as_deref(), None, None)?;
         Ok(parse_setup_reply(&result, session_id))
     })
     .await
@@ -320,7 +320,7 @@ real call)."
         };
 
         let system_prompt = build_persona_system_prompt(&source_block, &objective, &difficulty);
-        let (result, _session_id) = run_claude(&system_prompt, "Build the persona now.", None)?;
+        let (result, _session_id) = run_claude(&system_prompt, "Build the persona now.", None, None, None)?;
         let mut fields = parse_persona_fields(&result);
         fields.source_record_id = source_record_id;
         Ok(fields)
@@ -415,7 +415,7 @@ pub async fn generate_roleplay_turn(
     tauri::async_runtime::spawn_blocking(move || -> Result<RoleplayTurnReply, String> {
         let system_prompt = build_roleplay_system_prompt(&persona, &call_assumptions, adjustment_phrase.as_deref());
         let prompt_text = message.unwrap_or_else(|| OPENING_SCENE_MESSAGE.to_string());
-        let (result, session_id) = run_claude(&system_prompt, &prompt_text, resume_session_id.as_deref())?;
+        let (result, session_id) = run_claude(&system_prompt, &prompt_text, resume_session_id.as_deref(), None, None)?;
         Ok(parse_roleplay_turn(&result, session_id))
     })
     .await
@@ -471,7 +471,7 @@ LIMITING_BELIEFS: <belief one> | <belief two> | ...",
 pub async fn generate_session_adjustment(transcript_text: String, objective: String, persona: PersonaFields) -> Result<SessionAdjustment, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<SessionAdjustment, String> {
         let system_prompt = build_adjustment_system_prompt(&objective, &persona);
-        let (result, _session_id) = run_claude(&system_prompt, &transcript_text, None)?;
+        let (result, _session_id) = run_claude(&system_prompt, &transcript_text, None, None, None)?;
         let phrase = extract_label(&result, "PHRASE").unwrap_or_default();
         let mut next_persona = parse_persona_fields(&result);
         next_persona.source_record_id = persona.source_record_id.clone();
@@ -503,7 +503,7 @@ summary, then a `## Session Reports` section if useful. No preamble outside the 
 pub async fn generate_insight(input_text: String, kind: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         let system_prompt = build_insight_system_prompt(&kind)?;
-        let (result, _session_id) = run_claude(system_prompt, &input_text, None)?;
+        let (result, _session_id) = run_claude(system_prompt, &input_text, None, None, None)?;
         Ok(result.trim().to_string())
     })
     .await

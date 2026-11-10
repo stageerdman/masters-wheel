@@ -102,20 +102,33 @@ see the "Session metadata is now real storage too" section above for how
 that gap was closed. Removing a session deletes its real `training/<id>/`
 folder, so clip files don't orphan on disk.
 
-## Why the word-by-word highlight is real UI built on fake timing
-This isn't faked at the interaction level — it's a real `<video>`/`<audio>`
-element's real `timeupdate` driving a real per-word highlight. What's fake
-is the *timing data* it highlights against: ElevenLabs' real transcription
-(`transcribe.rs`) already returns per-word start/end timestamps
-(`WordTiming`), but `src/lib/transcript/generate.ts` currently coalesces
-them into speaker blocks and only the block's single start timestamp
-survives serialization to `transcript.md` — word-level timing is thrown
-away today, for every page, not just this one. Training Room's
-`LyricsTranscript` approximates per-word spans by interpolating evenly
-across each (fake, for now) line's `[start, next-line-start)` window. Wiring
-real per-word sync later is a `generate.ts`/transcript-format change
-(stop discarding `WordTiming`), not a Training Room-specific problem —
-worth doing once, benefits any future transcript view that wants it.
+## Word-by-word highlight now uses real per-word timing (closed 2026-11-10)
+Previously faked: ElevenLabs' transcription (`transcribe.rs`) already
+returns per-word start/end timestamps (`WordTiming`), but
+`src/lib/transcript/generate.ts` coalesces them into speaker blocks and
+only the block's single start timestamp survived serialization to
+`transcript.md` — word-level timing was thrown away for every consumer of
+that pipeline. Fixed for Training Room (Voice Training clips + Learning
+files — they share one `generateTranscript` call) without touching
+`generate.ts`'s serialization at all: Training Room doesn't need to, since
+a clip/file's metadata is already its own structured `session.json`
+record (`src/lib/training`'s `StoredClipMeta`/`LearningFile`), unlike
+Performance Review's `transcript.md`-file-on-disk model. The real
+`DiarizedWord[]` returned by `transcribeVoiceClip` is now stored as its
+own `wordTimings` field right alongside `transcriptRaw`, untouched by that
+block-level text's own `[mm:ss]` rounding. `LyricsTranscript` buckets those
+real words into each displayed line by time window (`word.start` against
+the line's `[start, next-line-start)` window) rather than interpolating
+evenly — falls back to the old even-split approximation only per-line, and
+only when a line ends up with zero real words in its bucket (e.g. a clip
+transcribed before this field existed, where `wordTimings` is `null`).
+
+Performance Review's own `transcript.md` pipeline is intentionally
+untouched — doing the equivalent there would mean widening the on-disk
+transcript *file format* itself (a real per-page document, not a JSON
+field), which is a bigger, separate change than this one. If a future page
+wants the same real-sync treatment against `transcript.md`, that's the
+`generate.ts`/transcript-format work the old note here described.
 
 ## DisciplinePicker: from a mockup pass to the real element (2026-11-08)
 Before building, three full-screen dark "cabinet-select" HTML mockups were

@@ -34,7 +34,6 @@ export function PerformanceReview() {
     setSelectedId,
     heroSrc,
     onNotesChange,
-    onAiAnalysisChange,
     onLessonsChange,
     updateMetaField,
     toggleReviewed,
@@ -64,6 +63,9 @@ export function PerformanceReview() {
     onGenerateScorecard,
     scorecardCriteria,
     scorecardError,
+    isGeneratingQuestionAnalysis,
+    onGenerateQuestionAnalysis,
+    questionAnalysisError,
     isVideoUploadOpen,
     openVideoUpload,
     closeVideoUpload,
@@ -138,10 +140,8 @@ export function PerformanceReview() {
             videoRef={videoRef}
             notes={selected.notes}
             lessons={selected.lessons}
-            aiAnalysis={selected.aiAnalysis}
             onNotesChange={onNotesChange}
             onLessonsChange={onLessonsChange}
-            onAiAnalysisChange={onAiAnalysisChange}
             onOfferedAmountChange={(value) => updateMetaField("offeredAmount", value)}
             onOfferedCurrencyChange={(value) => updateMetaField("offeredCurrency", value)}
             onDescriptionChange={(value) => updateMetaField("description", value)}
@@ -163,15 +163,16 @@ export function PerformanceReview() {
             onGenerateScorecard={onGenerateScorecard}
             scorecardCriteria={scorecardCriteria}
             scorecardError={scorecardError}
+            isGeneratingQuestionAnalysis={isGeneratingQuestionAnalysis}
+            onGenerateQuestionAnalysis={onGenerateQuestionAnalysis}
+            questionAnalysisError={questionAnalysisError}
           />
           <Detail
             video={selected}
             notes={selected.notes}
             lessons={selected.lessons}
-            aiAnalysis={selected.aiAnalysis}
             onNotesChange={onNotesChange}
             onLessonsChange={onLessonsChange}
-            onAiAnalysisChange={onAiAnalysisChange}
             onRequestTranscriptUpload={openTranscriptUpload}
             onRequestGenerateTranscript={openGenerateTranscript}
             transcriptGeneration={transcriptGeneration}
@@ -186,6 +187,9 @@ export function PerformanceReview() {
             onGenerateScorecard={onGenerateScorecard}
             scorecardCriteria={scorecardCriteria}
             scorecardError={scorecardError}
+            isGeneratingQuestionAnalysis={isGeneratingQuestionAnalysis}
+            onGenerateQuestionAnalysis={onGenerateQuestionAnalysis}
+            questionAnalysisError={questionAnalysisError}
           />
         </>
       ) : (

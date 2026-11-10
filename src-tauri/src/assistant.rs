@@ -201,11 +201,6 @@ pub async fn ask_agent(
     // isn't 'static, so it can't be moved into the blocking closure
     // directly the way `app` can.
     let bridge = (*bridge).clone();
-    // Fresh turn: any Allow/Decline the user gave a gated tool call last
-    // turn shouldn't silently carry over into this one (see
-    // mcp/bridge.rs's TurnDecision) — only an explicit "Always Allow"
-    // is meant to survive across messages.
-    bridge.start_turn(&chat_session_id);
     tauri::async_runtime::spawn_blocking(move || -> Result<AgentReply, String> {
         // What's actually tagged for this chat right now, title-resolved
         // for the model to read — see knowledge/prompt.rs's
@@ -284,7 +279,6 @@ pub async fn ask_agent(
             training_session_id.as_ref().map(|id| training_root.join(id).to_string_lossy().into_owned());
         let mcp_config_path = crate::mcp::config::write_config_file(
             &chat_session_id,
-            agent_id.as_deref().unwrap_or(""),
             &records_root.to_string_lossy(),
             &training_root.to_string_lossy(),
             training_session_path.as_deref(),

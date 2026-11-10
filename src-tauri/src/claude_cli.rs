@@ -21,6 +21,8 @@ pub(crate) fn run_claude(
     system_prompt: &str,
     message: &str,
     resume_session_id: Option<&str>,
+    model: Option<&str>,
+    effort: Option<&str>,
 ) -> Result<(String, String), String> {
     let binary = resolve_binary("claude");
     let mut command = Command::new(&binary);
@@ -39,6 +41,17 @@ pub(crate) fn run_claude(
 
     if let Some(id) = resume_session_id.filter(|id| !id.is_empty()) {
         command.arg("--resume").arg(id);
+    }
+
+    // Cheap/simple-model override for callers that don't need the
+    // default session model's full cost or reasoning depth (e.g. a
+    // mechanical extraction job) — omitted entirely for every caller
+    // that doesn't pass one, so this is a no-op for roleplay/scorecard.
+    if let Some(model) = model.filter(|value| !value.is_empty()) {
+        command.arg("--model").arg(model);
+    }
+    if let Some(effort) = effort.filter(|value| !value.is_empty()) {
+        command.arg("--effort").arg(effort);
     }
 
     // `-p` takes no value of its own — the prompt is a positional
@@ -75,9 +88,14 @@ pub(crate) fn run_claude(
 // turn (e.g. scorecard generation) — discards the session id since
 // there's nothing to `--resume` into.
 #[tauri::command]
-pub async fn run_claude_once(system_prompt: String, message: String) -> Result<String, String> {
+pub async fn run_claude_once(
+    system_prompt: String,
+    message: String,
+    model: Option<String>,
+    effort: Option<String>,
+) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
-        let (result, _session_id) = run_claude(&system_prompt, &message, None)?;
+        let (result, _session_id) = run_claude(&system_prompt, &message, None, model.as_deref(), effort.as_deref())?;
         Ok(result)
     })
     .await

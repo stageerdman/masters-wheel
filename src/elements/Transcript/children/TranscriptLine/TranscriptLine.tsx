@@ -23,7 +23,7 @@ export function TranscriptLine({ speaker, time, text, color, showSpeaker, onSeek
       style={{ "--speaker-color": color } as CSSProperties}
       onClick={onSeek}
       onContextMenu={onContextMenu}
-      title={`${speaker} · ${time} — right-click to rename`}
+      title={`${speaker} · ${time} — right-click for options`}
     >
       <span className={position.meta} data-construction>
         {showSpeaker && (

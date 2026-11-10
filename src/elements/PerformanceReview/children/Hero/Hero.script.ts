@@ -30,7 +30,7 @@ function saveActiveKind(kind: ContentKind) {
 }
 
 export function usePersistedActiveKind() {
-  const [active, setActiveState] = useState<ContentKind>("ai");
+  const [active, setActiveState] = useState<ContentKind>("questions");
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Hydrate from localStorage on mount — a one-time read from a

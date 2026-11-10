@@ -17,19 +17,13 @@ import {
 import { documentDir, join } from "@tauri-apps/api/path";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import type { Scorecard, ScorecardItem } from "@/lib/scorecard";
+import type { QuestionAnalysis, QuestionAnswerPair } from "@/lib/questionAnalysis";
 import { BASE_DIR, spaceRecordsDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
 import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 
 function recordsRoot() {
   return spaceRecordsDir(getActiveSpaceFolder());
 }
-
-export type DocKind = "notes" | "analysis";
-
-const DOC_FILE_NAMES: Record<DocKind, string> = {
-  notes: "user_notes.md",
-  analysis: "ai_analysis.md",
-};
 
 // Structured fields persisted in meta.json. `state` is stored as whatever
 // string was last written (or null) — this module doesn't know about the
@@ -57,8 +51,10 @@ function recordDir(id: string) {
   return `${recordsRoot()}/${id}`;
 }
 
-function docPath(id: string, kind: DocKind) {
-  return `${recordDir(id)}/${DOC_FILE_NAMES[kind]}`;
+const NOTES_FILE_NAME = "user_notes.md";
+
+function notesPath(id: string) {
+  return `${recordDir(id)}/${NOTES_FILE_NAME}`;
 }
 
 function metaPath(id: string) {
@@ -75,6 +71,12 @@ const SCORECARD_FILE_NAME = "scorecard.json";
 
 function scorecardPath(id: string) {
   return `${recordDir(id)}/${SCORECARD_FILE_NAME}`;
+}
+
+const QUESTION_ANALYSIS_FILE_NAME = "question_analysis.json";
+
+function questionAnalysisPath(id: string) {
+  return `${recordDir(id)}/${QUESTION_ANALYSIS_FILE_NAME}`;
 }
 
 // Same "missing or corrupt is just absent, not a crash" tolerance as
@@ -128,6 +130,34 @@ function parseScorecard(text: string): Scorecard | null {
     summary: typeof candidate.summary === "string" ? candidate.summary : "",
     improvementSuggestion: typeof candidate.improvementSuggestion === "string" ? candidate.improvementSuggestion : "",
   };
+}
+
+// Same tolerant "missing/corrupt is just absent" parsing as parseScorecard.
+function parseQuestionAnalysis(text: string): QuestionAnalysis | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as Partial<QuestionAnalysis>;
+  if (typeof candidate.generatedAt !== "string" || !Array.isArray(candidate.pairs)) return null;
+
+  const pairs: QuestionAnswerPair[] = [];
+  for (const entry of candidate.pairs) {
+    if (!entry || typeof entry !== "object") continue;
+    const pair = entry as Partial<QuestionAnswerPair>;
+    if (typeof pair.question !== "string" || pair.question === "" || typeof pair.answer !== "string") continue;
+    pairs.push({
+      question: pair.question,
+      answer: pair.answer,
+      timestampSeconds: typeof pair.timestampSeconds === "number" ? pair.timestampSeconds : null,
+    });
+  }
+  if (pairs.length === 0) return null;
+
+  return { generatedAt: candidate.generatedAt, pairs };
 }
 
 function emptyMeta(title: string): RecordMetaFields {
@@ -207,25 +237,24 @@ export async function listRecords(): Promise<RecordSummary[]> {
   return summaries;
 }
 
-// Reads a record's notes/AI-analysis doc. Returns "" if nothing has been
-// written yet — lazy creation means no file exists until the first
-// non-empty write.
-export async function readDoc(id: string, kind: DocKind): Promise<string> {
+// Reads a record's notes doc. Returns "" if nothing has been written yet
+// — lazy creation means no file exists until the first non-empty write.
+export async function readNotes(id: string): Promise<string> {
   try {
-    return await readTextFile(docPath(id, kind), { baseDir: BASE_DIR });
+    return await readTextFile(notesPath(id), { baseDir: BASE_DIR });
   } catch {
     return "";
   }
 }
 
-// Writes a record's notes/AI-analysis doc. Stays lazy: an empty draft
-// that was never non-empty never touches disk at all.
-export async function writeDoc(id: string, kind: DocKind, text: string): Promise<void> {
+// Writes a record's notes doc. Stays lazy: an empty draft that was never
+// non-empty never touches disk at all.
+export async function writeNotes(id: string, text: string): Promise<void> {
   if (text === "") {
-    const alreadyExists = await exists(docPath(id, kind), { baseDir: BASE_DIR }).catch(() => false);
+    const alreadyExists = await exists(notesPath(id), { baseDir: BASE_DIR }).catch(() => false);
     if (!alreadyExists) return;
   }
-  await writeTextFile(docPath(id, kind), text, { baseDir: BASE_DIR });
+  await writeTextFile(notesPath(id), text, { baseDir: BASE_DIR });
 }
 
 // Merges partial fields into meta.json and persists it.
@@ -272,6 +301,23 @@ export async function readScorecard(id: string): Promise<Scorecard | null> {
 // Overwrites scorecard.json with a freshly generated scorecard.
 export async function writeScorecard(id: string, scorecard: Scorecard): Promise<void> {
   await writeTextFile(scorecardPath(id), JSON.stringify(scorecard, null, 2), { baseDir: BASE_DIR });
+}
+
+// Reads a record's question_analysis.json. Returns null if none has been
+// generated yet (or the file is corrupt) — same lazy-and-tolerant pattern
+// as readScorecard.
+export async function readQuestionAnalysis(id: string): Promise<QuestionAnalysis | null> {
+  try {
+    const text = await readTextFile(questionAnalysisPath(id), { baseDir: BASE_DIR });
+    return parseQuestionAnalysis(text);
+  } catch {
+    return null;
+  }
+}
+
+// Overwrites question_analysis.json with a freshly generated analysis.
+export async function writeQuestionAnalysis(id: string, analysis: QuestionAnalysis): Promise<void> {
+  await writeTextFile(questionAnalysisPath(id), JSON.stringify(analysis, null, 2), { baseDir: BASE_DIR });
 }
 
 // Copies an arbitrary transcript file in as transcript.md — same

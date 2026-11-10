@@ -21,7 +21,7 @@ use rmcp::{
 };
 
 use crate::mcp::bridge::ResourceKind;
-use crate::mcp::permission::{self, Access};
+use crate::mcp::permission;
 use crate::mcp::tools::{
     get_performance_review, get_roleplay_transcript, get_training_session, list_performance_reviews,
     list_training_sessions, search_performance_reviews,
@@ -44,7 +44,7 @@ impl MastersWheelServer {
     }
 
     #[tool(
-        description = "List every Performance Review record (a saved sales-call review session) the user has in Master's Wheel. Returns each record's id, title, date, status, and description only — never the real notes/transcript/analysis content. Always safe to call, no permission needed. The description field is real, user-written text about that call — for a qualitative/subjective question (e.g. \"which call was really tough for me personally\", \"find something I felt good about\"), read through every record's description yourself and judge which one(s) fit; don't assume you need a different tool for that. For a literal word/phrase that might appear inside a transcript rather than the description (e.g. \"temperature check\"), use search_performance_reviews instead. Use get_performance_review with a recordId from this list to actually read a specific record's content (that one may require the user's permission)."
+        description = "List every Performance Review record (a saved sales-call review session) the user has in Master's Wheel. Returns each record's id, title, date, status, and description only — never the real notes/transcript/question-analysis content. Always safe to call. The description field is real, user-written text about that call — for a qualitative/subjective question (e.g. \"which call was really tough for me personally\", \"find something I felt good about\"), read through every record's description yourself and judge which one(s) fit; don't assume you need a different tool for that. For a literal word/phrase that might appear inside a transcript rather than the description (e.g. \"temperature check\"), use search_performance_reviews instead. Use get_performance_review with a recordId from this list to actually read a specific record's content."
     )]
     async fn list_performance_reviews(&self) -> Result<CallToolResult, McpError> {
         let reviews = list_performance_reviews::list(&crate::mcp::paths::records_root());
@@ -54,7 +54,7 @@ impl MastersWheelServer {
     }
 
     #[tool(
-        description = "Search for a literal word or phrase across every Performance Review record's title, description, notes, transcript, and AI analysis — use this to find which call(s) a specific thing was said in (e.g. \"temperature check\", a product name, an objection). This is a plain case-insensitive substring match, not semantic/fuzzy search, so use the exact words likely to have been said, not a paraphrase. Always safe to call, no permission needed to run the search itself. Each result names which part matched (matched_in) and, if it matched inside notes/transcript/analysis, either a short snippet of real content (only if this chat already has that record's content allowed) or content_access_required: true with no snippet (this session doesn't have it yet — call get_performance_review with that record_id to actually read it, which will ask the user's permission as usual). For a qualitative/subjective question instead of a literal phrase, use list_performance_reviews and reason over its description field directly rather than searching for a phrase that may not literally appear anywhere."
+        description = "Search for a literal word or phrase across every Performance Review record's title, description, notes, transcript, and extracted question analysis — use this to find which call(s) a specific thing was said in (e.g. \"temperature check\", a product name, an objection). This is a plain case-insensitive substring match, not semantic/fuzzy search, so use the exact words likely to have been said, not a paraphrase. Always safe to call. Each result names which part matched (matched_in) and, if it matched inside notes/transcript/questions, a short snippet of the real content. For a qualitative/subjective question instead of a literal phrase, use list_performance_reviews and reason over its description field directly rather than searching for a phrase that may not literally appear anywhere."
     )]
     async fn search_performance_reviews(
         &self,
@@ -62,13 +62,13 @@ impl MastersWheelServer {
             search_performance_reviews::SearchPerformanceReviewsInput,
         >,
     ) -> Result<CallToolResult, McpError> {
-        let matches = search_performance_reviews::search(&crate::mcp::paths::records_root(), &query, max_results).await;
+        let matches = search_performance_reviews::search(&crate::mcp::paths::records_root(), &query, max_results);
         let json = serde_json::to_string_pretty(&matches).map_err(|e| McpError::internal_error(e.to_string(), None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
     }
 
     #[tool(
-        description = "Read a specific Performance Review record's real content (notes, transcript, and/or AI analysis) by its record_id from list_performance_reviews. The first time a given record comes up in this conversation, this may need the user's permission — if declined, you'll get a plain message back instead of the content. Don't keep re-asking for the same declined record without the user bringing it up again themselves. Long documents come back in chunks: if a returned document's has_more is true, call again with the same record_id/documents and offset = that document's offset + content.length to keep reading, repeating until has_more is false, before answering questions about its full content."
+        description = "Read a specific Performance Review record's real content (notes, transcript, and/or extracted question analysis — every question the salesperson asked on the call and the clean outcome of its answer) by its record_id from list_performance_reviews. Long text documents (notes/transcript) come back in chunks: if a returned document's has_more is true, call again with the same record_id/documents and offset = that document's offset + content.length to keep reading, repeating until has_more is false, before answering questions about its full content. questions always comes back whole (never chunked) as a list of {question, answer, timestamp_seconds} — it's absent (not an empty list) if nobody has generated it for this record yet."
     )]
     async fn get_performance_review(
         &self,
@@ -76,23 +76,10 @@ impl MastersWheelServer {
             get_performance_review::GetPerformanceReviewInput,
         >,
     ) -> Result<CallToolResult, McpError> {
-        let title = get_performance_review::title_for(&crate::mcp::paths::records_root(), &record_id);
-        let document_label = documents.join(", ");
-        match permission::check_access(ResourceKind::PerformanceReview, &record_id, &document_label, &title)
-            .await
-            .map_err(|e| McpError::internal_error(e, None))?
-        {
-            Access::Allowed => {
-                let content = get_performance_review::read(&record_id, &documents, offset, limit);
-                let json = serde_json::to_string_pretty(&content).map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
-            }
-            Access::Declined => Ok(CallToolResult::success(vec![ContentBlock::text(
-                "The user declined access to this Performance Review record. Don't ask again for \
-                 this record in this conversation unless the user brings it up themselves."
-                    .to_string(),
-            )])),
-        }
+        permission::mark_read(ResourceKind::PerformanceReview, &record_id).await;
+        let content = get_performance_review::read(&record_id, &documents, offset, limit);
+        let json = serde_json::to_string_pretty(&content).map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
     }
 
     #[tool(
@@ -112,7 +99,7 @@ impl MastersWheelServer {
     }
 
     #[tool(
-        description = "List every Training Room session (a practice session — Voice Training, Chat Roleplay, Voice Roleplay, Mindset Shifting, or Learning) the user has in Master's Wheel. Returns each session's id, name, discipline (toolType), status, and last-updated time only — never the real notes/transcript content. Always safe to call, no permission needed. Use get_training_session with a session_id from this list to actually read a specific session's content (that one may require the user's permission)."
+        description = "List every Training Room session (a practice session — Voice Training, Chat Roleplay, Voice Roleplay, Mindset Shifting, or Learning) the user has in Master's Wheel. Returns each session's id, name, discipline (toolType), status, and last-updated time only — never the real notes/transcript content. Always safe to call. Use get_training_session with a session_id from this list to actually read a specific session's content."
     )]
     async fn list_training_sessions(&self) -> Result<CallToolResult, McpError> {
         let sessions = list_training_sessions::list(&crate::mcp::paths::training_root());
@@ -121,7 +108,7 @@ impl MastersWheelServer {
     }
 
     #[tool(
-        description = "Read a specific Training Room session's real content (notes and/or transcript) by its session_id from list_training_sessions. The first time a given session comes up in this conversation, this may need the user's permission — if declined, you'll get a plain message back instead of the content. Don't keep re-asking for the same declined session without the user bringing it up again themselves. Notes and transcript mean whatever that session's discipline actually has — some disciplines may have one and not the other, which is normal, not an error. Long documents come back in chunks: if a returned document's has_more is true, call again with the same session_id/documents and offset = that document's offset + content.length to keep reading, repeating until has_more is false, before answering questions about its full content."
+        description = "Read a specific Training Room session's real content (notes and/or transcript) by its session_id from list_training_sessions. Notes and transcript mean whatever that session's discipline actually has — some disciplines may have one and not the other, which is normal, not an error. Long documents come back in chunks: if a returned document's has_more is true, call again with the same session_id/documents and offset = that document's offset + content.length to keep reading, repeating until has_more is false, before answering questions about its full content."
     )]
     async fn get_training_session(
         &self,
@@ -130,24 +117,13 @@ impl MastersWheelServer {
         >,
     ) -> Result<CallToolResult, McpError> {
         let root = crate::mcp::paths::training_root();
-        let title = get_training_session::title_for(&root, &session_id);
-        let document_label = documents.join(", ");
-        match permission::check_access(ResourceKind::TrainingSession, &session_id, &document_label, &title)
-            .await
-            .map_err(|e| McpError::internal_error(e, None))?
-        {
-            Access::Allowed => match get_training_session::read(&root, &session_id, &documents, offset, limit) {
-                Ok(content) => {
-                    let json = serde_json::to_string_pretty(&content).map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                    Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
-                }
-                Err(message) => Ok(CallToolResult::success(vec![ContentBlock::text(message)])),
-            },
-            Access::Declined => Ok(CallToolResult::success(vec![ContentBlock::text(
-                "The user declined access to this Training Room session. Don't ask again for \
-                 this session in this conversation unless the user brings it up themselves."
-                    .to_string(),
-            )])),
+        permission::mark_read(ResourceKind::TrainingSession, &session_id).await;
+        match get_training_session::read(&root, &session_id, &documents, offset, limit) {
+            Ok(content) => {
+                let json = serde_json::to_string_pretty(&content).map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                Ok(CallToolResult::success(vec![ContentBlock::text(json)]))
+            }
+            Err(message) => Ok(CallToolResult::success(vec![ContentBlock::text(message)])),
         }
     }
 }

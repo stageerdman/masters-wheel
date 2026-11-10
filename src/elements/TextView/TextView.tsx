@@ -1,5 +1,6 @@
 import { Transcript } from "@/elements/Transcript/Transcript";
 import { Scorecard } from "@/elements/Scorecard/Scorecard";
+import { QuestionAnalysis } from "@/elements/QuestionAnalysis/QuestionAnalysis";
 import type { ContentKind, VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import type { ScorecardCriterionDef } from "@/lib/settings";
@@ -11,10 +12,8 @@ type TextViewProps = {
   video: VideoRecord;
   notes: string;
   lessons: string;
-  aiAnalysis: string;
   onNotesChange: (value: string) => void;
   onLessonsChange: (value: string) => void;
-  onAiAnalysisChange: (value: string) => void;
   onRequestTranscriptUpload: () => void;
   onRequestGenerateTranscript: () => void;
   transcriptGeneration: TranscriptGenerationState | null;
@@ -29,6 +28,9 @@ type TextViewProps = {
   onGenerateScorecard: () => void;
   scorecardCriteria: ScorecardCriterionDef[];
   scorecardError: string | null;
+  isGeneratingQuestionAnalysis: boolean;
+  onGenerateQuestionAnalysis: () => void;
+  questionAnalysisError: string | null;
 };
 
 // Renders whichever text type is active.
@@ -37,10 +39,8 @@ export function TextView({
   video,
   notes,
   lessons,
-  aiAnalysis,
   onNotesChange,
   onLessonsChange,
-  onAiAnalysisChange,
   onRequestTranscriptUpload,
   onRequestGenerateTranscript,
   transcriptGeneration,
@@ -55,15 +55,18 @@ export function TextView({
   onGenerateScorecard,
   scorecardCriteria,
   scorecardError,
+  isGeneratingQuestionAnalysis,
+  onGenerateQuestionAnalysis,
+  questionAnalysisError,
 }: TextViewProps) {
-  if (kind === "ai") {
+  if (kind === "questions") {
     return (
-      <textarea
-        className={`${styles.editableText} ${position.editableText}`}
-        data-construction
-        value={aiAnalysis}
-        onChange={(event) => onAiAnalysisChange(event.target.value)}
-        placeholder="AI analysis"
+      <QuestionAnalysis
+        data={video.questionAnalysis}
+        isGenerating={isGeneratingQuestionAnalysis}
+        onGenerate={onGenerateQuestionAnalysis}
+        onSeek={onSeekTranscript}
+        error={questionAnalysisError}
       />
     );
   }

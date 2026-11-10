@@ -4,6 +4,7 @@
 // The old fake fixture (FAKE_VIDEOS / mainText) has been removed.
 
 import type { Scorecard } from "@/lib/scorecard";
+import type { QuestionAnalysis } from "@/lib/questionAnalysis";
 import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
 
 // Which text kind Hero/Detail can show, and how each renders as a
@@ -13,12 +14,12 @@ import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
 // (page-specific data) rather than in BookmarkBadge/BookmarkRail/SplitRail
 // themselves, which are generic over any kind set — see
 // `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md` for why.
-export type ContentKind = "ai" | "transcript" | "notes" | "lessons" | "scorecard";
+export type ContentKind = "questions" | "transcript" | "notes" | "lessons" | "scorecard";
 
-export const CONTENT_KIND_ORDER: ContentKind[] = ["ai", "transcript", "notes", "lessons", "scorecard"];
+export const CONTENT_KIND_ORDER: ContentKind[] = ["questions", "transcript", "notes", "lessons", "scorecard"];
 
 export const CONTENT_KIND_META: Record<ContentKind, BookmarkMeta> = {
-  ai: { label: "AI", color: "var(--color-bookmark-ai)" },
+  questions: { label: "QA", color: "var(--color-bookmark-questions)" },
   transcript: { label: "TR", color: "var(--color-bookmark-transcript)" },
   notes: { label: "NT", color: "var(--color-bookmark-notes)" },
   lessons: { label: "CL", color: "var(--color-bookmark-lessons)" },
@@ -94,7 +95,8 @@ export type VideoRecord = {
   // Parsed on demand by the Transcript element (src/lib/transcript).
   transcriptRaw: string | null;
   notes: string;
-  aiAnalysis: string;
+  // null until "Generate Question Analysis" has been run at least once.
+  questionAnalysis: QuestionAnalysis | null;
   // Deliberately in-memory only this round — not persisted, see wiki.md.
   lessons: string;
   offeredAmount: number | null;

@@ -7,7 +7,7 @@ import { resolveDedicatedAgent } from "@/elements/AIAssistant/AIAssistant.script
 import type { DockState, PresetOverride } from "@/elements/AIAssistant/AIAssistant.windowDock.script";
 import type { RecordSummary } from "@/lib/records";
 import type { SessionSummary as TrainingSessionSummary } from "@/lib/training";
-import type { ChatTag, PermissionDecision, TaggedResourceKind } from "@/lib/mcp/types";
+import type { ChatTag, TaggedResourceKind } from "@/lib/mcp/types";
 import { useNarrowContainer } from "@/lib/useNarrowContainer";
 import { AgentPicker } from "@/elements/AgentPicker/AgentPicker";
 import { Composer } from "@/elements/Composer/Composer";
@@ -52,7 +52,6 @@ type AIAssistantWindowProps = {
   trainingSessionSummaries: TrainingSessionSummary[];
   visibleTags: ChatTag[];
   onRemoveTag: (resourceKind: TaggedResourceKind, resourceId: string) => void;
-  onRespondToPermission: (messageId: string, decision: PermissionDecision) => void;
 };
 
 const DOCK_CLASS: Record<DockState, string> = {
@@ -101,7 +100,6 @@ export function AIAssistantWindow({
   trainingSessionSummaries,
   visibleTags,
   onRemoveTag,
-  onRespondToPermission,
 }: AIAssistantWindowProps) {
   const hasEntered = useWindowEnterTransition();
   const { showCollapsedGeometry, style } = useWindowGeometry({
@@ -235,7 +233,6 @@ export function AIAssistantWindow({
                   density={density}
                   agents={agents}
                   respondingAgent={respondingAgent}
-                  onRespondToPermission={onRespondToPermission}
                 />
                 <Composer
                   value={composerValue}

@@ -36,7 +36,6 @@ export function MindsetShiftingChat({ sessionId }: MindsetShiftingChatProps) {
     isSending,
     agents,
     startChatWithAgent,
-    respondToPermission,
   } = useAIAssistant(mindsetShiftingChatsDir(sessionId));
 
   useEffect(() => {
@@ -61,7 +60,6 @@ export function MindsetShiftingChat({ sessionId }: MindsetShiftingChatProps) {
             density="comfortable"
             agents={agents}
             respondingAgent={respondingAgent}
-            onRespondToPermission={respondToPermission}
           />
           <Composer
             value={composerValue}

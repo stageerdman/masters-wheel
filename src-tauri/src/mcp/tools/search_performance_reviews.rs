@@ -1,25 +1,13 @@
 // Content search across every Performance Review record — finds a
-// phrase inside a transcript/notes/analysis, not just title/description
-// (that's what list_performance_reviews is for). Gated the same way
-// get_performance_review is: a matched record's real content is never
-// shown unless this session already has it tagged/always-allowed. But
-// unlike get_performance_review, a search can match many records at
-// once, and blocking the whole call on one interactive permission
-// prompt per match would mean firing several simultaneous 180s-timeout
-// prompts from a single tool call — so this only ever *peeks* each
-// match's existing access (mcp::permission::peek_access, side-effect-
-// free) instead of asking. An unresolved match comes back flagged
-// `content_access_required` with no snippet; the model is expected to
-// follow up with a normal get_performance_review call on whichever
-// match actually matters, which still runs the real interactive gate —
-// just once, for the one record worth opening.
+// phrase inside a transcript/notes/question-analysis, not just title/description
+// (that's what list_performance_reviews is for). Always returns a real
+// snippet for a content match — nothing here is gated (see
+// mcp/permission.rs's doc comment for why the old per-record access
+// prompt was removed).
 
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
-
-use crate::mcp::bridge::ResourceKind;
-use crate::mcp::permission;
 
 const DEFAULT_MAX_RESULTS: usize = 20;
 // Characters of context kept on each side of a content match — enough to
@@ -29,10 +17,10 @@ const SNIPPET_RADIUS: usize = 160;
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct SearchPerformanceReviewsInput {
     /// A word or phrase to search for across every record's title,
-    /// description, notes, transcript, and AI analysis. Matched as a
-    /// plain case-insensitive substring — not a semantic/fuzzy search,
-    /// so use the exact words likely to appear (e.g. "temperature
-    /// check"), not a paraphrase of the idea.
+    /// description, notes, transcript, and extracted question analysis.
+    /// Matched as a plain case-insensitive substring — not a semantic/
+    /// fuzzy search, so use the exact words likely to appear (e.g.
+    /// "temperature check"), not a paraphrase of the idea.
     pub query: String,
     /// Maximum number of matching records to return. Omit for the
     /// default of 20.
@@ -42,6 +30,20 @@ pub struct SearchPerformanceReviewsInput {
 
 fn default_max_results() -> usize {
     DEFAULT_MAX_RESULTS
+}
+
+// Minimal deserialize-only mirror of get_performance_review::QuestionAnswerPair
+// — this tool only ever flattens pairs into searchable text, never
+// returns them, so it doesn't need that module's Serialize derive.
+#[derive(Debug, Deserialize)]
+struct QuestionAnswerPair {
+    question: String,
+    answer: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct QuestionAnalysisFile {
+    pairs: Vec<QuestionAnswerPair>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -60,19 +62,13 @@ pub struct SearchMatch {
     pub status: Option<String>,
     pub description: String,
     /// Which parts of this record matched: any of "title",
-    /// "description", "notes", "transcript", "analysis".
+    /// "description", "notes", "transcript", "questions".
     pub matched_in: Vec<String>,
     /// Context around the first content match (notes/transcript/
-    /// analysis), only present once this session already has this
-    /// record's content allowed. Title/description matches never need
-    /// this — they're already in the fields above.
+    /// questions). Title/description matches never need this — they're
+    /// already in the fields above.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub snippet: Option<String>,
-    /// True when this record matched inside notes/transcript/analysis
-    /// but this session doesn't have that content allowed yet — call
-    /// get_performance_review with this record_id to actually read it
-    /// (that will ask the user's permission, same as always).
-    pub content_access_required: bool,
 }
 
 fn find_snippet(text: &str, query_lower: &str) -> Option<String> {
@@ -103,7 +99,7 @@ fn find_snippet(text: &str, query_lower: &str) -> Option<String> {
     Some(snippet)
 }
 
-pub async fn search(root: &Path, query: &str, max_results: usize) -> Vec<SearchMatch> {
+pub fn search(root: &Path, query: &str, max_results: usize) -> Vec<SearchMatch> {
     let query_lower = query.to_lowercase();
     let mut out = Vec::new();
     let Ok(entries) = std::fs::read_dir(root) else {
@@ -133,8 +129,7 @@ pub async fn search(root: &Path, query: &str, max_results: usize) -> Vec<SearchM
         }
 
         let mut content_snippet = None;
-        let mut content_matched = false;
-        for (document, filename) in [("notes", "user_notes.md"), ("transcript", "transcript.md"), ("analysis", "ai_analysis.md")] {
+        for (document, filename) in [("notes", "user_notes.md"), ("transcript", "transcript.md")] {
             let Ok(text) = std::fs::read_to_string(entry.path().join(filename)) else {
                 continue;
             };
@@ -142,21 +137,37 @@ pub async fn search(root: &Path, query: &str, max_results: usize) -> Vec<SearchM
                 continue;
             }
             matched_in.push(document.to_string());
-            content_matched = true;
             if content_snippet.is_none() {
                 content_snippet = find_snippet(&text, &query_lower);
+            }
+        }
+
+        // Question analysis isn't raw prose like notes/transcript — it's
+        // a JSON list of clean question/answer pairs (see
+        // get_performance_review.rs's QuestionAnswerPair) — so search it
+        // by flattening each pair into one line of searchable text rather
+        // than matching against the raw JSON (which would also match
+        // field-name noise like `"timestamp_seconds"`).
+        if let Ok(questions_text) = std::fs::read_to_string(entry.path().join("question_analysis.json")) {
+            if let Ok(parsed) = serde_json::from_str::<QuestionAnalysisFile>(&questions_text) {
+                let flattened = parsed
+                    .pairs
+                    .iter()
+                    .map(|pair| format!("{}\n{}", pair.question, pair.answer))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                if flattened.to_lowercase().contains(&query_lower) {
+                    matched_in.push("questions".to_string());
+                    if content_snippet.is_none() {
+                        content_snippet = find_snippet(&flattened, &query_lower);
+                    }
+                }
             }
         }
 
         if matched_in.is_empty() {
             continue;
         }
-
-        let content_access_required = if content_matched {
-            !permission::peek_access(ResourceKind::PerformanceReview, &record_id).await.unwrap_or(false)
-        } else {
-            false
-        };
 
         out.push(SearchMatch {
             record_id,
@@ -165,8 +176,7 @@ pub async fn search(root: &Path, query: &str, max_results: usize) -> Vec<SearchM
             status: meta.state,
             description,
             matched_in,
-            snippet: if content_access_required { None } else { content_snippet },
-            content_access_required,
+            snippet: content_snippet,
         });
     }
 
