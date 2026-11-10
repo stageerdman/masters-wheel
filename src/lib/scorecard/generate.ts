@@ -127,10 +127,14 @@ function parseScorecardReply(
 }
 
 export async function generateScorecard(
-  criteria: ScorecardCriterionDef[],
+  allCriteria: ScorecardCriterionDef[],
   businessDescription: string,
   transcriptRaw: string
 ): Promise<Scorecard> {
+  // ScorePanel always keeps one trailing blank row so there's somewhere
+  // to type the next score — that's purely a Settings-UI affordance, not
+  // a real criterion, and must never be scored or sent to the model.
+  const criteria = allCriteria.filter((criterion) => criterion.name.trim() !== "" && criterion.prompt.trim() !== "");
   const { systemPrompt, message } = buildScorecardPrompt(criteria, businessDescription, transcriptRaw);
   const raw = await invoke<string>("run_claude_once", { systemPrompt, message });
   const { items, summary, improvementSuggestion } = parseScorecardReply(raw, criteria);

@@ -130,6 +130,21 @@ on the same header component) both call the real local `claude` CLI now.
       button's regenerate-confirm dialog, and a real multi-criterion reply
       parsing correctly end-to-end. Please try a real generation yourself.
 
+### Phase 5 — two real-use bugs, both fixed
+- [x] Every local `claude -p` call (not just Scorecard — `assistant.rs`'s
+      `ask_agent`/`name_chat` had the same latent bug) failed on a prompt
+      starting with `-`, which this app's transcripts always do
+      (`---` frontmatter). `-p` takes no value of its own; fixed by
+      moving every real flag before it and appending `-p -- <message>`
+      last, confirmed empirically against the real binary before
+      shipping — see `updates/2026-11-10 TRANSCRIPT-SAFETY - OPEN/wiki.md`.
+- [x] `generateScorecard` (`src/lib/scorecard/generate.ts`) now filters
+      out any criterion with an empty name or prompt before building the
+      prompt — `ScorePanel`'s perpetual trailing blank row (there so
+      there's always somewhere to type the next score) was getting sent
+      to the model and scored as "Untitled score." Settings-UI
+      scaffolding should never reach the model.
+
 ## Decisions
 - Deletion of a Score row wasn't explicitly requested but was added as a
   minimal necessary affordance in the Settings UI (see the Settings
