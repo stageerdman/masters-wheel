@@ -282,8 +282,6 @@ pub async fn ask_agent(
         let mut command = Command::new(&binary);
         command
             .current_dir(temp_dir())
-            .arg("-p")
-            .arg(&message)
             .arg("--output-format")
             .arg("stream-json")
             .arg("--include-partial-messages")
@@ -305,6 +303,13 @@ pub async fn ask_agent(
         if let Some(id) = session_id.filter(|id| !id.is_empty()) {
             command.arg("--resume").arg(id);
         }
+
+        // `-p` takes no value of its own — the prompt is a positional
+        // argument, and it (plus the `--` separator) must come last: a
+        // message that happens to start with `-` otherwise gets
+        // misparsed as another option — reproduced empirically, see
+        // updates/2026-11-10 TRANSCRIPT-SAFETY - OPEN/wiki.md.
+        command.arg("-p").arg("--").arg(&message);
 
         let mut child = command.spawn().map_err(|e| {
             format!("The Claude Code CLI isn't available ({e}). Make sure `claude` is installed and you're logged in.")
@@ -400,10 +405,11 @@ const NAME_CHAT_MAX_LEN: usize = 60;
 pub async fn name_chat(message: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         let binary = resolve_binary("claude");
+        // `-p` takes no value of its own — the prompt is a positional
+        // argument, and it (plus the `--` separator) must come last, same
+        // reasoning as ask_agent above.
         let output = Command::new(&binary)
             .current_dir(temp_dir())
-            .arg("-p")
-            .arg(&message)
             .arg("--output-format")
             .arg("json")
             .arg("--system-prompt")
@@ -412,6 +418,9 @@ pub async fn name_chat(message: String) -> Result<String, String> {
             .arg("dontAsk")
             .arg("--tools")
             .arg("")
+            .arg("-p")
+            .arg("--")
+            .arg(&message)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()

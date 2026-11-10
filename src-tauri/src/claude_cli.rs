@@ -26,8 +26,6 @@ pub(crate) fn run_claude(
     let mut command = Command::new(&binary);
     command
         .current_dir(temp_dir())
-        .arg("-p")
-        .arg(message)
         .arg("--output-format")
         .arg("json")
         .arg("--system-prompt")
@@ -42,6 +40,14 @@ pub(crate) fn run_claude(
     if let Some(id) = resume_session_id.filter(|id| !id.is_empty()) {
         command.arg("--resume").arg(id);
     }
+
+    // `-p` takes no value of its own — the prompt is a positional
+    // argument, and it (plus the `--` separator) must come last: a
+    // message that happens to start with `-` (e.g. this app's
+    // transcripts, which always start with `---`) otherwise gets
+    // misparsed as another option — reproduced empirically, see
+    // updates/2026-11-10 TRANSCRIPT-SAFETY - OPEN/wiki.md.
+    command.arg("-p").arg("--").arg(message);
 
     let output = command
         .output()
