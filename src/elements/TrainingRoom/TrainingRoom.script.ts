@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
-import { confirm } from "@tauri-apps/plugin-dialog";
+import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { useWindowFileDrop } from "@/lib/useWindowFileDrop";
 import { setActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
 import {
@@ -436,6 +436,7 @@ export function useTrainingRoomData() {
           displayName = stored.displayName;
         } catch (error) {
           console.error("Failed to store clip file:", sessionId, error);
+          message(String(error), { title: "Couldn't add clip", kind: "error" });
           return;
         }
       }
@@ -492,6 +493,7 @@ export function useTrainingRoomData() {
           sizeBytes = stored.sizeBytes;
         } catch (error) {
           console.error("Failed to store learning file:", sessionId, error);
+          message(String(error), { title: "Couldn't add file", kind: "error" });
           return;
         }
       }
