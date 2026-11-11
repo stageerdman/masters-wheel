@@ -1,3 +1,6 @@
+"use client";
+
+import { useLayoutEffect, useRef } from "react";
 import type { Agent, ChatMessage } from "@/elements/AIAssistant/AIAssistant.script";
 import { AgentAvatar } from "@/elements/AgentAvatar/AgentAvatar";
 import { agentDescription } from "@/lib/agents";
@@ -13,9 +16,37 @@ type MessageListProps = {
   respondingAgent: Agent | undefined;
 };
 
+// How close to the bottom (px) still counts as "reading the latest" —
+// new/streaming content keeps the view pinned only while within this.
+const STICK_THRESHOLD = 80;
+
 export function MessageList({ messages, density, agents, respondingAgent }: MessageListProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const stuckToBottom = useRef(true);
+  // The first message's id identifies the thread — when it changes (chat
+  // opened, session switched, history finished loading) jump to the newest.
+  const threadKey = messages[0]?.id;
+  const lastThreadKey = useRef<string | undefined>(undefined);
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const isNewThread = threadKey !== lastThreadKey.current;
+    lastThreadKey.current = threadKey;
+    if (isNewThread || stuckToBottom.current) {
+      list.scrollTop = list.scrollHeight;
+      stuckToBottom.current = true;
+    }
+  }, [messages, threadKey]);
+
+  function handleScroll() {
+    const list = listRef.current;
+    if (!list) return;
+    stuckToBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight <= STICK_THRESHOLD;
+  }
+
   return (
-    <div className={`${styles.root} ${position.root}`} data-construction>
+    <div ref={listRef} onScroll={handleScroll} className={`${styles.root} ${position.root}`} data-construction>
       {messages.length === 0 ? (
         respondingAgent ? (
           <div className={`${styles.profile} ${position.profile}`} data-construction>
