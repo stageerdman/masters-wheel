@@ -38,6 +38,15 @@ export function serializeTranscript(parsed: ParsedTranscript): string {
   return `---\n${frontmatter}\n---\n\n${body}\n`;
 }
 
+// The one import step every "upload a transcript" entry point shares
+// (Performance Review's record, a Training Room Learning file): any
+// supported source shape — our own, or Fathom's — in, our canonical
+// on-disk text out. `null` means no known parser recognized it.
+export function toCanonicalTranscript(raw: string): string | null {
+  const parsed = parseTranscript(raw);
+  return parsed ? serializeTranscript(parsed) : null;
+}
+
 export function speakersOf(parsed: ParsedTranscript): string[] {
   const seen = new Set<string>();
   const speakers: string[] = [];

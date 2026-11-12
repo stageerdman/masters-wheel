@@ -64,3 +64,43 @@
   color: var(--color-status-failed);
   font-size: var(--text-size-label);
 }
+
+.modeSwitch {
+  background: color-mix(in srgb, var(--color-border) 40%, transparent);
+  border-radius: 8px;
+}
+
+.modeButton {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+  cursor: pointer;
+}
+
+.modeButtonActive {
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.modeButton:focus-visible,
+.browseButton:focus-visible,
+.pasteInput:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.pasteInput {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: var(--text-size-label);
+}
+
+.browseButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -20,6 +20,7 @@ import type { Scorecard, ScorecardItem } from "@/lib/scorecard";
 import type { QuestionAnalysis, QuestionAnswerPair } from "@/lib/questionAnalysis";
 import { BASE_DIR, spaceRecordsDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
 import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
+import { readExternalTextFile } from "@/lib/readExternalTextFile";
 
 function recordsRoot() {
   return spaceRecordsDir(getActiveSpaceFolder());
@@ -320,12 +321,12 @@ export async function writeQuestionAnalysis(id: string, analysis: QuestionAnalys
   await writeTextFile(questionAnalysisPath(id), JSON.stringify(analysis, null, 2), { baseDir: BASE_DIR });
 }
 
-// Copies an arbitrary transcript file in as transcript.md — same
-// cross-filesystem copy pattern createRecordFromFile uses for hero files —
-// then reads it back so the caller can parse/validate/normalize it.
+// Reads an arbitrary transcript file's raw text so the caller can
+// parse/validate/normalize it before writing transcript.md itself — never
+// copied straight onto transcript.md, so an unsupported file can't wipe
+// the record's existing transcript.
 export async function importTranscriptFile(id: string, sourcePath: string): Promise<string> {
-  await copyFile(sourcePath, transcriptPath(id), { toPathBaseDir: BASE_DIR });
-  return readTextFile(transcriptPath(id), { baseDir: BASE_DIR });
+  return readExternalTextFile(sourcePath, recordDir(id));
 }
 
 function basenameOf(path: string): string {

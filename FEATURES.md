@@ -487,9 +487,12 @@ between the two lists. Each page gets its own section as pages get added.
       dedicated "Upload a transcript" popup (own drag & drop zone, kept
       deliberately separate from the page's video drop so the two never
       collide — see this update's wiki.md) or a native file picker.
-      Currently recognizes one source format (frontmatter + `**Speaker**
-      [mm:ss]` blocks); `src/lib/transcript` is built to accept more
-      formats later without changing the UI. Imported transcripts are
+      The popup has two modes — "Drop a file" or "Paste text". Recognizes
+      our own format (frontmatter + `**Speaker** [mm:ss]` blocks) and
+      Fathom's plain-text transcript (`m:ss - Speaker (Company)` lines,
+      optional title/VIEW RECORDING preamble), converted on import.
+      Importing never overwrites the existing `transcript.md` until the
+      new one has parsed. Imported transcripts are
       rewritten to one canonical, standardized timestamp format on disk.
       Lines are color-coded per speaker, clicking a line seeks + plays the
       real video, right-click renames a speaker everywhere (UI and the
@@ -872,6 +875,13 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
       The transcript-generation job pipeline itself
       (`generationByMedia`/`transcribeVoiceClip`) is shared with Voice
       Training's clips too, not duplicated.
+- [x] "Upload transcript" (2026-11-12): attach an existing transcript to
+      a Learning video/audio file instead of generating one — same
+      shared `TranscriptUploadModal` as Performance Review (drop/pick a
+      .txt/.md file, or paste text), Fathom transcripts converted to our
+      canonical format on import. Also a ⇪ toolbar button to replace an
+      existing transcript. Uploaded transcripts have no real per-word
+      timings, so the lyrics highlight interpolates within each line.
 - [x] No PDF/EPUB in-app preview or text extraction yet — store+download
       (+ a generic extension chip) only; both are explicitly future work.
 - [ ] Not yet click-through verified in the running app, same caveat as

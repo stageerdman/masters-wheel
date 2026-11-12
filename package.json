@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "app:dev": "tauri dev",
-    "app:build": "tauri build"
+    "app:build": "tauri build",
+    "test": "node --test 'src/lib/**/*.test.mjs'"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

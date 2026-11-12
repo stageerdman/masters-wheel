@@ -809,3 +809,29 @@ fixed along the way) — summary here:
       from the floating AI Assistant, triggering a permission card, and
       asking "what's in my notes on this?" hasn't happened yet.
 
+
+### Phase 31 — Upload/paste a transcript for Learning files, Fathom conversion (2026-11-12)
+- [x] `src/lib/transcript/formats.ts` gains `parseFathom` (registered
+      after `parseV1`): `m:ss - Speaker (Company)` header lines with
+      indented text below, optional title + `VIEW RECORDING … url`
+      preamble → `source`/`title`/`recording_url` meta. Company
+      parenthetical stripped from speaker names. Format confirmed against
+      `~/dev/fathom-downloader` (the share page's `plain_text`).
+- [x] `toCanonicalTranscript` (lib/transcript) is the one shared
+      "raw → canonical" step for both upload entry points.
+- [x] `TranscriptUploadModal` gains a "Drop a file" / "Paste text" mode
+      switch; new required `onTextSubmitted` prop. Performance Review
+      wired to it too.
+- [x] New `src/lib/readExternalTextFile.ts`: user files are staged
+      through a temp copy inside the storage root (fs read scope), read,
+      then removed. Also fixes a pre-existing Performance Review bug where
+      an unparseable upload was copied straight over `transcript.md`.
+- [x] Learning: `TranscriptPanel` gets an optional `onUpload` ("Upload
+      transcript" next to Generate, plus a ⇪ replace button in the
+      toolbar); TrainingRoom.script tracks the target `{sessionId,
+      fileId}` and its own modal-scoped drop hook (page drop disabled
+      while it's open). Voice Training doesn't pass `onUpload` yet.
+- [x] `npm test` (new: node's built-in runner over
+      `src/lib/**/*.test.mjs`, 5 parser tests) / `tsc` / `lint` /
+      `app:build` clean; app reinstalled.
+- [ ] Not click-through verified in the running app.

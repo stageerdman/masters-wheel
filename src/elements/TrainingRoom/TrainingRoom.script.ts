@@ -23,13 +23,14 @@ import {
   deleteSession,
   isLearningDocumentExtension,
   listSessions,
+  readTranscriptFile,
   storeClipFile,
   storeLearningFile,
   writeSessionMeta,
   type SessionSummary,
   type StoredClipMeta,
 } from "@/lib/training";
-import { serializeTranscript } from "@/lib/transcript";
+import { serializeTranscript, toCanonicalTranscript } from "@/lib/transcript";
 import {
   GENERATE_CANCELLED,
   cancelGenerateTranscript,
@@ -710,6 +711,78 @@ export function useTrainingRoomData() {
     });
   }, []);
 
+  // Learning's "Upload transcript": a ready-made transcript (a file, or
+  // text pasted in — e.g. Fathom's) attached to one video/audio file
+  // instead of generating one. Tracked by target so the popup's result
+  // always lands on the file it was opened from, whatever's selected later.
+  const [transcriptUploadTarget, setTranscriptUploadTarget] = useState<{ sessionId: string; fileId: string } | null>(
+    null
+  );
+  const [transcriptUploadError, setTranscriptUploadError] = useState<string | null>(null);
+  const isTranscriptUploadOpen = transcriptUploadTarget !== null;
+
+  const openTranscriptUpload = useCallback((sessionId: string, fileId: string) => {
+    setTranscriptUploadError(null);
+    setTranscriptUploadTarget({ sessionId, fileId });
+  }, []);
+  const closeTranscriptUpload = useCallback(() => {
+    setTranscriptUploadTarget(null);
+    setTranscriptUploadError(null);
+  }, []);
+
+  // An uploaded transcript has no real per-word timings (LyricsTranscript
+  // falls back to spreading words evenly across each line) and no diarize
+  // choice — Regenerate then just uses the plain, non-diarized one.
+  const importTranscriptText = useCallback(
+    (raw: string) => {
+      if (!transcriptUploadTarget) return;
+      const { sessionId, fileId } = transcriptUploadTarget;
+      const canonical = toCanonicalTranscript(raw);
+      if (!canonical) {
+        setTranscriptUploadError("That doesn't look like a supported transcript yet.");
+        return;
+      }
+      setSessions((prev) =>
+        prev.map((candidate) => {
+          if (candidate.id !== sessionId || !candidate.learning) return candidate;
+          const nextFiles = candidate.learning.files.map((f) =>
+            f.id === fileId ? { ...f, transcriptRaw: canonical, wordTimings: null, diarize: null } : f
+          );
+          const nextLearning: LearningState = { ...candidate.learning, files: nextFiles };
+          const lastUpdatedAt = writeNow(sessionId, { learning: learningStateToMeta(nextLearning) });
+          return { ...candidate, learning: nextLearning, lastUpdatedAt };
+        })
+      );
+      setTranscriptUploadTarget(null);
+      setTranscriptUploadError(null);
+    },
+    [transcriptUploadTarget, writeNow]
+  );
+
+  const importTranscriptFile = useCallback(
+    async (path: string) => {
+      if (!transcriptUploadTarget) return;
+      let raw: string;
+      try {
+        raw = await readTranscriptFile(transcriptUploadTarget.sessionId, path);
+      } catch (error) {
+        console.error("Failed to read transcript file:", path, error);
+        setTranscriptUploadError("Couldn't read that file.");
+        return;
+      }
+      importTranscriptText(raw);
+    },
+    [transcriptUploadTarget, importTranscriptText]
+  );
+
+  const onTranscriptFileDrop = useCallback(
+    (paths: string[]) => {
+      if (paths[0]) void importTranscriptFile(paths[0]);
+    },
+    [importTranscriptFile]
+  );
+  const isTranscriptUploadDragActive = useWindowFileDrop(isTranscriptUploadOpen, onTranscriptFileDrop);
+
   const openUpload = useCallback(() => setIsUploadOpen(true), []);
   const closeUpload = useCallback(() => setIsUploadOpen(false), []);
 
@@ -737,7 +810,10 @@ export function useTrainingRoomData() {
     },
     [selectedId, selected, addLearningFiles, addClips]
   );
-  const isDragActive = useWindowFileDrop(!isUploadOpen && selected !== null, onWindowFileDrop);
+  const isDragActive = useWindowFileDrop(
+    !isUploadOpen && !isTranscriptUploadOpen && selected !== null,
+    onWindowFileDrop
+  );
 
   // While the upload modal itself is open, a drop lands there instead —
   // mutually exclusive with the page-level drop above, same pattern as
@@ -781,6 +857,13 @@ export function useTrainingRoomData() {
     closeUpload,
     isDragActive,
     isUploadDragActive,
+    isTranscriptUploadOpen,
+    transcriptUploadError,
+    isTranscriptUploadDragActive,
+    openTranscriptUpload,
+    closeTranscriptUpload,
+    importTranscriptFile,
+    importTranscriptText,
     isDisciplinePickerOpen,
     openDisciplinePicker,
     closeDisciplinePicker,

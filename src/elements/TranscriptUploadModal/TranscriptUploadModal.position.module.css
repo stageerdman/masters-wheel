@@ -40,3 +40,34 @@
 .browseButton {
   padding: 0.5rem 1rem;
 }
+
+.modeSwitch {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+}
+
+.modeButton {
+  flex: 1;
+  padding: 0.375rem 0.75rem;
+}
+
+.pastePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pasteInput {
+  min-height: 12rem;
+  padding: 0.5rem;
+  resize: vertical;
+}
+
+.pastePanel .browseButton {
+  align-self: flex-end;
+}
+
+.hint {
+  margin: 0;
+}

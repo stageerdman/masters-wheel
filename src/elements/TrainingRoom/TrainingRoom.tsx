@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useHeaderActions } from "@/elements/AppHeader/AppHeader.context";
 import { VideoUploadModal } from "@/elements/VideoUploadModal/VideoUploadModal";
+import { TranscriptUploadModal } from "@/elements/TranscriptUploadModal/TranscriptUploadModal";
 import { useTrainingRoomData } from "./TrainingRoom.script";
 import { Navigation } from "./children/Navigation/Navigation";
 import { Hero } from "./children/Hero/Hero";
@@ -48,6 +49,13 @@ export function TrainingRoom() {
     closeUpload,
     isDragActive,
     isUploadDragActive,
+    isTranscriptUploadOpen,
+    transcriptUploadError,
+    isTranscriptUploadDragActive,
+    openTranscriptUpload,
+    closeTranscriptUpload,
+    importTranscriptFile,
+    importTranscriptText,
     isDisciplinePickerOpen,
     openDisciplinePicker,
     closeDisciplinePicker,
@@ -107,6 +115,7 @@ export function TrainingRoom() {
               session={selected}
               generationByMedia={generationByMedia}
               onGenerateTranscript={(fileId, diarize) => generateTranscript(selected.id, fileId, diarize)}
+              onUploadTranscript={(fileId) => openTranscriptUpload(selected.id, fileId)}
               onStopGenerateTranscript={stopGenerateTranscript}
               onRetryGenerateTranscript={(fileId) => retryGenerateTranscript(selected.id, fileId)}
               onDismissGenerateTranscriptError={dismissGenerateTranscriptError}
@@ -158,6 +167,14 @@ export function TrainingRoom() {
             ? "Drag & drop a video, audio, PDF, or EPUB file here"
             : "Drag & drop a video or audio file here"
         }
+      />
+      <TranscriptUploadModal
+        isOpen={isTranscriptUploadOpen}
+        isDragActive={isTranscriptUploadDragActive}
+        error={transcriptUploadError}
+        onFileSelected={(path) => void importTranscriptFile(path)}
+        onTextSubmitted={importTranscriptText}
+        onClose={closeTranscriptUpload}
       />
       {isDisciplinePickerOpen && (
         <DisciplinePicker

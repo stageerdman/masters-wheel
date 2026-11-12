@@ -26,6 +26,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { BASE_DIR, spaceTrainingDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
 import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 import type { DiarizedWord } from "@/lib/transcript/generate";
+import { readExternalTextFile } from "@/lib/readExternalTextFile";
 
 function trainingRoot(): string {
   return spaceTrainingDir(getActiveSpaceFolder());
@@ -280,6 +281,13 @@ export async function storeClipFile(sessionId: string, sourcePath: string): Prom
 
   const absolutePath = await clipAbsolutePath(sessionId, fileName);
   return { absolutePath, fileName, displayName };
+}
+
+// Reads a user-picked transcript file's raw text (for Learning's "Upload
+// transcript") — staged through this session's own folder, see
+// readExternalTextFile.
+export async function readTranscriptFile(sessionId: string, sourcePath: string): Promise<string> {
+  return readExternalTextFile(sourcePath, sessionDir(sessionId));
 }
 
 // Rebuilds a stored clip's real absolute path from its session id + stored

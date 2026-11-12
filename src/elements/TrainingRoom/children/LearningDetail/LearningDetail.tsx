@@ -11,6 +11,7 @@ type LearningDetailProps = {
   session: TrainingSession;
   generationByMedia: Record<string, VoiceTranscriptGenerationState>;
   onGenerateTranscript: (fileId: string, diarize: boolean) => void;
+  onUploadTranscript: (fileId: string) => void;
   onStopGenerateTranscript: (fileId: string) => void;
   onRetryGenerateTranscript: (fileId: string) => void;
   onDismissGenerateTranscriptError: (fileId: string) => void;
@@ -41,6 +42,7 @@ export function LearningDetail({
   session,
   generationByMedia,
   onGenerateTranscript,
+  onUploadTranscript,
   onStopGenerateTranscript,
   onRetryGenerateTranscript,
   onDismissGenerateTranscriptError,
@@ -54,7 +56,7 @@ export function LearningDetail({
     <aside className={`${styles.root} ${position.root}`} data-construction>
       {!file ? (
         <p className={`${styles.emptyText} ${position.emptyText}`} data-construction>
-          Upload a file to generate a transcript.
+          Upload a file to generate or attach a transcript.
         </p>
       ) : file.kind === "document" ? (
         <div className={position.documentPanel} data-construction>
@@ -82,6 +84,7 @@ export function LearningDetail({
           currentTime={learningMediaTime[file.id] ?? 0}
           onSeek={(seconds) => onSeekMedia(file.id, seconds)}
           onGenerate={(diarize) => onGenerateTranscript(file.id, diarize)}
+          onUpload={() => onUploadTranscript(file.id)}
           onStop={() => onStopGenerateTranscript(file.id)}
           onRetry={() => onRetryGenerateTranscript(file.id)}
           onDismiss={() => onDismissGenerateTranscriptError(file.id)}

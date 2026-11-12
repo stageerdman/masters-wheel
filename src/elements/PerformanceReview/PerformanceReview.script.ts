@@ -33,7 +33,7 @@ import {
   type RecordMetaFields,
   type RecordSummary,
 } from "@/lib/records";
-import { parseTranscript, renameSpeaker, serializeTranscript } from "@/lib/transcript";
+import { parseTranscript, renameSpeaker, serializeTranscript, toCanonicalTranscript } from "@/lib/transcript";
 import { generateScorecard as generateRealScorecard } from "@/lib/scorecard/generate";
 import type { Scorecard } from "@/lib/scorecard";
 import { generateQuestionAnalysis as generateRealQuestionAnalysis } from "@/lib/questionAnalysis/generate";
@@ -370,28 +370,45 @@ export function usePerformanceReviewData() {
   // shape so timestamps always end up standardized regardless of which
   // tool produced the source file. An unrecognized file surfaces an error
   // in the upload modal instead of silently keeping a bad transcript.md.
-  const importTranscript = useCallback(
-    async (sourcePath: string) => {
+  // Both upload modes (a picked/dropped file, or pasted text) land here
+  // with the raw text — any supported shape (ours, Fathom's) gets rewritten
+  // to the canonical on-disk transcript.md.
+  const applyImportedTranscript = useCallback(
+    async (raw: string) => {
       if (!selectedId) return;
       const id = selectedId;
+      const canonical = toCanonicalTranscript(raw);
+      if (!canonical) {
+        setTranscriptUploadError("That doesn't look like a supported transcript yet.");
+        return;
+      }
       try {
-        const raw = await importTranscriptFile(id, sourcePath);
-        const parsed = parseTranscript(raw);
-        if (!parsed) {
-          setTranscriptUploadError("That file doesn't look like a supported transcript yet.");
-          return;
-        }
-        const canonical = serializeTranscript(parsed);
         await writeTranscript(id, canonical);
         setTranscripts((prev) => ({ ...prev, [id]: canonical }));
         setIsTranscriptUploadOpen(false);
         setTranscriptUploadError(null);
       } catch (error) {
-        console.error("Failed to import transcript:", id, error);
-        setTranscriptUploadError("Couldn't read that file.");
+        console.error("Failed to save transcript:", id, error);
+        setTranscriptUploadError("Couldn't save that transcript.");
       }
     },
     [selectedId]
+  );
+
+  const importTranscript = useCallback(
+    async (sourcePath: string) => {
+      if (!selectedId) return;
+      let raw: string;
+      try {
+        raw = await importTranscriptFile(selectedId, sourcePath);
+      } catch (error) {
+        console.error("Failed to import transcript:", selectedId, error);
+        setTranscriptUploadError("Couldn't read that file.");
+        return;
+      }
+      await applyImportedTranscript(raw);
+    },
+    [selectedId, applyImportedTranscript]
   );
 
   // Opens Generate Transcript with the selected record's hero file's real
@@ -745,6 +762,7 @@ export function usePerformanceReviewData() {
     openTranscriptUpload,
     closeTranscriptUpload,
     importTranscript,
+    importTranscriptText: applyImportedTranscript,
     isGenerateTranscriptOpen,
     generateTranscriptSourcePath,
     generateTranscriptRecordId,

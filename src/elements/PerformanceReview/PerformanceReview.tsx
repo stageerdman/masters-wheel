@@ -46,6 +46,7 @@ export function PerformanceReview() {
     openTranscriptUpload,
     closeTranscriptUpload,
     importTranscript,
+    importTranscriptText,
     isGenerateTranscriptOpen,
     generateTranscriptSourcePath,
     generateTranscriptRecordId,
@@ -211,6 +212,7 @@ export function PerformanceReview() {
         isDragActive={isTranscriptDragActive}
         error={transcriptUploadError}
         onFileSelected={importTranscript}
+        onTextSubmitted={importTranscriptText}
         onClose={closeTranscriptUpload}
       />
       <GenerateTranscriptModal

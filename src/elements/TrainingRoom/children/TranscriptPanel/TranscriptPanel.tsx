@@ -16,6 +16,9 @@ type TranscriptPanelProps = {
   currentTime: number;
   onSeek: (seconds: number) => void;
   onGenerate: (diarize: boolean) => void;
+  // Optional "bring your own transcript" (a file or pasted text, e.g. from
+  // Fathom) — shown only where the caller supports it (Learning today).
+  onUpload?: () => void;
   onStop: () => void;
   onRetry: () => void;
   onDismiss: () => void;
@@ -40,6 +43,7 @@ export function TranscriptPanel({
   currentTime,
   onSeek,
   onGenerate,
+  onUpload,
   onStop,
   onRetry,
   onDismiss,
@@ -56,6 +60,18 @@ export function TranscriptPanel({
     return (
       <div className={position.transcriptWithToolbar} data-construction>
         <div className={position.toolbar} data-construction>
+          {onUpload && (
+            <button
+              type="button"
+              className={`${styles.toolbarButton} ${position.toolbarButton}`}
+              data-construction
+              onClick={onUpload}
+              title="Replace with an uploaded transcript"
+              aria-label="Replace with an uploaded transcript"
+            >
+              ⇪
+            </button>
+          )}
           <button
             type="button"
             className={`${styles.toolbarButton} ${position.toolbarButton}`}
@@ -125,6 +141,17 @@ export function TranscriptPanel({
       >
         With voice recognition
       </button>
+      {onUpload && (
+        <button
+          type="button"
+          className={`${styles.secondaryButton} ${position.secondaryButton}`}
+          data-construction
+          onClick={onUpload}
+          title="Attach a transcript you already have — a file, or text pasted from Fathom"
+        >
+          Upload transcript
+        </button>
+      )}
     </div>
   );
 }
