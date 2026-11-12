@@ -835,3 +835,24 @@ fixed along the way) — summary here:
       `src/lib/**/*.test.mjs`, 5 parser tests) / `tsc` / `lint` /
       `app:build` clean; app reinstalled.
 - [ ] Not click-through verified in the running app.
+
+### Phase 32 — Transcript view by speaker count; real-vs-no word timing (2026-11-12)
+- [x] `TranscriptPanel` parses once and switches: `speakersOf` ≤ 1 →
+      `LyricsTranscript`, else the new shared `SpeakerTranscript`
+      (extracted from Performance Review's `Transcript`, which now uses
+      it; `TranscriptLine` moved under it, gaining `active` + optional
+      seek/context menu) inside a 320px scroll box.
+- [x] `LyricsTranscript` takes parsed entries. Word-by-word only with
+      real `wordTimings`; the old evenly-spread fake word timing is gone —
+      without timings the whole current line highlights and the line
+      itself seeks.
+- [x] `TranscriptEntry.seconds` is now `number | null` (untimed). Our
+      canonical shape writes an untimed entry as a bare `**Speaker**`
+      header. v1 headers are line-anchored now (bold text mid-paragraph
+      no longer reads as a speaker) and drop ~/dev/transcriber's
+      ` (interrupting)` tag. New last-resort parser: frontmatter + plain
+      paragraphs (transcriber's single-speaker output) → untimed
+      "Speaker" entries. `activeEntryIndex` shared helper.
+- [x] `npm test` 9 passing / `tsc` / `lint` / `app:build` clean; app
+      reinstalled.
+- [ ] Not click-through verified in the running app.

@@ -882,6 +882,15 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
       canonical format on import. Also a ⇪ toolbar button to replace an
       existing transcript. Uploaded transcripts have no real per-word
       timings, so the lyrics highlight interpolates within each line.
+- [x] Transcript view picks itself by speaker count (2026-11-12), for
+      every source alike (generated, Fathom, ~/dev/transcriber): one
+      speaker → Spotify-lyrics style; 2+ → the same speaker-labeled,
+      color-coded view Performance Review uses (now the shared
+      `SpeakerTranscript` element), with the playing line highlighted.
+      Lyrics mode highlights word-by-word only when real word timings
+      exist; otherwise just the current line. ~/dev/transcriber's
+      single-speaker output (plain paragraphs, no timestamps) imports as
+      untimed lines — shown, never highlighted or seekable.
 - [x] No PDF/EPUB in-app preview or text extraction yet — store+download
       (+ a generic extension chip) only; both are explicitly future work.
 - [ ] Not yet click-through verified in the running app, same caveat as

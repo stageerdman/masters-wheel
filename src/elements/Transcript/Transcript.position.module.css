@@ -6,13 +6,6 @@
   overflow-x: hidden;
 }
 
-.list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
 .toolbar {
   display: flex;
   justify-content: flex-end;

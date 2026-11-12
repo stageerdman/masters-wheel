@@ -4,22 +4,15 @@ import { useMemo, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { formatTimestamp, parseTranscript, speakersOf } from "@/lib/transcript";
+import { parseTranscript, speakersOf } from "@/lib/transcript";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import { ContextMenu, type ContextMenuItem } from "@/elements/ContextMenu/ContextMenu";
-import { TranscriptLine } from "./children/TranscriptLine/TranscriptLine";
+import { SpeakerTranscript } from "@/elements/SpeakerTranscript/SpeakerTranscript";
 import { TranscriptEmptyState } from "./children/TranscriptEmptyState/TranscriptEmptyState";
 import { TranscriptGenerating } from "./children/TranscriptGenerating/TranscriptGenerating";
 import { SpeakerContextMenu } from "./children/SpeakerContextMenu/SpeakerContextMenu";
 import position from "./Transcript.position.module.css";
 import styles from "./Transcript.styles.module.css";
-
-const SPEAKER_COLORS = [
-  "var(--color-speaker-1)",
-  "var(--color-speaker-2)",
-  "var(--color-speaker-3)",
-  "var(--color-speaker-4)",
-];
 
 type LineMenuState = { x: number; y: number; speaker: string; text: string };
 type SpeakerMenuState = { x: number; y: number; speaker: string };
@@ -84,11 +77,6 @@ export function Transcript({
         )}
       </div>
     );
-  }
-
-  function colorFor(speaker: string): string {
-    const index = Math.max(0, speakers.indexOf(speaker));
-    return SPEAKER_COLORS[index % SPEAKER_COLORS.length];
   }
 
   function handleContextMenu(event: ReactMouseEvent, speaker: string, text: string) {
@@ -169,21 +157,11 @@ export function Transcript({
           ⟳
         </button>
       </div>
-      <ul className={position.list} data-construction>
-        {parsed.entries.map((entry, index) => (
-          <li key={index}>
-            <TranscriptLine
-              speaker={entry.speaker}
-              time={formatTimestamp(entry.seconds)}
-              text={entry.text}
-              color={colorFor(entry.speaker)}
-              showSpeaker={index === 0 || parsed.entries[index - 1].speaker !== entry.speaker}
-              onSeek={() => onSeek(entry.seconds)}
-              onContextMenu={(event) => handleContextMenu(event, entry.speaker, entry.text)}
-            />
-          </li>
-        ))}
-      </ul>
+      <SpeakerTranscript
+        entries={parsed.entries}
+        onSeek={onSeek}
+        onLineContextMenu={(event, entry) => handleContextMenu(event, entry.speaker, entry.text)}
+      />
       {lineMenu && (
         <ContextMenu x={lineMenu.x} y={lineMenu.y} items={lineMenuItems} onClose={() => setLineMenu(null)} />
       )}

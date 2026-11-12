@@ -30,3 +30,11 @@
 .wordActive {
   color: var(--color-accent);
 }
+
+.lineSeekable {
+  cursor: pointer;
+}
+
+.lineSeekable:hover {
+  color: var(--color-accent);
+}

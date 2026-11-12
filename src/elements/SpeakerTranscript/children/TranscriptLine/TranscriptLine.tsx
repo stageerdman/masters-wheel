@@ -4,26 +4,40 @@ import styles from "./TranscriptLine.styles.module.css";
 
 type TranscriptLineProps = {
   speaker: string;
-  time: string;
+  // `null` for an untimed entry — no time label, and not seekable.
+  time: string | null;
   text: string;
   color: string;
   // Consecutive lines from the same speaker collapse the repeated name
   // label (chat-app convention) — the colored rail still marks every line.
   showSpeaker: boolean;
-  onSeek: () => void;
-  onContextMenu: (event: MouseEvent<HTMLButtonElement>) => void;
+  // The line currently playing (only where the caller tracks playback).
+  active: boolean;
+  onSeek?: () => void;
+  onContextMenu?: (event: MouseEvent<HTMLButtonElement>) => void;
 };
 
-export function TranscriptLine({ speaker, time, text, color, showSpeaker, onSeek, onContextMenu }: TranscriptLineProps) {
+export function TranscriptLine({
+  speaker,
+  time,
+  text,
+  color,
+  showSpeaker,
+  active,
+  onSeek,
+  onContextMenu,
+}: TranscriptLineProps) {
+  const hint = [speaker, time].filter(Boolean).join(" · ") + (onContextMenu ? " — right-click for options" : "");
   return (
     <button
       type="button"
-      className={`${styles.root} ${position.root}`}
+      className={`${styles.root} ${position.root} ${active ? styles.active : ""} ${onSeek ? "" : styles.static}`}
       data-construction
       style={{ "--speaker-color": color } as CSSProperties}
       onClick={onSeek}
       onContextMenu={onContextMenu}
-      title={`${speaker} · ${time} — right-click for options`}
+      title={hint}
+      aria-current={active ? "true" : undefined}
     >
       <span className={position.meta} data-construction>
         {showSpeaker && (
@@ -31,9 +45,11 @@ export function TranscriptLine({ speaker, time, text, color, showSpeaker, onSeek
             {speaker}
           </span>
         )}
-        <span className={`${styles.time} ${position.time}`} data-construction>
-          {time}
-        </span>
+        {time && (
+          <span className={`${styles.time} ${position.time}`} data-construction>
+            {time}
+          </span>
+        )}
       </span>
       <span className={`${styles.text} ${position.text}`} data-construction>
         {text}

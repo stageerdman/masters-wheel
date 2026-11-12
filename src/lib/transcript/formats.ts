@@ -8,7 +8,11 @@ export type TranscriptMetaField = { key: string; value: string };
 
 export type TranscriptEntry = {
   speaker: string;
-  seconds: number;
+  // `null` = the source had no timestamp for this block (e.g. a
+  // single-speaker file from ~/dev/transcriber, which writes plain
+  // paragraphs) — rendered as plain, unclickable text with no playback
+  // highlight, never a made-up time.
+  seconds: number | null;
   text: string;
 };
 
@@ -29,14 +33,9 @@ export function parseTimestampToSeconds(raw: string): number | null {
   return seconds;
 }
 
-// The "v1" shape: a `---`-delimited YAML-ish frontmatter block, followed by
-// `**Speaker** [mm:ss]` headers each with one or more lines of text below
-// them (the format dictated in this update — see CLAUDE.md's transcript
-// element convention notes).
-function parseV1(raw: string): ParsedTranscript | null {
-  const frontmatterMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+function parseFrontmatter(raw: string): { meta: TranscriptMetaField[]; body: string } | null {
+  const frontmatterMatch = raw.replace(/^\uFEFF/, "").match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
   if (!frontmatterMatch) return null;
-
   const meta: TranscriptMetaField[] = frontmatterMatch[1]
     .split(/\r?\n/)
     .filter((line) => line.trim() !== "")
@@ -45,17 +44,34 @@ function parseV1(raw: string): ParsedTranscript | null {
       if (separator === -1) return { key: line.trim(), value: "" };
       return { key: line.slice(0, separator).trim(), value: line.slice(separator + 2).trim() };
     });
+  return { meta, body: raw.replace(/^\uFEFF/, "").slice(frontmatterMatch[0].length) };
+}
 
-  const body = raw.slice(frontmatterMatch[0].length);
-  const headerPattern = /\*\*([^*]+)\*\*\s*\[([^\]]+)\]/g;
-  const headers = [...body.matchAll(headerPattern)];
+// A speaker header at the start of a line: `**Speaker** [mm:ss]` (rest of
+// the line, if any, is text), optionally tagged ` (interrupting)` the way
+// ~/dev/transcriber marks overlapping speech — or a bare `**Speaker**`
+// alone on its line (our own serialization of an untimed entry).
+const V1_HEADER = /^\*\*([^*\n]+)\*\*(?:[ \t]*\[([^\]\n]+)\](?:[ \t]*\(interrupting\))?|[ \t]*\r?$)/gm;
+
+// The "v1" shape: a `---`-delimited YAML-ish frontmatter block, followed by
+// `**Speaker** [mm:ss]` headers each with one or more lines of text below
+// them. Our own canonical shape (see serializeTranscript), and also what
+// ~/dev/transcriber writes for a 2+ speaker recording.
+function parseV1(raw: string): ParsedTranscript | null {
+  const front = parseFrontmatter(raw);
+  if (!front) return null;
+  const { meta, body } = front;
+  const headers = [...body.matchAll(V1_HEADER)];
   if (headers.length === 0) return null;
 
   const entries: TranscriptEntry[] = [];
   for (let i = 0; i < headers.length; i++) {
     const header = headers[i];
-    const seconds = parseTimestampToSeconds(header[2]);
-    if (seconds === null) continue;
+    let seconds: number | null = null;
+    if (header[2] !== undefined) {
+      seconds = parseTimestampToSeconds(header[2]);
+      if (seconds === null) continue;
+    }
     const textStart = (header.index ?? 0) + header[0].length;
     const textEnd = i + 1 < headers.length ? headers[i + 1].index! : body.length;
     const text = body.slice(textStart, textEnd).trim();
@@ -64,6 +80,25 @@ function parseV1(raw: string): ParsedTranscript | null {
   if (entries.length === 0) return null;
 
   return { meta, entries };
+}
+
+// ~/dev/transcriber's single-speaker output (see its dialogue.py
+// render_blocks_markdown): the same frontmatter, then plain
+// blank-line-separated paragraphs — no speaker label, no timestamps. One
+// untimed entry per paragraph. Only tried after parseV1, so a file with any
+// real headers never lands here.
+export const UNLABELED_SPEAKER = "Speaker";
+
+function parseUntimedParagraphs(raw: string): ParsedTranscript | null {
+  const front = parseFrontmatter(raw);
+  if (!front) return null;
+  const entries: TranscriptEntry[] = front.body
+    .split(/\r?\n\s*\r?\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((text) => ({ speaker: UNLABELED_SPEAKER, seconds: null, text }));
+  if (entries.length === 0) return null;
+  return { meta: front.meta, entries };
 }
 
 // Fathom's own plain-text transcript — what its "Copy transcript" button
@@ -127,5 +162,10 @@ function parseFathom(raw: string): ParsedTranscript | null {
 }
 
 // Order matters: v1 (our own canonical shape) first, since it's the
-// strictest; Fathom's looser line-based shape only gets a turn after.
-export const FORMAT_PARSERS: Array<(raw: string) => ParsedTranscript | null> = [parseV1, parseFathom];
+// strictest; Fathom's looser line-based shape next; the untimed-paragraph
+// fallback last, since any frontmatter'd text would satisfy it.
+export const FORMAT_PARSERS: Array<(raw: string) => ParsedTranscript | null> = [
+  parseV1,
+  parseFathom,
+  parseUntimedParagraphs,
+];

@@ -28,3 +28,11 @@
   font-size: var(--text-size-body);
   overflow-wrap: anywhere;
 }
+
+.active {
+  background: color-mix(in srgb, var(--speaker-color) 14%, transparent);
+}
+
+.static {
+  cursor: default;
+}

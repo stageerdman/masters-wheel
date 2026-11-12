@@ -7,7 +7,7 @@
 import { FORMAT_PARSERS, type ParsedTranscript, type TranscriptEntry } from "./formats";
 
 export type { ParsedTranscript, TranscriptEntry, TranscriptMetaField } from "./formats";
-export { parseTimestampToSeconds } from "./formats";
+export { parseTimestampToSeconds, UNLABELED_SPEAKER } from "./formats";
 
 export function parseTranscript(raw: string): ParsedTranscript | null {
   for (const parse of FORMAT_PARSERS) {
@@ -33,7 +33,11 @@ export function formatTimestamp(totalSeconds: number): string {
 export function serializeTranscript(parsed: ParsedTranscript): string {
   const frontmatter = parsed.meta.map(({ key, value }) => `${key}: ${value}`).join("\n");
   const body = parsed.entries
-    .map((entry) => `**${entry.speaker}** [${formatTimestamp(entry.seconds)}]\n${entry.text}`)
+    .map((entry) =>
+      entry.seconds === null
+        ? `**${entry.speaker}**\n${entry.text}`
+        : `**${entry.speaker}** [${formatTimestamp(entry.seconds)}]\n${entry.text}`
+    )
     .join("\n\n");
   return `---\n${frontmatter}\n---\n\n${body}\n`;
 }
@@ -45,6 +49,16 @@ export function serializeTranscript(parsed: ParsedTranscript): string {
 export function toCanonicalTranscript(raw: string): string | null {
   const parsed = parseTranscript(raw);
   return parsed ? serializeTranscript(parsed) : null;
+}
+
+// Which entry is playing at `time` — the last timed entry that has
+// started. Untimed entries never become active. -1 before the first one.
+export function activeEntryIndex(entries: TranscriptEntry[], time: number): number {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const seconds = entries[i].seconds;
+    if (seconds !== null && time >= seconds) return i;
+  }
+  return -1;
 }
 
 export function speakersOf(parsed: ParsedTranscript): string[] {

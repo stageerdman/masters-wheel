@@ -58,3 +58,45 @@ test("Canonical v1 still wins over Fathom", () => {
 test("Unrecognized text gives null", () => {
   assert.equal(parse("just some notes\nwith no timestamps"), null);
 });
+
+const transcriberMulti = `---
+source: /x/call.mp4
+model: scribe_v1
+speakers: 2
+---
+
+**Person 1** [00:00]
+Hi there.
+
+**Person 2** [01:00:05] (interrupting)
+Sorry, go on.
+`;
+
+test("Transcriber multi-speaker: (interrupting) tag dropped, hh:mm:ss parsed", () => {
+  const parsed = parse(transcriberMulti);
+  assert.deepEqual(parsed.entries, [
+    { speaker: "Person 1", seconds: 0, text: "Hi there." },
+    { speaker: "Person 2", seconds: 3605, text: "Sorry, go on." },
+  ]);
+});
+
+test("Transcriber single-speaker: plain paragraphs become untimed entries", () => {
+  const parsed = parse("---\nsource: /x/a.m4a\nmodel: m\n---\n\nFirst paragraph\nstill first.\n\nSecond one.\n");
+  assert.deepEqual(parsed.entries, [
+    { speaker: "Speaker", seconds: null, text: "First paragraph\nstill first." },
+    { speaker: "Speaker", seconds: null, text: "Second one." },
+  ]);
+});
+
+test("Our own serialization of untimed entries (bare **Speaker** header) parses back", () => {
+  const parsed = parse("---\nk: v\n---\n\n**Speaker**\nOne.\n\n**Speaker** [00:03]\nTwo.\n");
+  assert.deepEqual(parsed.entries, [
+    { speaker: "Speaker", seconds: null, text: "One." },
+    { speaker: "Speaker", seconds: 3, text: "Two." },
+  ]);
+});
+
+test("Bold text mid-paragraph is not a speaker header", () => {
+  const parsed = parse("---\nk: v\n---\n\n**A** [00:01]\nSay **this** loudly.\n");
+  assert.deepEqual(parsed.entries, [{ speaker: "A", seconds: 1, text: "Say **this** loudly." }]);
+});

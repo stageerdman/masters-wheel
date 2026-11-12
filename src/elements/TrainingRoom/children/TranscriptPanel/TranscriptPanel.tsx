@@ -1,6 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { SpeakerTranscript } from "@/elements/SpeakerTranscript/SpeakerTranscript";
+import { activeEntryIndex, parseTranscript, speakersOf } from "@/lib/transcript";
 import { LyricsTranscript } from "@/elements/TrainingRoom/children/Hero/children/LyricsTranscript/LyricsTranscript";
 import type { DiarizedWord, VoiceTranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./TranscriptPanel.position.module.css";
@@ -48,6 +51,9 @@ export function TranscriptPanel({
   onRetry,
   onDismiss,
 }: TranscriptPanelProps) {
+  const parsed = useMemo(() => (transcriptRaw ? parseTranscript(transcriptRaw) : null), [transcriptRaw]);
+  const isSingleSpeaker = parsed ? speakersOf(parsed).length <= 1 : false;
+
   async function handleRegenerate() {
     const confirmed = await confirm("Regenerate this transcript? This discards the current one.", {
       title: "Regenerate transcript",
@@ -56,7 +62,7 @@ export function TranscriptPanel({
     if (confirmed) onGenerate(diarize ?? false);
   }
 
-  if (transcriptRaw) {
+  if (parsed) {
     return (
       <div className={position.transcriptWithToolbar} data-construction>
         <div className={position.toolbar} data-construction>
@@ -83,7 +89,20 @@ export function TranscriptPanel({
             ⟳
           </button>
         </div>
-        <LyricsTranscript rawText={transcriptRaw} currentTime={currentTime} onSeek={onSeek} wordTimings={wordTimings} />
+        {/* One voice → Spotify-lyrics style; 2+ → the same speaker-labeled
+            view Performance Review uses. Applies to every source alike
+            (generated, Fathom, ~/dev/transcriber). */}
+        {isSingleSpeaker ? (
+          <LyricsTranscript entries={parsed.entries} currentTime={currentTime} onSeek={onSeek} wordTimings={wordTimings} />
+        ) : (
+          <div className={position.speakerScroll} data-construction>
+            <SpeakerTranscript
+              entries={parsed.entries}
+              activeIndex={activeEntryIndex(parsed.entries, currentTime)}
+              onSeek={onSeek}
+            />
+          </div>
+        )}
       </div>
     );
   }

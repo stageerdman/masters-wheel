@@ -49,3 +49,11 @@
   width: 40%;
   height: 100%;
 }
+
+/* Same bounded height as LyricsTranscript's own scroll box, so a long
+   multi-speaker call never pushes the rest of the column away. */
+.speakerScroll {
+  max-height: 320px;
+  overflow-y: auto;
+  width: 100%;
+}
