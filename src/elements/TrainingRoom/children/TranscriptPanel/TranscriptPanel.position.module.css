@@ -40,16 +40,6 @@
   text-align: center;
 }
 
-.progressTrack {
-  width: 100%;
-  height: 4px;
-}
-
-.progressFill {
-  width: 40%;
-  height: 100%;
-}
-
 /* Same bounded height as LyricsTranscript's own scroll box, so a long
    multi-speaker call never pushes the rest of the column away. */
 .speakerScroll {

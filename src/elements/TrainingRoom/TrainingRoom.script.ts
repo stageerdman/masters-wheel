@@ -282,10 +282,19 @@ export function useTrainingRoomData() {
     onGenerateTranscriptProgress((progress) => {
       const target = generationJobMedia.current[progress.jobId];
       if (!target) return;
-      setGenerationByMedia((prev) => ({
-        ...prev,
-        [target.mediaId]: { status: "running", jobId: progress.jobId, stage: progress.stage },
-      }));
+      setGenerationByMedia((prev) => {
+        const current = prev[target.mediaId];
+        return {
+          ...prev,
+          [target.mediaId]: {
+            status: "running",
+            jobId: progress.jobId,
+            stage: progress.stage,
+            percent: progress.percent,
+            startedAt: current?.status === "running" ? current.startedAt : Date.now(),
+          },
+        };
+      });
     }).then((fn) => {
       if (cancelled) fn();
       else unlisten = fn;
@@ -628,7 +637,10 @@ export function useTrainingRoomData() {
       if (!media) return;
       const jobId = makeId("transcribe");
       generationJobMedia.current[jobId] = { sessionId, mediaId };
-      setGenerationByMedia((prev) => ({ ...prev, [mediaId]: { status: "running", jobId, stage: "extracting" } }));
+      setGenerationByMedia((prev) => ({
+        ...prev,
+        [mediaId]: { status: "running", jobId, stage: "extracting", percent: null, startedAt: Date.now() },
+      }));
 
       (async () => {
         try {

@@ -25,7 +25,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -158,9 +158,35 @@ pub fn cancel_generate_transcript(jobs: State<'_, TranscribeJobs>, job_id: Strin
 // large response (a long call's word-level JSON) can never deadlock the
 // pipe. Returns (success, stdout, stderr); `Err(CANCELLED)` once the job's
 // cancellation flag is observed.
-fn run_killable(mut command: Command, control: &JobControl) -> Result<(bool, String, String), String> {
+fn run_killable(command: Command, control: &JobControl) -> Result<(bool, String, String), String> {
+    run_killable_with(command, control, None, None)
+}
+
+// Called with each `\r`/`\n`-delimited piece of a child's stderr as it
+// arrives — curl redraws its progress meter with bare `\r`s, so this sees
+// every redraw, not just finished lines.
+type StderrHook = Box<dyn FnMut(&str) + Send>;
+
+// run_killable plus two extras curl needs: `stdin_data` is written to the
+// child's stdin and then closed (how the API key reaches curl without
+// ever appearing in its argv — see transcribe_mp3_with_elevenlabs), and
+// `on_stderr` sees stderr live (curl's upload progress meter). stdin is
+// otherwise /dev/null, so ffmpeg never waits on interactive keystrokes.
+fn run_killable_with(
+    mut command: Command,
+    control: &JobControl,
+    stdin_data: Option<String>,
+    mut on_stderr: Option<StderrHook>,
+) -> Result<(bool, String, String), String> {
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
+    command.stdin(if stdin_data.is_some() { Stdio::piped() } else { Stdio::null() });
     let mut child = command.spawn().map_err(|e| e.to_string())?;
+    if let (Some(data), Some(mut stdin)) = (stdin_data, child.stdin.take()) {
+        std::thread::spawn(move || {
+            let _ = stdin.write_all(data.as_bytes());
+            // Dropping `stdin` here closes it — curl's `-K -` reads to EOF.
+        });
+    }
     let stdout_reader = child.stdout.take().map(|mut pipe| {
         std::thread::spawn(move || {
             let mut buf = Vec::new();
@@ -171,7 +197,22 @@ fn run_killable(mut command: Command, control: &JobControl) -> Result<(bool, Str
     let stderr_reader = child.stderr.take().map(|mut pipe| {
         std::thread::spawn(move || {
             let mut buf = Vec::new();
-            let _ = pipe.read_to_end(&mut buf);
+            let mut chunk = [0u8; 4096];
+            let mut pending = String::new();
+            loop {
+                let read = match pipe.read(&mut chunk) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => n,
+                };
+                buf.extend_from_slice(&chunk[..read]);
+                if let Some(hook) = on_stderr.as_mut() {
+                    pending.push_str(&String::from_utf8_lossy(&chunk[..read]));
+                    while let Some(at) = pending.find(['\r', '\n']) {
+                        let piece: String = pending.drain(..=at).collect();
+                        hook(piece.trim_end_matches(['\r', '\n']));
+                    }
+                }
+            }
             buf
         })
     });
@@ -207,6 +248,13 @@ fn run_killable(mut command: Command, control: &JobControl) -> Result<(bool, Str
     Ok((success, String::from_utf8_lossy(&stdout_buf).into_owned(), String::from_utf8_lossy(&stderr_buf).into_owned()))
 }
 
+// Speech-only upload encoding: mono, 16 kHz, 48 kbps — what speech
+// recognition models consume anyway, and ~2.6x smaller than the old
+// `-q:a 2` stereo VBR (~123 kbps), which made a 34-minute call a 31.5 MB
+// upload. Applied after the RNNoise filter (which resamples to 48 kHz for
+// itself, see rnnoise::filter_arg), so denoising quality is unaffected.
+const SPEECH_MP3_ARGS: [&str; 8] = ["-ac", "1", "-ar", "16000", "-codec:a", "libmp3lame", "-b:a", "48k"];
+
 fn extract_track_to_mp3(
     source_path: &str,
     index: u32,
@@ -219,7 +267,7 @@ fn extract_track_to_mp3(
     if let Some(model) = noise_model {
         command.args(["-af", &crate::rnnoise::filter_arg(model)]);
     }
-    command.args(["-codec:a", "libmp3lame", "-q:a", "2", &out_path.to_string_lossy()]);
+    command.args(SPEECH_MP3_ARGS).arg(out_path);
     let (success, _stdout, stderr) = run_killable(command, control)
         .map_err(|e| if e == CANCELLED { e } else { format!("ffmpeg isn't available ({e}). Install it with `brew install ffmpeg`.") })?;
     if !success {
@@ -244,13 +292,76 @@ fn extract_default_audio_to_mp3(
     if let Some(model) = noise_model {
         command.args(["-af", &crate::rnnoise::filter_arg(model)]);
     }
-    command.args(["-codec:a", "libmp3lame", "-q:a", "2", &out_path.to_string_lossy()]);
+    command.args(SPEECH_MP3_ARGS).arg(out_path);
     let (success, _stdout, stderr) = run_killable(command, control)
         .map_err(|e| if e == CANCELLED { e } else { format!("ffmpeg isn't available ({e}). Install it with `brew install ffmpeg`.") })?;
     if !success {
         return Err(stderr.trim().to_string());
     }
     Ok(())
+}
+
+// Reported back to the UI while a job runs — see ProgressEvent.
+#[derive(Clone)]
+struct ProgressReporter {
+    app: AppHandle,
+    job_id: String,
+    track_index: usize,
+    track_count: usize,
+    track_name: String,
+}
+
+impl ProgressReporter {
+    fn emit(&self, stage: &'static str, percent: Option<u8>) {
+        let _ = self.app.emit(
+            "generate-transcript-progress",
+            ProgressEvent {
+                job_id: self.job_id.clone(),
+                stage,
+                percent,
+                track_index: self.track_index,
+                track_count: self.track_count,
+                track_name: self.track_name.clone(),
+            },
+        );
+    }
+}
+
+// The upload percentage out of one redraw of curl's default progress
+// meter (`% Total  % Received  % Xferd  …` — the third percentage column
+// is the upload side). `None` for the header rows or anything else.
+fn curl_upload_percent(meter_line: &str) -> Option<u8> {
+    let fields: Vec<&str> = meter_line.split_whitespace().collect();
+    if fields.len() < 12 {
+        return None;
+    }
+    fields[4].parse::<u8>().ok().filter(|percent| *percent <= 100)
+}
+
+// curl's own error line (`curl: (28) Operation timed out…`) out of a
+// stderr that otherwise holds progress-meter redraws.
+fn curl_error_line(stderr: &str) -> Option<String> {
+    stderr
+        .split(['\r', '\n'])
+        .rfind(|line| line.starts_with("curl: ("))
+        .map(|line| line.trim().to_string())
+}
+
+fn audio_duration_seconds(path: &Path) -> Option<f64> {
+    let output = Command::new(resolve_binary("ffprobe"))
+        .args(["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1"])
+        .arg(path)
+        .output()
+        .ok()?;
+    String::from_utf8_lossy(&output.stdout).trim().parse::<f64>().ok()
+}
+
+// Generous ceiling for one whole upload + transcription request: a fixed
+// 10 minutes plus the audio's own length (Scribe runs far faster than real
+// time, so a request still going past that has hung, not just slow).
+// Without it a stalled request spun forever — the only way out was Stop.
+fn request_timeout_seconds(audio_seconds: Option<f64>) -> u64 {
+    600 + audio_seconds.unwrap_or(3600.0).max(0.0).ceil() as u64
 }
 
 // One blocking HTTP call via `curl` — ElevenLabs Scribe v2, word-level
@@ -260,22 +371,34 @@ fn extract_default_audio_to_mp3(
 // each word with which detected voice spoke it (`speaker_id`), rather than
 // this app relying on separate audio tracks the way the multi-track
 // pipeline above does.
+//
+// The API key goes in through stdin as a curl config (`-K -`), never as an
+// argv `-H` — argv is readable by every local process via `ps` for as long
+// as the request runs. Progress: "uploading" with a live percentage from
+// curl's meter, then "processing" once the whole file is sent and we're
+// only waiting on ElevenLabs.
 fn transcribe_mp3_with_elevenlabs(
     api_key: &str,
     mp3_path: &Path,
     diarize: bool,
     control: &JobControl,
+    progress: &ProgressReporter,
 ) -> Result<serde_json::Value, String> {
+    let timeout = request_timeout_seconds(audio_duration_seconds(mp3_path));
     let file_arg = format!("file=@{}", mp3_path.to_string_lossy());
-    let auth_header = format!("xi-api-key: {api_key}");
+    let timeout_arg = timeout.to_string();
     let mut command = Command::new("curl");
     command.args([
-        "-sS",
+        "-S",
+        "--connect-timeout",
+        "30",
+        "--max-time",
+        &timeout_arg,
         "-X",
         "POST",
         "https://api.elevenlabs.io/v1/speech-to-text",
-        "-H",
-        &auth_header,
+        "-K",
+        "-",
         "-F",
         "model_id=scribe_v2",
         "-F",
@@ -286,10 +409,37 @@ fn transcribe_mp3_with_elevenlabs(
     if diarize {
         command.args(["-F", "diarize=true"]);
     }
-    let (success, stdout, stderr) = run_killable(command, control)
+    let config = format!("header = \"xi-api-key: {}\"\n", api_key.replace('\\', "\\\\").replace('"', "\\\""));
+
+    progress.emit("uploading", Some(0));
+    let reporter = progress.clone();
+    let mut last_percent: Option<u8> = Some(0);
+    let mut processing = false;
+    let hook: StderrHook = Box::new(move |line| {
+        let Some(percent) = curl_upload_percent(line) else { return };
+        if processing || last_percent == Some(percent) {
+            return;
+        }
+        last_percent = Some(percent);
+        if percent >= 100 {
+            processing = true;
+            reporter.emit("processing", None);
+        } else {
+            reporter.emit("uploading", Some(percent));
+        }
+    });
+
+    let (success, stdout, stderr) = run_killable_with(command, control, Some(config), Some(hook))
         .map_err(|e| if e == CANCELLED { e } else { format!("curl isn't available ({e}).") })?;
     if !success {
-        return Err(stderr.trim().to_string());
+        let error = curl_error_line(&stderr).unwrap_or_else(|| stderr.trim().to_string());
+        if error.contains("(28)") {
+            return Err(format!(
+                "ElevenLabs didn't finish within {} minutes, so the request was stopped. Try again.",
+                timeout / 60
+            ));
+        }
+        return Err(error);
     }
     let value: serde_json::Value =
         serde_json::from_str(&stdout).map_err(|e| format!("Unexpected response from ElevenLabs ({e})."))?;
@@ -337,26 +487,15 @@ fn words_from_elevenlabs_response(value: &serde_json::Value) -> Vec<WordTiming> 
 struct ProgressEvent {
     #[serde(rename = "jobId")]
     job_id: String,
-    stage: &'static str, // "extracting" | "uploading"
+    stage: &'static str, // "extracting" | "uploading" | "processing"
+    // Upload percentage while "uploading"; None otherwise.
+    percent: Option<u8>,
     #[serde(rename = "trackIndex")]
     track_index: usize,
     #[serde(rename = "trackCount")]
     track_count: usize,
     #[serde(rename = "trackName")]
     track_name: String,
-}
-
-fn emit_progress(app: &AppHandle, job_id: &str, stage: &'static str, track_index: usize, track_count: usize, track_name: &str) {
-    let _ = app.emit(
-        "generate-transcript-progress",
-        ProgressEvent {
-            job_id: job_id.to_string(),
-            stage,
-            track_index,
-            track_count,
-            track_name: track_name.to_string(),
-        },
-    );
 }
 
 // Detect -> (user picks tracks) -> this: extract each kept track to its
@@ -394,7 +533,14 @@ pub async fn generate_transcript(
                 if control.is_cancelled() {
                     return Err(CANCELLED.to_string());
                 }
-                emit_progress(&app, &job_id, "extracting", track_index, track_count, &track.name);
+                let progress = ProgressReporter {
+                    app: app.clone(),
+                    job_id: job_id.clone(),
+                    track_index,
+                    track_count,
+                    track_name: track.name.clone(),
+                };
+                progress.emit("extracting", None);
                 let tmp_path = std::env::temp_dir().join(format!(
                     "masters-wheel-track-{}-{}.mp3",
                     job_id,
@@ -406,12 +552,11 @@ pub async fn generate_transcript(
                     if control.is_cancelled() {
                         return Err(CANCELLED.to_string());
                     }
-                    emit_progress(&app, &job_id, "uploading", track_index, track_count, &track.name);
                     // Speaker separation here already comes from which
                     // audio track a word was extracted from — diarization
                     // would be redundant (and is Voice Training's own
                     // option, see generate_voice_transcript below).
-                    transcribe_mp3_with_elevenlabs(&api_key, &tmp_path, false, &control)
+                    transcribe_mp3_with_elevenlabs(&api_key, &tmp_path, false, &control, &progress)
                 });
                 let _ = std::fs::remove_file(&tmp_path);
                 let value = response?;
@@ -469,15 +614,21 @@ pub async fn generate_voice_transcript(
                 return Err(CANCELLED.to_string());
             }
             let noise_model = crate::rnnoise::ensure_model(&app);
-            emit_progress(&app, &job_id, "extracting", 0, 1, &clip_name);
+            let progress = ProgressReporter {
+                app: app.clone(),
+                job_id: job_id.clone(),
+                track_index: 0,
+                track_count: 1,
+                track_name: clip_name.clone(),
+            };
+            progress.emit("extracting", None);
             let tmp_path = std::env::temp_dir().join(format!("masters-wheel-voice-{job_id}.mp3"));
             let extraction = extract_default_audio_to_mp3(&source_path, &tmp_path, noise_model.as_deref(), &control);
             let response = extraction.and_then(|()| {
                 if control.is_cancelled() {
                     return Err(CANCELLED.to_string());
                 }
-                emit_progress(&app, &job_id, "uploading", 0, 1, &clip_name);
-                transcribe_mp3_with_elevenlabs(&api_key, &tmp_path, diarize, &control)
+                transcribe_mp3_with_elevenlabs(&api_key, &tmp_path, diarize, &control, &progress)
             });
             let _ = std::fs::remove_file(&tmp_path);
             let value = response?;
@@ -489,4 +640,32 @@ pub async fn generate_voice_transcript(
 
     jobs.0.lock().unwrap().remove(&job_id);
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Real redraws captured from curl 8.7.1's default meter during a POST.
+    #[test]
+    fn upload_percent_reads_the_xferd_column() {
+        assert_eq!(curl_upload_percent("  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current"), None);
+        assert_eq!(curl_upload_percent("                                 Dload  Upload   Total   Spent    Left  Speed"), None);
+        assert_eq!(curl_upload_percent("  2 2929k    0     0    2 65536      0  65130  0:00:46  0:00:01  0:00:45 65145"), Some(2));
+        assert_eq!(curl_upload_percent("100 2929k    0     0  100 2929k      0   657k  0:00:04  0:00:04 --:--:--  657k"), Some(100));
+        assert_eq!(curl_upload_percent(""), None);
+    }
+
+    #[test]
+    fn curl_error_line_skips_meter_noise() {
+        let stderr = "  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\rcurl: (28) Operation timed out after 600001 milliseconds\n";
+        assert_eq!(curl_error_line(stderr).as_deref(), Some("curl: (28) Operation timed out after 600001 milliseconds"));
+        assert_eq!(curl_error_line("100 2929k  100    11"), None);
+    }
+
+    #[test]
+    fn timeout_is_ten_minutes_plus_audio_length() {
+        assert_eq!(request_timeout_seconds(Some(2049.16)), 600 + 2050);
+        assert_eq!(request_timeout_seconds(None), 600 + 3600);
+    }
 }

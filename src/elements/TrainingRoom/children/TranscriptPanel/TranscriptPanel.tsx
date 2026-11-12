@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { SpeakerTranscript } from "@/elements/SpeakerTranscript/SpeakerTranscript";
 import { activeEntryIndex, parseTranscript, speakersOf } from "@/lib/transcript";
+import { TranscriptionProgress } from "@/elements/TranscriptionProgress/TranscriptionProgress";
 import { LyricsTranscript } from "@/elements/TrainingRoom/children/Hero/children/LyricsTranscript/LyricsTranscript";
 import type { DiarizedWord, VoiceTranscriptGenerationState } from "@/lib/transcript/generate";
 import position from "./TranscriptPanel.position.module.css";
@@ -26,10 +27,6 @@ type TranscriptPanelProps = {
   onRetry: () => void;
   onDismiss: () => void;
 };
-
-function statusText(stage: "extracting" | "uploading"): string {
-  return stage === "extracting" ? "Extracting audio…" : "Transcribing via ElevenLabs…";
-}
 
 // A single media file's whole transcript lifecycle — the "Generate
 // transcript"/"With voice recognition" choice, live progress+Stop, an
@@ -110,12 +107,7 @@ export function TranscriptPanel({
   if (generation?.status === "running") {
     return (
       <div className={`${styles.generating} ${position.generating}`} data-construction>
-        <p className={`${styles.statusText} ${position.statusText}`} data-construction>
-          {statusText(generation.stage)}
-        </p>
-        <div className={`${styles.progressTrack} ${position.progressTrack}`} data-construction>
-          <div className={`${styles.progressFill} ${position.progressFill}`} data-construction />
-        </div>
+        <TranscriptionProgress stage={generation.stage} percent={generation.percent} startedAt={generation.startedAt} />
         <button type="button" className={`${styles.secondaryButton} ${position.secondaryButton}`} data-construction onClick={onStop}>
           Stop
         </button>

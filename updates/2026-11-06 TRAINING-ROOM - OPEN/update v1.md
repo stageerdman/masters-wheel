@@ -856,3 +856,21 @@ fixed along the way) — summary here:
 - [x] `npm test` 9 passing / `tsc` / `lint` / `app:build` clean; app
       reinstalled.
 - [ ] Not click-through verified in the running app.
+
+### Phase 33 — "Stuck" ElevenLabs transcription: progress, smaller upload, timeout, key off argv (2026-11-12)
+- Diagnosis: a 34-min clip (31.5 MB mp3 at ~123 kbps) finished in ~4.5
+  min — not stuck, just silent: one curl request, no sub-progress shown,
+  no timeout, API key visible in `ps` argv.
+- [x] `transcribe.rs`: `run_killable_with` (stdin data + live stderr
+      hook); curl reads the key from a stdin config (`-K -`); stages
+      `uploading` (with `percent`, parsed from curl's meter `% Xferd`
+      column) → `processing`; `--connect-timeout 30 --max-time
+      600+duration`; curl error 28 → friendly message. Extraction now
+      `-ac 1 -ar 16000 -b:a 48k` (RNNoise still applied first).
+      3 new unit tests (meter parsing, error line, timeout).
+- [x] Frontend: `GenerateStage`, `percent`, `startedAt` on running
+      states; shared `TranscriptionProgress` element replaces the two
+      duplicate indeterminate bars.
+- [x] Verified against the real API: 15 s clip with the exact new curl
+      shape + audio format → 75 words, correct Czech text.
+- [ ] Not click-through verified in the running app.

@@ -558,6 +558,15 @@ between the two lists. Each page gets its own section as pages get added.
       just skips the filter for that run, never fails the transcription.
 
 ### To build (real functionality — not started)
+- [x] Transcription progress + safety (2026-11-12): live stages —
+      "Preparing audio" → "Uploading to ElevenLabs · N%" (real upload
+      percentage from curl's progress meter) → "ElevenLabs is
+      transcribing…" — plus an elapsed-time counter, in a shared
+      `TranscriptionProgress` element (Performance Review + Training
+      Room). Audio is uploaded as 16 kHz mono 48 kbps (~2.6x smaller
+      than before). Each request has a 10 min + audio-length timeout with
+      a clear error/Try again. The ElevenLabs key goes to curl via stdin
+      (`-K -`), no longer visible in `ps`.
 - [ ] AI-assisted core lesson extraction; Core Lessons persistence (still
       in-memory only this round — deliberately deferred)
 - [ ] Attachments UI (the `attachments/` folder convention is decided, no

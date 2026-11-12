@@ -61,13 +61,24 @@ export async function transcribeVoiceClip(
 // bookkeeping that pipeline needs (a clip is always exactly one audio
 // stream) and plus `diarize`, so a retry after an error reuses the same
 // voice-recognition choice the user originally made.
+// "uploading" carries a live percentage (curl's progress meter, see
+// src-tauri/src/transcribe.rs); "processing" = the whole file is sent and
+// we're only waiting on ElevenLabs.
+export type GenerateStage = "extracting" | "uploading" | "processing";
+
+// Shared by every running-job state below: `startedAt` (ms since epoch,
+// set when the job starts and kept across progress updates) drives the
+// elapsed-time counter, so a long call never looks frozen.
+type RunningProgress = { stage: GenerateStage; percent: number | null; startedAt: number };
+
 export type VoiceTranscriptGenerationState =
-  | { status: "running"; jobId: string; stage: "extracting" | "uploading" }
+  | ({ status: "running"; jobId: string } & RunningProgress)
   | { status: "error"; message: string; clipName: string; diarize: boolean };
 
 export type GenerateTranscriptProgress = {
   jobId: string;
-  stage: "extracting" | "uploading";
+  stage: GenerateStage;
+  percent: number | null;
   trackIndex: number;
   trackCount: number;
   trackName: string;
@@ -168,7 +179,7 @@ function mergeSegmentsIntoBlocks(segments: Block[]): Block[] {
 // rendered by Transcript/children/TranscriptGenerating in place of the
 // usual upload/generate prompt.
 export type TranscriptGenerationState =
-  | { status: "running"; jobId: string; stage: "extracting" | "uploading"; trackIndex: number; trackCount: number; trackName: string }
+  | ({ status: "running"; jobId: string; trackIndex: number; trackCount: number; trackName: string } & RunningProgress)
   | { status: "error"; message: string; sourcePath: string; selections: TrackSelection[] };
 
 export type DialogueEntry = { speaker: string; seconds: number; text: string };

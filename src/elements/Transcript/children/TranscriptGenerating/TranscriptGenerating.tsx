@@ -1,4 +1,5 @@
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
+import { TranscriptionProgress } from "@/elements/TranscriptionProgress/TranscriptionProgress";
 import position from "./TranscriptGenerating.position.module.css";
 import styles from "./TranscriptGenerating.styles.module.css";
 
@@ -9,19 +10,15 @@ type TranscriptGeneratingProps = {
   onDismiss: () => void;
 };
 
-function statusText(state: Extract<TranscriptGenerationState, { status: "running" }>): string {
-  const verb = state.stage === "extracting" ? "Extracting" : "Transcribing";
-  const who = state.trackCount > 1 ? `track ${state.trackIndex + 1} of ${state.trackCount} — ${state.trackName}` : state.trackName;
-  const tail = state.stage === "uploading" ? " via ElevenLabs" : "";
-  return `${verb} ${who}${tail}…`;
+function subjectFor(state: Extract<TranscriptGenerationState, { status: "running" }>): string {
+  return state.trackCount > 1 ? `Track ${state.trackIndex + 1} of ${state.trackCount} (${state.trackName})` : state.trackName;
 }
 
 // Replaces the usual upload/generate prompt in the transcript tab while a
 // Generate Transcript job is running (or just failed) for this record — the
 // job itself runs in the background (see PerformanceReview.script.ts's
-// startGenerateTranscript), so this is purely a status view: progress text,
-// an indeterminate bar (there's no real sub-progress within one cloud
-// upload+inference call, so this doesn't pretend to one), and Stop.
+// startGenerateTranscript), so this is purely a status view: the shared
+// TranscriptionProgress (stage, upload %, elapsed time) and Stop.
 export function TranscriptGenerating({ state, onStop, onRetry, onDismiss }: TranscriptGeneratingProps) {
   if (state.status === "error") {
     return (
@@ -48,12 +45,12 @@ export function TranscriptGenerating({ state, onStop, onRetry, onDismiss }: Tran
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      <p className={`${styles.statusText} ${position.text}`} data-construction>
-        {statusText(state)}
-      </p>
-      <div className={`${styles.progressTrack} ${position.progressTrack}`} data-construction>
-        <div className={`${styles.progressFill} ${position.progressFill}`} data-construction />
-      </div>
+      <TranscriptionProgress
+        stage={state.stage}
+        percent={state.percent}
+        startedAt={state.startedAt}
+        subject={subjectFor(state)}
+      />
       <button
         type="button"
         className={`${styles.secondaryButton} ${position.button}`}
