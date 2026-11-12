@@ -874,3 +874,18 @@ fixed along the way) — summary here:
 - [x] Verified against the real API: 15 s clip with the exact new curl
       shape + audio format → 75 words, correct Czech text.
 - [ ] Not click-through verified in the running app.
+
+### Paused here (2026-11-12) — resume checklist
+State: Phases 31–33 committed, pushed, `.app` rebuilt + reinstalled; tree clean.
+Open next:
+- [ ] User click-through of Phases 31–33 (upload/paste modal, speaker-count
+      transcript view, transcription progress/timeout) in the real app.
+- [ ] Optional: upload-transcript button for Voice Training clips
+      (`ClipFeedItem` doesn't pass `onUpload` to `TranscriptPanel` yet).
+- [ ] Fathom parser is tested only against a reconstructed sample — if a
+      real paste fails to convert, get a snippet and add it as a test.
+- [ ] Watch accuracy of the new 48 kbps / 16 kHz mono upload on long or
+      noisy calls; bitrate is the one-line `SPEECH_MP3_ARGS` in
+      `src-tauri/src/transcribe.rs`.
+- Deliberately skipped: ElevenLabs async/webhook mode (would need polling
+  in a desktop app; the sync call + timeout is enough for now).
