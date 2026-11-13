@@ -1,4 +1,4 @@
-import type { PointerEvent } from "react";
+import type { ComponentType, PointerEvent } from "react";
 import position from "./BookmarkBadge.position.module.css";
 import styles from "./BookmarkBadge.styles.module.css";
 
@@ -8,7 +8,9 @@ import styles from "./BookmarkBadge.styles.module.css";
 // each one's label/color is stays with whichever page uses this (see e.g.
 // PerformanceReview.data.ts's CONTENT_KIND_META) — this element only knows
 // how to render one badge given its meta, not the full kind set.
-export type BookmarkMeta = { label: string; color: string };
+// `icon`, when given, replaces the letters on the badge (the letters then
+// only serve as its accessible name/tooltip, via `name` if set).
+export type BookmarkMeta = { label: string; color: string; name?: string; icon?: ComponentType };
 
 type BookmarkBadgeProps = {
   kind: string;
@@ -28,9 +30,10 @@ export function BookmarkBadge({ kind, meta, active, onClick, onPointerDown }: Bo
       onClick={onClick}
       onPointerDown={onPointerDown}
       aria-pressed={active}
-      aria-label={kind}
+      aria-label={meta.name ?? kind}
+      title={meta.name}
     >
-      {meta.label}
+      {meta.icon ? <meta.icon /> : meta.label}
     </button>
   );
 }

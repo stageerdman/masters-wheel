@@ -19,12 +19,14 @@ import {
   heroStreamUrl,
   importTranscriptFile,
   listRecords,
+  readClientCard,
   readNotes,
   readQuestionAnalysis,
   readScorecard,
   readTranscript,
   revealRecordInFinder,
   setHeroFile,
+  writeClientCard,
   writeMeta,
   writeNotes,
   writeQuestionAnalysis,
@@ -38,6 +40,8 @@ import { generateScorecard as generateRealScorecard } from "@/lib/scorecard/gene
 import type { Scorecard } from "@/lib/scorecard";
 import { generateQuestionAnalysis as generateRealQuestionAnalysis } from "@/lib/questionAnalysis/generate";
 import type { QuestionAnalysis } from "@/lib/questionAnalysis";
+import { generateClientCard as generateRealClientCard } from "@/lib/clientCard/generate";
+import type { ClientCard } from "@/lib/clientCard";
 import { readSettings, type ScorecardCriterionDef } from "@/lib/settings";
 import { setActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
 import {
@@ -66,7 +70,6 @@ function isCallState(value: string | null): value is CallState {
 export function usePerformanceReviewData() {
   const [summaries, setSummaries] = useState<RecordSummary[]>([]);
   const [docs, setDocs] = useState<Record<string, string>>({});
-  const [lessons, setLessons] = useState<Record<string, string>>({});
   const [transcripts, setTranscripts] = useState<Record<string, string | null>>({});
   // One level of undo for a transcript speaker rename, keyed by record id
   // — the pre-rename raw text, cleared once undone (not a stack).
@@ -82,6 +85,10 @@ export function usePerformanceReviewData() {
   // above — one real `claude` CLI call per record, no job tracking needed.
   const [questionAnalysisGenerating, setQuestionAnalysisGenerating] = useState<Record<string, boolean>>({});
   const [questionAnalysisError, setQuestionAnalysisError] = useState<Record<string, string>>({});
+  // Same boolean-+-error-slot shape again, for the Client Card.
+  const [clientCards, setClientCards] = useState<Record<string, ClientCard | null>>({});
+  const [clientCardGenerating, setClientCardGenerating] = useState<Record<string, boolean>>({});
+  const [clientCardError, setClientCardError] = useState<Record<string, string>>({});
   // That Space's configured scoring criteria (Settings page's Score
   // rows) — resolves a persisted item's `criterion` id back to a display
   // name/prompt, and is also what real generation scores against.
@@ -212,6 +219,22 @@ export function usePerformanceReviewData() {
     };
   }, [selectedId, questionAnalyses]);
 
+  // Lazily load the selected record's client_card.json — same pattern as
+  // the question-analysis lazy-load just above.
+  useEffect(() => {
+    if (!selectedId || !isTauri() || selectedId in clientCards) return;
+    let cancelled = false;
+    readClientCard(selectedId)
+      .then((loaded) => {
+        if (cancelled) return;
+        setClientCards((prev) => ({ ...prev, [selectedId]: loaded }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, clientCards]);
+
   // Tracks how many times each record has been opened — fires once per
   // actual selection change (including the initial auto-selection on
   // load), not on every render. `summaries` is read fresh from the
@@ -297,7 +320,7 @@ export function usePerformanceReviewData() {
     transcriptRaw: transcripts[summary.id] ?? null,
     notes: docs[summary.id] ?? "",
     questionAnalysis: questionAnalyses[summary.id] ?? null,
-    lessons: lessons[summary.id] ?? "",
+    clientCard: clientCards[summary.id] ?? null,
     offeredAmount: summary.offeredAmount,
     offeredCurrency: summary.offeredCurrency,
     description: summary.description,
@@ -334,14 +357,6 @@ export function usePerformanceReviewData() {
       if (!selectedId) return;
       setDocs((prev) => ({ ...prev, [selectedId]: value }));
       scheduleNotesWrite(selectedId, value);
-    },
-    [selectedId]
-  );
-
-  const onLessonsChange = useCallback(
-    (value: string) => {
-      if (!selectedId) return;
-      setLessons((prev) => ({ ...prev, [selectedId]: value }));
     },
     [selectedId]
   );
@@ -648,6 +663,45 @@ export function usePerformanceReviewData() {
     [transcripts]
   );
 
+  // Real generation for the Client Card — same shape as
+  // generateQuestionAnalysis just above, grounded with the Space's business
+  // description like the scorecard is. See src/lib/clientCard/generate.ts.
+  const generateClientCard = useCallback(
+    (id: string) => {
+      const transcriptRaw = transcripts[id];
+      if (!transcriptRaw) {
+        void message("This call needs a transcript before generating a client card.", {
+          title: "No transcript yet",
+          kind: "info",
+        });
+        return;
+      }
+      setClientCardGenerating((prev) => ({ ...prev, [id]: true }));
+      setClientCardError((prev) => {
+        if (!(id in prev)) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      generateRealClientCard(businessDescription, transcriptRaw)
+        .then((fresh) => {
+          setClientCards((prev) => ({ ...prev, [id]: fresh }));
+          writeClientCard(id, fresh).catch((error) => console.error("Failed to write client card:", id, error));
+        })
+        .catch((error) => {
+          setClientCardError((prev) => ({ ...prev, [id]: String(error?.message ?? error) }));
+        })
+        .finally(() => {
+          setClientCardGenerating((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+        });
+    },
+    [transcripts, businessDescription]
+  );
+
   // Deletes a record entirely (its whole on-disk folder) and drops it from
   // the list. If it was the selected record, falls back to whichever
   // record is now first rather than leaving the selection dangling.
@@ -756,7 +810,6 @@ export function usePerformanceReviewData() {
     setSelectedId,
     heroSrc,
     onNotesChange,
-    onLessonsChange,
     updateMetaField,
     toggleReviewed,
     addRecordsFromPaths,
@@ -794,6 +847,11 @@ export function usePerformanceReviewData() {
     questionAnalysisError: selectedId ? (questionAnalysisError[selectedId] ?? null) : null,
     onGenerateQuestionAnalysis: () => {
       if (selectedId) generateQuestionAnalysis(selectedId);
+    },
+    isGeneratingClientCard: selectedId ? (clientCardGenerating[selectedId] ?? false) : false,
+    clientCardError: selectedId ? (clientCardError[selectedId] ?? null) : null,
+    onGenerateClientCard: () => {
+      if (selectedId) generateClientCard(selectedId);
     },
     isVideoUploadOpen,
     openVideoUpload,

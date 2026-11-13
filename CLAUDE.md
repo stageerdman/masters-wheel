@@ -243,7 +243,8 @@ phase of work.
   `~/Documents/Master's Wheel/<Space>/records/<id>/` — `meta.json`,
   `user_notes.md`, `ai_analysis.md` (both lazily created; missing/empty
   until the user or AI actually writes to them — that's expected, not a
-  bug), `transcript.md`, `scorecard.json`, `hero.<ext>`. Agents and chat
+  bug), `transcript.md`, `scorecard.json`, `question_analysis.json`,
+  `client_card.json`, `hero.<ext>`. Agents and chat
   sessions live as sibling `agents/`/`chats/` folders in the same per-Space
   root. **Spaces** (`src/lib/spaces/`) give full on-disk isolation per
   workspace — always resolve storage roots through the shared Spaces path

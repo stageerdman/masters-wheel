@@ -34,7 +34,6 @@ export function PerformanceReview() {
     setSelectedId,
     heroSrc,
     onNotesChange,
-    onLessonsChange,
     updateMetaField,
     toggleReviewed,
     addRecordsFromPaths,
@@ -67,6 +66,9 @@ export function PerformanceReview() {
     isGeneratingQuestionAnalysis,
     onGenerateQuestionAnalysis,
     questionAnalysisError,
+    isGeneratingClientCard,
+    onGenerateClientCard,
+    clientCardError,
     isVideoUploadOpen,
     openVideoUpload,
     closeVideoUpload,
@@ -140,40 +142,17 @@ export function PerformanceReview() {
             heroSrc={heroSrc}
             videoRef={videoRef}
             notes={selected.notes}
-            lessons={selected.lessons}
             onNotesChange={onNotesChange}
-            onLessonsChange={onLessonsChange}
             onOfferedAmountChange={(value) => updateMetaField("offeredAmount", value)}
             onOfferedCurrencyChange={(value) => updateMetaField("offeredCurrency", value)}
             onDescriptionChange={(value) => updateMetaField("description", value)}
             onDateChange={(value) => updateMetaField("date", value)}
             onClosedDateChange={(value) => updateMetaField("closedDate", value)}
             onTitleChange={(value) => updateMetaField("title", value)}
-            onRequestTranscriptUpload={openTranscriptUpload}
-            onRequestGenerateTranscript={openGenerateTranscript}
-            transcriptGeneration={transcriptGeneration}
-            onStopGenerateTranscript={() => selectedId && stopGenerateTranscript(selectedId)}
-            onRetryGenerateTranscript={() => selectedId && retryGenerateTranscript(selectedId)}
-            onDismissGenerateTranscriptError={() => selectedId && dismissGenerateTranscriptError(selectedId)}
             onRequestVideoUpload={openVideoUpload}
-            onSeekTranscript={seekTranscript}
-            onRenameTranscriptSpeaker={renameTranscriptSpeaker}
-            canUndoTranscript={canUndoTranscript}
-            onUndoTranscript={onUndoTranscript}
-            isGeneratingScorecard={isGeneratingScorecard}
-            onGenerateScorecard={onGenerateScorecard}
-            scorecardCriteria={scorecardCriteria}
-            scorecardError={scorecardError}
-            isGeneratingQuestionAnalysis={isGeneratingQuestionAnalysis}
-            onGenerateQuestionAnalysis={onGenerateQuestionAnalysis}
-            questionAnalysisError={questionAnalysisError}
           />
           <Detail
             video={selected}
-            notes={selected.notes}
-            lessons={selected.lessons}
-            onNotesChange={onNotesChange}
-            onLessonsChange={onLessonsChange}
             onRequestTranscriptUpload={openTranscriptUpload}
             onRequestGenerateTranscript={openGenerateTranscript}
             transcriptGeneration={transcriptGeneration}
@@ -191,6 +170,9 @@ export function PerformanceReview() {
             isGeneratingQuestionAnalysis={isGeneratingQuestionAnalysis}
             onGenerateQuestionAnalysis={onGenerateQuestionAnalysis}
             questionAnalysisError={questionAnalysisError}
+            isGeneratingClientCard={isGeneratingClientCard}
+            onGenerateClientCard={onGenerateClientCard}
+            clientCardError={clientCardError}
           />
         </>
       ) : (

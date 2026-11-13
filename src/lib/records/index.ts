@@ -18,6 +18,7 @@ import { documentDir, join } from "@tauri-apps/api/path";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import type { Scorecard, ScorecardItem } from "@/lib/scorecard";
 import type { QuestionAnalysis, QuestionAnswerPair } from "@/lib/questionAnalysis";
+import { CLIENT_CARD_FIELDS, type ClientCard } from "@/lib/clientCard";
 import { BASE_DIR, spaceRecordsDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
 import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 import { readExternalTextFile } from "@/lib/readExternalTextFile";
@@ -78,6 +79,12 @@ const QUESTION_ANALYSIS_FILE_NAME = "question_analysis.json";
 
 function questionAnalysisPath(id: string) {
   return `${recordDir(id)}/${QUESTION_ANALYSIS_FILE_NAME}`;
+}
+
+const CLIENT_CARD_FILE_NAME = "client_card.json";
+
+function clientCardPath(id: string) {
+  return `${recordDir(id)}/${CLIENT_CARD_FILE_NAME}`;
 }
 
 // Same "missing or corrupt is just absent, not a crash" tolerance as
@@ -318,6 +325,41 @@ export async function readQuestionAnalysis(id: string): Promise<QuestionAnalysis
 // Overwrites question_analysis.json with a freshly generated analysis.
 export async function writeQuestionAnalysis(id: string, analysis: QuestionAnalysis): Promise<void> {
   await writeTextFile(questionAnalysisPath(id), JSON.stringify(analysis, null, 2), { baseDir: BASE_DIR });
+}
+
+// Same tolerant "missing/corrupt is just absent" parsing as the others; a
+// missing individual field just reads as empty.
+function parseClientCard(text: string): ClientCard | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as Record<string, unknown>;
+  if (typeof candidate.generatedAt !== "string") return null;
+  const card = { generatedAt: candidate.generatedAt } as ClientCard;
+  for (const { key } of CLIENT_CARD_FIELDS) {
+    card[key] = typeof candidate[key] === "string" ? (candidate[key] as string) : "";
+  }
+  return card;
+}
+
+// Reads a record's client_card.json. Returns null if none has been
+// generated yet (or the file is corrupt).
+export async function readClientCard(id: string): Promise<ClientCard | null> {
+  try {
+    const text = await readTextFile(clientCardPath(id), { baseDir: BASE_DIR });
+    return parseClientCard(text);
+  } catch {
+    return null;
+  }
+}
+
+// Overwrites client_card.json with a freshly generated card.
+export async function writeClientCard(id: string, card: ClientCard): Promise<void> {
+  await writeTextFile(clientCardPath(id), JSON.stringify(card, null, 2), { baseDir: BASE_DIR });
 }
 
 // Reads an arbitrary transcript file's raw text so the caller can

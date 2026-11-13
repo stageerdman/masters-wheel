@@ -1,0 +1,73 @@
+.root {
+  background: var(--color-surface);
+}
+
+.statusText {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}
+
+.statusSubtext {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}
+
+.errorText {
+  color: var(--color-rating-poor);
+  font-size: var(--text-size-label);
+}
+
+.generateButton {
+  background: var(--color-accent);
+  color: var(--color-on-chip);
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.generateButton:hover {
+  opacity: 0.9;
+}
+
+.title {
+  color: var(--color-text);
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+}
+
+.copyButton {
+  background: transparent;
+  color: var(--color-bookmark-client-card);
+  border: 1px solid var(--color-bookmark-client-card);
+  border-radius: 999px;
+  font-size: var(--text-size-micro);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.copyButton:hover {
+  background: color-mix(in srgb, var(--color-bookmark-client-card) 14%, transparent);
+}
+
+.generateButton:focus-visible,
+.copyButton:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.section {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.heading {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+  font-weight: 600;
+}
+
+.answer {
+  color: var(--color-text);
+  font-size: var(--text-size-body);
+}

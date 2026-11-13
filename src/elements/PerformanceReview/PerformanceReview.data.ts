@@ -5,25 +5,32 @@
 
 import type { Scorecard } from "@/lib/scorecard";
 import type { QuestionAnalysis } from "@/lib/questionAnalysis";
+import type { ClientCard } from "@/lib/clientCard";
 import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
+import {
+  ClientCardIcon,
+  QuestionsIcon,
+  ScorecardIcon,
+  TranscriptIcon,
+} from "./children/KindIcon/KindIcon";
 
-// Which text kind Hero/Detail can show, and how each renders as a
-// bookmark badge (color + 2-letter label — see this element's own
+// Which view Detail can show, and how each renders as a bookmark badge
+// (color + icon, the 2-letter label kept as a fallback — see this element's own
 // "Bookmarks are visually minimal by design" note in
 // `updates/2026-10-28 PERFORMANCE-REVIEW - OPEN/wiki.md`). Lives here
 // (page-specific data) rather than in BookmarkBadge/BookmarkRail/SplitRail
 // themselves, which are generic over any kind set — see
 // `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md` for why.
-export type ContentKind = "questions" | "transcript" | "notes" | "lessons" | "scorecard";
+// Notes isn't one of them: it always sits in the Hero under the video.
+export type ContentKind = "questions" | "clientCard" | "scorecard" | "transcript";
 
-export const CONTENT_KIND_ORDER: ContentKind[] = ["questions", "transcript", "notes", "lessons", "scorecard"];
+export const CONTENT_KIND_ORDER: ContentKind[] = ["questions", "clientCard", "scorecard", "transcript"];
 
 export const CONTENT_KIND_META: Record<ContentKind, BookmarkMeta> = {
-  questions: { label: "QA", color: "var(--color-bookmark-questions)" },
-  transcript: { label: "TR", color: "var(--color-bookmark-transcript)" },
-  notes: { label: "NT", color: "var(--color-bookmark-notes)" },
-  lessons: { label: "CL", color: "var(--color-bookmark-lessons)" },
-  scorecard: { label: "SC", color: "var(--color-bookmark-scorecard)" },
+  questions: { label: "QA", name: "Question Analysis", icon: QuestionsIcon, color: "var(--color-bookmark-questions)" },
+  clientCard: { label: "CC", name: "Client Card", icon: ClientCardIcon, color: "var(--color-bookmark-client-card)" },
+  scorecard: { label: "SC", name: "Scorecard", icon: ScorecardIcon, color: "var(--color-bookmark-scorecard)" },
+  transcript: { label: "TR", name: "Transcript", icon: TranscriptIcon, color: "var(--color-bookmark-transcript)" },
 };
 
 export type CallState = "closed" | "training" | "postponed" | "failed" | "notQualified";
@@ -97,8 +104,8 @@ export type VideoRecord = {
   notes: string;
   // null until "Generate Question Analysis" has been run at least once.
   questionAnalysis: QuestionAnalysis | null;
-  // Deliberately in-memory only this round — not persisted, see wiki.md.
-  lessons: string;
+  // null until "Generate Client Card" has been run at least once.
+  clientCard: ClientCard | null;
   offeredAmount: number | null;
   offeredCurrency: string | null;
   description: string;

@@ -1,19 +1,14 @@
 import { Transcript } from "@/elements/Transcript/Transcript";
 import { Scorecard } from "@/elements/Scorecard/Scorecard";
 import { QuestionAnalysis } from "@/elements/QuestionAnalysis/QuestionAnalysis";
+import { ClientCard } from "@/elements/ClientCard/ClientCard";
 import type { ContentKind, VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import type { TranscriptGenerationState } from "@/lib/transcript/generate";
 import type { ScorecardCriterionDef } from "@/lib/settings";
-import position from "./TextView.position.module.css";
-import styles from "./TextView.styles.module.css";
 
 type TextViewProps = {
   kind: ContentKind;
   video: VideoRecord;
-  notes: string;
-  lessons: string;
-  onNotesChange: (value: string) => void;
-  onLessonsChange: (value: string) => void;
   onRequestTranscriptUpload: () => void;
   onRequestGenerateTranscript: () => void;
   transcriptGeneration: TranscriptGenerationState | null;
@@ -31,16 +26,15 @@ type TextViewProps = {
   isGeneratingQuestionAnalysis: boolean;
   onGenerateQuestionAnalysis: () => void;
   questionAnalysisError: string | null;
+  isGeneratingClientCard: boolean;
+  onGenerateClientCard: () => void;
+  clientCardError: string | null;
 };
 
 // Renders whichever text type is active.
 export function TextView({
   kind,
   video,
-  notes,
-  lessons,
-  onNotesChange,
-  onLessonsChange,
   onRequestTranscriptUpload,
   onRequestGenerateTranscript,
   transcriptGeneration,
@@ -58,6 +52,9 @@ export function TextView({
   isGeneratingQuestionAnalysis,
   onGenerateQuestionAnalysis,
   questionAnalysisError,
+  isGeneratingClientCard,
+  onGenerateClientCard,
+  clientCardError,
 }: TextViewProps) {
   if (kind === "questions") {
     return (
@@ -89,38 +86,26 @@ export function TextView({
     );
   }
 
-  if (kind === "notes") {
+  if (kind === "clientCard") {
     return (
-      <textarea
-        className={`${styles.editableText} ${position.editableText}`}
-        data-construction
-        value={notes}
-        onChange={(event) => onNotesChange(event.target.value)}
-        placeholder="Notes"
-      />
-    );
-  }
-
-  if (kind === "scorecard") {
-    return (
-      <Scorecard
-        scorecard={video.scorecard}
-        isGenerating={isGeneratingScorecard}
-        onGenerate={onGenerateScorecard}
-        onSeek={onSeekTranscript}
-        criteria={scorecardCriteria}
-        error={scorecardError}
+      <ClientCard
+        data={video.clientCard}
+        title={video.title}
+        isGenerating={isGeneratingClientCard}
+        onGenerate={onGenerateClientCard}
+        error={clientCardError}
       />
     );
   }
 
   return (
-    <textarea
-      className={`${styles.editableText} ${position.editableText}`}
-      data-construction
-      value={lessons}
-      onChange={(event) => onLessonsChange(event.target.value)}
-      placeholder="Core lessons"
+    <Scorecard
+      scorecard={video.scorecard}
+      isGenerating={isGeneratingScorecard}
+      onGenerate={onGenerateScorecard}
+      onSeek={onSeekTranscript}
+      criteria={scorecardCriteria}
+      error={scorecardError}
     />
   );
 }

@@ -1,5 +1,5 @@
-// The gated tool: real notes/transcript/question-analysis content for one
-// record.
+// The gated tool: real notes/transcript/question-analysis/client-card
+// content for one record.
 // Permission is checked by mcp/permission.rs before any content is read
 // at all — see that module for the tag/always-allow/ask-the-user logic.
 //
@@ -31,7 +31,7 @@ pub struct GetPerformanceReviewInput {
     /// The record_id field from one of list_performance_reviews's results.
     pub record_id: String,
     /// Which parts to read — any of "meta", "notes", "transcript",
-    /// "questions". Omit to get all four.
+    /// "questions", "client_card". Omit to get all five.
     #[serde(default = "default_documents")]
     pub documents: Vec<String>,
     /// Character offset into each requested text document (notes/
@@ -49,7 +49,7 @@ pub struct GetPerformanceReviewInput {
 }
 
 fn default_documents() -> Vec<String> {
-    vec!["meta".into(), "notes".into(), "transcript".into(), "questions".into()]
+    vec!["meta".into(), "notes".into(), "transcript".into(), "questions".into(), "client_card".into()]
 }
 
 fn default_limit() -> usize {
@@ -109,6 +109,11 @@ pub struct PerformanceReviewContent {
     pub transcript: Option<DocumentSlice>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub questions: Option<Vec<QuestionAnswerPair>>,
+    // client_card.json as TS wrote it (see src/lib/clientCard/index.ts) —
+    // seven short fields, naturally bounded, so passed through whole like
+    // `meta` rather than re-modeled here.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_card: Option<serde_json::Value>,
 }
 
 // Best-effort title lookup for the permission prompt — falls back to the
@@ -157,6 +162,11 @@ pub fn read(record_id: &str, documents: &[String], offset: usize, limit: usize) 
                     .ok()
                     .and_then(|text| serde_json::from_str::<QuestionAnalysisFile>(&text).ok())
                     .map(|file| file.pairs);
+            }
+            "client_card" => {
+                out.client_card = std::fs::read_to_string(dir.join("client_card.json"))
+                    .ok()
+                    .and_then(|text| serde_json::from_str(&text).ok());
             }
             _ => {}
         }

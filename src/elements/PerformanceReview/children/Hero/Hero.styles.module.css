@@ -40,3 +40,20 @@
 .uploadButton:hover {
   color: var(--color-text);
 }
+
+.notes {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: var(--text-size-body);
+}
+
+.notes::placeholder {
+  color: var(--color-text-muted);
+}
+
+.notes:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}

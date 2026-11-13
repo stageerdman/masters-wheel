@@ -415,15 +415,25 @@ between the two lists. Each page gets its own section as pages get added.
       postponed/failed/not qualified, or no icon at all for a freshly
       added, unclassified record), date + title rows, description shown
       as a hover tooltip
-- [x] Hero: title (click to rename inline), bookmark rail (Question
-      Analysis / Transcript / Notes / Core Lessons)
-- [x] Hero: Core Lessons (locally editable, not persisted — deliberately
-      deferred this round, see this update's wiki.md)
+- [x] Hero: title (click to rename inline), video, and Notes always
+      underneath — no bookmark rail any more (Notes was the only thing
+      worth keeping in view next to the video). Core Lessons was dropped.
 - [x] Hero: collapsible meta panel (3-dot toggle under the title) —
       meeting date + closed date, offered amount + currency (typeahead
       combobox), 200-char description
 - [x] Detail: draggable bookmark rail, reorderable, splits into two
-      independent text panes when a bookmark crosses the line
+      independent text panes when a bookmark crosses the line. Bookmarks
+      are icons now (Question Analysis, Client Card, Scorecard,
+      Transcript), name on hover — see `children/KindIcon`.
+- [x] Client Card: a summary of the client's situation — their problem,
+      what they're trying to avoid, why it has to be solved now, what
+      happens if they can't, why they haven't solved it yet, what was
+      offered, and the next agreed step. Real local `claude` CLI
+      generation from the transcript (default model, grounded with the
+      Space's business description — `src/lib/clientCard/generate.ts`),
+      persisted as `client_card.json`, readable by the AI Assistant via
+      `get_performance_review`'s `client_card` document. One Copy button
+      puts the whole card on the clipboard as plain text.
 - [x] Scorecard (5th bookmark, "SC"): one row per that Space's
       user-configured scoring criteria (Settings page's Score rows — see
       the Settings section below), each rated Skipped/Poor/Good/Great/
@@ -568,8 +578,8 @@ between the two lists. Each page gets its own section as pages get added.
       than before). Each request has a 10 min + audio-length timeout with
       a clear error/Try again. The ElevenLabs key goes to curl via stdin
       (`-K -`), no longer visible in `ps`.
-- [ ] AI-assisted core lesson extraction; Core Lessons persistence (still
-      in-memory only this round — deliberately deferred)
+- [ ] Client Card regenerate button (like Question Analysis, once
+      generated there's no in-panel way to re-run it yet)
 - [ ] Attachments UI (the `attachments/` folder convention is decided, no
       upload/list/remove flow yet)
 - [ ] "Take it to the training ground" button (currently a no-op
@@ -587,8 +597,8 @@ Training**. See `updates/2026-11-06 TRAINING-ROOM - OPEN/`.
 ### Built — real backend (session metadata + clip files both real storage)
 - [x] Same 3-column layout as Performance Review (Navigation / Hero /
       Detail), reusing (and generalizing) its shared primitives —
-      `BookmarkBadge`/`BookmarkRail`/`SplitRail`/`useSplitRail` are no
-      longer hardcoded to Performance Review's 5 content kinds.
+      `BookmarkBadge`/`SplitRail`/`useSplitRail` are no
+      longer hardcoded to Performance Review's content kinds.
 - [x] Navigation: pinned "Add a discipline" (+) above the list, Open
       Sessions (sorted by recency of last **update**, not last opened —
       selecting a session is navigation, not an edit, see wiki) and

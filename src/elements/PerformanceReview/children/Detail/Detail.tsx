@@ -11,10 +11,6 @@ import styles from "./Detail.styles.module.css";
 
 type DetailProps = {
   video: VideoRecord;
-  notes: string;
-  lessons: string;
-  onNotesChange: (value: string) => void;
-  onLessonsChange: (value: string) => void;
   onRequestTranscriptUpload: () => void;
   onRequestGenerateTranscript: () => void;
   transcriptGeneration: TranscriptGenerationState | null;
@@ -32,14 +28,13 @@ type DetailProps = {
   isGeneratingQuestionAnalysis: boolean;
   onGenerateQuestionAnalysis: () => void;
   questionAnalysisError: string | null;
+  isGeneratingClientCard: boolean;
+  onGenerateClientCard: () => void;
+  clientCardError: string | null;
 };
 
 export function Detail({
   video,
-  notes,
-  lessons,
-  onNotesChange,
-  onLessonsChange,
   onRequestTranscriptUpload,
   onRequestGenerateTranscript,
   transcriptGeneration,
@@ -57,6 +52,9 @@ export function Detail({
   isGeneratingQuestionAnalysis,
   onGenerateQuestionAnalysis,
   questionAnalysisError,
+  isGeneratingClientCard,
+  onGenerateClientCard,
+  clientCardError,
 }: DetailProps) {
   const {
     railRef,
@@ -82,10 +80,6 @@ export function Detail({
           <TextView
             kind={activeTop}
             video={video}
-            notes={notes}
-            lessons={lessons}
-            onNotesChange={onNotesChange}
-            onLessonsChange={onLessonsChange}
             onRequestTranscriptUpload={onRequestTranscriptUpload}
             onRequestGenerateTranscript={onRequestGenerateTranscript}
             transcriptGeneration={transcriptGeneration}
@@ -103,6 +97,9 @@ export function Detail({
             isGeneratingQuestionAnalysis={isGeneratingQuestionAnalysis}
             onGenerateQuestionAnalysis={onGenerateQuestionAnalysis}
             questionAnalysisError={questionAnalysisError}
+            isGeneratingClientCard={isGeneratingClientCard}
+            onGenerateClientCard={onGenerateClientCard}
+            clientCardError={clientCardError}
           />
         </div>
         {isSplit && bottomKind && (
@@ -116,10 +113,6 @@ export function Detail({
               <TextView
                 kind={bottomKind}
                 video={video}
-                notes={notes}
-                lessons={lessons}
-                onNotesChange={onNotesChange}
-                onLessonsChange={onLessonsChange}
                 onRequestTranscriptUpload={onRequestTranscriptUpload}
                 onRequestGenerateTranscript={onRequestGenerateTranscript}
                 transcriptGeneration={transcriptGeneration}
@@ -137,6 +130,9 @@ export function Detail({
                 isGeneratingQuestionAnalysis={isGeneratingQuestionAnalysis}
                 onGenerateQuestionAnalysis={onGenerateQuestionAnalysis}
                 questionAnalysisError={questionAnalysisError}
+                isGeneratingClientCard={isGeneratingClientCard}
+                onGenerateClientCard={onGenerateClientCard}
+                clientCardError={clientCardError}
               />
             </div>
           </>
