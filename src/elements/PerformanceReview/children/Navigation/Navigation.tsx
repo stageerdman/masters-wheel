@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SearchBar } from "@/elements/SearchBar/SearchBar";
 import { ContextMenu, type ContextMenuItem } from "@/elements/ContextMenu/ContextMenu";
-import type { VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
+import { compareNewestFirst, type VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import { VideoListItem } from "./children/VideoListItem/VideoListItem";
 import { AddRecordListItem } from "./children/AddRecordListItem/AddRecordListItem";
 import position from "./Navigation.position.module.css";
@@ -34,7 +34,7 @@ export function Navigation({
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null);
   const filtered = videos
     .filter((video) => `${video.title} ${video.date}`.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort(compareNewestFirst);
 
   return (
     <nav className={`${styles.root} ${position.root}`} data-construction>

@@ -53,7 +53,7 @@ import {
   type TrackSelection,
   type TranscriptGenerationState,
 } from "@/lib/transcript/generate";
-import { type CallState, type VideoRecord } from "./PerformanceReview.data";
+import { compareNewestFirst, type CallState, type VideoRecord } from "./PerformanceReview.data";
 
 const WRITE_DEBOUNCE_MS = 400;
 
@@ -129,7 +129,8 @@ export function usePerformanceReviewData() {
       .then((loaded) => {
         if (cancelled) return;
         setSummaries(loaded);
-        setSelectedId((current) => current ?? loaded[0]?.id ?? null);
+        // Open on the newest record — the one at the top of the list.
+        setSelectedId((current) => current ?? [...loaded].sort(compareNewestFirst)[0]?.id ?? null);
       })
       .catch((error) => console.error("Failed to load records:", error));
     return () => {
@@ -721,7 +722,9 @@ export function usePerformanceReviewData() {
       }
       const remaining = summaries.filter((item) => item.id !== id);
       setSummaries(remaining);
-      setSelectedId((current) => (current === id ? remaining[0]?.id ?? null : current));
+      setSelectedId((current) =>
+        current === id ? [...remaining].sort(compareNewestFirst)[0]?.id ?? null : current
+      );
     },
     [summaries]
   );

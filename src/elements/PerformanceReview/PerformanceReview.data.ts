@@ -33,6 +33,15 @@ export const CONTENT_KIND_META: Record<ContentKind, BookmarkMeta> = {
   transcript: { label: "TR", name: "Transcript", icon: TranscriptIcon, color: "var(--color-bookmark-transcript)" },
 };
 
+// The record list's order: newest meeting date on top (records carry no
+// separate "added at" time — the meeting date is what the list has always
+// sorted by). Shared by Navigation's list and the page's default
+// selection, so "the top item" and "the item selected on open" always
+// agree. Ties fall back to the record id (a "<date> <title>" folder name).
+export function compareNewestFirst(a: { date: string; id: string }, b: { date: string; id: string }): number {
+  return b.date.localeCompare(a.date) || b.id.localeCompare(a.id);
+}
+
 export type CallState = "closed" | "training" | "postponed" | "failed" | "notQualified";
 
 export const CALL_STATE_ORDER: CallState[] = [
