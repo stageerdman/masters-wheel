@@ -468,10 +468,10 @@ between the two lists. Each page gets its own section as pages get added.
       scorecard/question analysis has actually been generated (real
       generation — see the Scorecard generation and Question Analysis
       entries below)
-- [x] Adding a record: click the always-last "Add record" row (native file
-      dialog) or drag a file anywhere onto the page (Tauri's native
+- [x] Adding a record: drag a file anywhere onto the page (Tauri's native
       window-level drag-drop, not a sandboxed HTML5 drop, with a visible
-      drop-zone highlight while hovering) — both copy the file in as
+      drop-zone highlight while hovering) — the "Add record" row was
+      dropped as unnecessary. Copies the file in as
       `hero.<ext>` and seed a fresh, unclassified (`state: null`) record
 - [x] Real media playback: `MediaPlayer` plays a record's actual hero file,
       streamed by a small local HTTP server (`src-tauri/src/media_server.rs`,

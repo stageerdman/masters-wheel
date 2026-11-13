@@ -5,8 +5,7 @@ type AddSessionListItemProps = {
   onAdd: () => void;
 };
 
-// Pinned above the Open/Closed groups, not trailing the list like
-// Performance Review's AddRecordListItem — "add a new discipline" is the
+// Pinned above the Open/Closed groups — "add a new discipline" is the
 // first thing in this column. Opens DisciplinePicker rather than creating
 // a session directly (see TrainingRoom.tsx); no file picker here either
 // way — a session starts empty, clips get added once it's open in Hero.

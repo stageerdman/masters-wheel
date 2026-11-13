@@ -130,7 +130,6 @@ export function PerformanceReview() {
         videos={videos}
         selectedId={selectedId}
         onSelect={setSelectedId}
-        onAddRecord={addRecordsFromPaths}
         onRemoveRecord={removeRecord}
         onRemoveMedia={removeHeroMedia}
         onOpenFolder={openRecordFolder}
@@ -178,7 +177,7 @@ export function PerformanceReview() {
       ) : (
         <div className={position.emptyState} data-construction>
           <p className={styles.emptyStateText} data-construction>
-            No records yet — add one from the list on the left.
+            No records yet — drop a call recording anywhere here to add one.
           </p>
         </div>
       )}

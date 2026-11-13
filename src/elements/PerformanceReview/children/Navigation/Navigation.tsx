@@ -5,7 +5,6 @@ import { SearchBar } from "@/elements/SearchBar/SearchBar";
 import { ContextMenu, type ContextMenuItem } from "@/elements/ContextMenu/ContextMenu";
 import { compareNewestFirst, type VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import { VideoListItem } from "./children/VideoListItem/VideoListItem";
-import { AddRecordListItem } from "./children/AddRecordListItem/AddRecordListItem";
 import position from "./Navigation.position.module.css";
 import styles from "./Navigation.styles.module.css";
 
@@ -13,7 +12,6 @@ type NavigationProps = {
   videos: VideoRecord[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onAddRecord: (paths: string[]) => void;
   onRemoveRecord: (id: string) => void;
   onRemoveMedia: (id: string) => void;
   onOpenFolder: (id: string) => void;
@@ -25,7 +23,6 @@ export function Navigation({
   videos,
   selectedId,
   onSelect,
-  onAddRecord,
   onRemoveRecord,
   onRemoveMedia,
   onOpenFolder,
@@ -55,9 +52,6 @@ export function Navigation({
             />
           </li>
         ))}
-        <li>
-          <AddRecordListItem onFilesPicked={onAddRecord} />
-        </li>
       </ul>
       {menuTarget && (
         <ContextMenu
