@@ -9,7 +9,14 @@ import styles from "./ScorePanel.styles.module.css";
 type ScorePanelProps = {
   criteria: ScorecardCriterionDef[];
   onChange: (next: ScorecardCriterionDef[]) => void;
+  summaryPrompt: string;
+  onSummaryPromptChange: (prompt: string) => void;
 };
+
+// Not a real criterion id — just this panel's expand/collapse key for the
+// fixed Summary row, chosen so it can't collide with a criterion's id
+// (one default criterion is literally id "summary").
+const SUMMARY_ROW_ID = "__scorecardSummary";
 
 function blankCriterion(): ScorecardCriterionDef {
   return { id: crypto.randomUUID(), name: "", prompt: "" };
@@ -26,7 +33,7 @@ function ensureTrailingBlank(list: ScorecardCriterionDef[]): ScorecardCriterionD
   return list;
 }
 
-export function ScorePanel({ criteria, onChange }: ScorePanelProps) {
+export function ScorePanel({ criteria, onChange, summaryPrompt, onSummaryPromptChange }: ScorePanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   function updateCriteria(next: ScorecardCriterionDef[]) {
@@ -66,6 +73,16 @@ export function ScorePanel({ criteria, onChange }: ScorePanelProps) {
           </li>
         );
       })}
+      <li className={position.item} data-construction>
+        <ScoreRow
+          criterion={{ id: SUMMARY_ROW_ID, name: "Summary", prompt: summaryPrompt }}
+          isExpanded={expandedId === SUMMARY_ROW_ID}
+          onToggle={() => setExpandedId((current) => (current === SUMMARY_ROW_ID ? null : SUMMARY_ROW_ID))}
+          onPromptChange={onSummaryPromptChange}
+          onDelete={() => {}}
+          canDelete={false}
+        />
+      </li>
     </ul>
   );
 }

@@ -20,7 +20,7 @@ type ScorecardProps = {
 // button, or an error + "Try again" if the last attempt failed), a real
 // `claude` CLI call in flight (can take up to a minute or two — see
 // src/lib/scorecard/generate.ts), or a real result (one row per
-// criterion, a whole-call summary, then the improvement suggestion).
+// criterion, then a whole-call summary).
 // Each row expands inline (click to open, one open at a time — see
 // ScorecardRow) to show its timestamp(s) and reasoning. Regenerating an
 // existing scorecard (the header's "SC" button) shows the same
@@ -111,14 +111,6 @@ export function Scorecard({ scorecard, isGenerating, onGenerate, onSeek, criteri
           </p>
         </div>
       )}
-      <div className={position.suggestion} data-construction>
-        <p className={`${styles.suggestionLabel} ${position.suggestionLabel}`} data-construction>
-          Focus next
-        </p>
-        <p className={`${styles.suggestionText} ${position.suggestionText}`} data-construction>
-          {scorecard.improvementSuggestion}
-        </p>
-      </div>
     </div>
   );
 }

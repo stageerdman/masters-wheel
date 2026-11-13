@@ -6,7 +6,7 @@
 // Output format: plain labeled lines, not JSON content — same choice
 // `roleplay.rs` already made and documented (empirically more reliable
 // than asking the model to emit JSON). Every criterion block and the
-// trailing summary/improvement fields are parsed defensively: a
+// trailing summary field are parsed defensively: a
 // malformed or missing field is just skipped, never throws — same
 // tolerance convention as every other parser in this app. Rust stays a
 // dumb transport layer; all scorecard-shape/rubric knowledge and the
@@ -14,7 +14,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { parseTimestampToSeconds } from "@/lib/transcript";
-import type { ScorecardCriterionDef } from "@/lib/settings";
+import { DEFAULT_SCORECARD_SUMMARY_PROMPT, type ScorecardCriterionDef } from "@/lib/settings";
 import { SCORECARD_RATING_ORDER, SCORECARD_RATING_META, type Scorecard, type ScorecardItem } from "./index";
 
 const RUBRIC_TEXT = SCORECARD_RATING_ORDER.map(
@@ -23,9 +23,11 @@ const RUBRIC_TEXT = SCORECARD_RATING_ORDER.map(
 
 function buildScorecardPrompt(
   criteria: ScorecardCriterionDef[],
+  summaryPrompt: string,
   businessDescription: string,
   transcriptRaw: string
 ): { systemPrompt: string; message: string } {
+  const summaryInstruction = summaryPrompt.trim() || DEFAULT_SCORECARD_SUMMARY_PROMPT;
   const criteriaBlock = criteria
     .map((criterion, index) => `${index + 1}. id="${criterion.id}" name="${criterion.name}"\n   What to look for: ${criterion.prompt}`)
     .join("\n");
@@ -51,8 +53,7 @@ REASONING: <one paragraph, on a single line with no line breaks, explaining why 
 
 After every criterion block, output a line containing only ===, then:
 
-SUMMARY: <one short paragraph summarizing the whole call, on a single line>
-IMPROVEMENT: <one short paragraph: the single highest-leverage thing to improve next time, on a single line>
+SUMMARY: <the whole-call summary, on a single line with no line breaks — what it should cover: ${summaryInstruction}>
 
 Output nothing else — no preamble, no markdown headings, no code fences.`;
 
@@ -87,9 +88,9 @@ function parseTimestampList(raw: string | null): number[] {
 }
 
 // Splits the whole reply on a line that is exactly "===" into the
-// criteria section and the trailing summary/improvement section. No
-// separator found (a malformed reply) just means the tail is empty —
-// summary/improvement default to "" rather than throwing.
+// criteria section and the trailing summary section. No separator found
+// (a malformed reply) just means the tail is empty — summary defaults to
+// "" rather than throwing.
 function splitOnSeparator(raw: string): [string, string] {
   const lines = raw.split("\n");
   const index = lines.findIndex((line) => line.trim() === "===");
@@ -100,7 +101,7 @@ function splitOnSeparator(raw: string): [string, string] {
 function parseScorecardReply(
   raw: string,
   criteria: ScorecardCriterionDef[]
-): Pick<Scorecard, "items" | "summary" | "improvementSuggestion"> {
+): Pick<Scorecard, "items" | "summary"> {
   const [criteriaSection, tailSection] = splitOnSeparator(raw);
   const blocks = criteriaSection.split(/^CRITERION:/m).slice(1);
 
@@ -122,12 +123,12 @@ function parseScorecardReply(
   return {
     items,
     summary: extractLabel(tailSection, "SUMMARY") ?? "",
-    improvementSuggestion: extractLabel(tailSection, "IMPROVEMENT") ?? "",
   };
 }
 
 export async function generateScorecard(
   allCriteria: ScorecardCriterionDef[],
+  summaryPrompt: string,
   businessDescription: string,
   transcriptRaw: string
 ): Promise<Scorecard> {
@@ -135,11 +136,11 @@ export async function generateScorecard(
   // to type the next score — that's purely a Settings-UI affordance, not
   // a real criterion, and must never be scored or sent to the model.
   const criteria = allCriteria.filter((criterion) => criterion.name.trim() !== "" && criterion.prompt.trim() !== "");
-  const { systemPrompt, message } = buildScorecardPrompt(criteria, businessDescription, transcriptRaw);
+  const { systemPrompt, message } = buildScorecardPrompt(criteria, summaryPrompt, businessDescription, transcriptRaw);
   const raw = await invoke<string>("run_claude_once", { systemPrompt, message });
-  const { items, summary, improvementSuggestion } = parseScorecardReply(raw, criteria);
+  const { items, summary } = parseScorecardReply(raw, criteria);
   if (items.length === 0) {
     throw new Error("Claude's reply didn't match the expected format — try generating again.");
   }
-  return { generatedAt: new Date().toISOString(), items, summary, improvementSuggestion };
+  return { generatedAt: new Date().toISOString(), items, summary };
 }

@@ -434,7 +434,8 @@ between the two lists. Each page gets its own section as pages get added.
       timestamp independently clickable and seeking the real video — and
       the AI's reasoning, which can itself reference a moment as
       `[MM:SS]`/`[HH:MM:SS]` inline, also clickable. A whole-call summary
-      and an improvement-suggestion line sit below the rows. Empty state
+      sits below the rows, generated from the Summary prompt set on the
+      Settings page's Score panel (a fixed last row, not deletable). Empty state
       is just a "Generate Scorecard" button (real generation — see
       "Built (real functionality)" below); on failure shows the error
       inline with a "Try again" button instead of silently doing nothing.

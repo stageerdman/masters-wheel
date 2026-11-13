@@ -69,7 +69,6 @@ export type Scorecard = {
   items: ScorecardItem[];
   // A short summary of the whole call, shown once below every row.
   summary: string;
-  improvementSuggestion: string;
 };
 
 // Skipped items don't count toward the average — per dictation, Skipped

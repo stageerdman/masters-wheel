@@ -41,11 +41,3 @@
   margin-top: 1rem;
   padding-top: 0.75rem;
 }
-
-.suggestion {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-}

@@ -27,7 +27,13 @@ export type ScorecardCriterionDef = {
 export type SpaceSettings = {
   businessDescription: string;
   scorecardCriteria: ScorecardCriterionDef[];
+  // What the Scorecard's whole-call summary (shown once below every row)
+  // should cover — edited on the Settings page's Score panel alongside the
+  // criteria. Blank falls back to the default at generation time.
+  scorecardSummaryPrompt: string;
 };
+
+export const DEFAULT_SCORECARD_SUMMARY_PROMPT = "One short paragraph summarizing the whole call.";
 
 // Seeded with the 11 criteria this app shipped with before scoring
 // criteria became user-editable — same ids as the old fixed
@@ -105,7 +111,11 @@ function defaultScorecardCriteria(): ScorecardCriterionDef[] {
 }
 
 function defaultSettings(): SpaceSettings {
-  return { businessDescription: "", scorecardCriteria: defaultScorecardCriteria() };
+  return {
+    businessDescription: "",
+    scorecardCriteria: defaultScorecardCriteria(),
+    scorecardSummaryPrompt: DEFAULT_SCORECARD_SUMMARY_PROMPT,
+  };
 }
 
 function parseScorecardCriteria(raw: unknown): ScorecardCriterionDef[] | null {
@@ -136,6 +146,10 @@ function parseSettings(text: string): SpaceSettings | null {
   return {
     businessDescription: typeof candidate.businessDescription === "string" ? candidate.businessDescription : "",
     scorecardCriteria: parseScorecardCriteria(candidate.scorecardCriteria) ?? defaultScorecardCriteria(),
+    scorecardSummaryPrompt:
+      typeof candidate.scorecardSummaryPrompt === "string"
+        ? candidate.scorecardSummaryPrompt
+        : DEFAULT_SCORECARD_SUMMARY_PROMPT,
   };
 }
 

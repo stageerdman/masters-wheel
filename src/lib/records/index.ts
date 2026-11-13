@@ -129,7 +129,6 @@ function parseScorecard(text: string): Scorecard | null {
     generatedAt: candidate.generatedAt,
     items,
     summary: typeof candidate.summary === "string" ? candidate.summary : "",
-    improvementSuggestion: typeof candidate.improvementSuggestion === "string" ? candidate.improvementSuggestion : "",
   };
 }
 

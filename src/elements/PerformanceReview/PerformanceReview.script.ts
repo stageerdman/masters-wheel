@@ -90,6 +90,7 @@ export function usePerformanceReviewData() {
   // Roleplay's setup conversation (see roleplay.rs) — loaded once
   // alongside scorecardCriteria below, same settings.json read.
   const [businessDescription, setBusinessDescription] = useState("");
+  const [scorecardSummaryPrompt, setScorecardSummaryPrompt] = useState("");
   const [isTranscriptUploadOpen, setIsTranscriptUploadOpen] = useState(false);
   const [transcriptUploadError, setTranscriptUploadError] = useState<string | null>(null);
   const [isGenerateTranscriptOpen, setIsGenerateTranscriptOpen] = useState(false);
@@ -137,6 +138,7 @@ export function usePerformanceReviewData() {
       if (cancelled) return;
       setScorecardCriteria(settings.scorecardCriteria);
       setBusinessDescription(settings.businessDescription);
+      setScorecardSummaryPrompt(settings.scorecardSummaryPrompt);
     });
     return () => {
       cancelled = true;
@@ -587,7 +589,7 @@ export function usePerformanceReviewData() {
         delete next[id];
         return next;
       });
-      generateRealScorecard(scorecardCriteria, businessDescription, transcriptRaw)
+      generateRealScorecard(scorecardCriteria, scorecardSummaryPrompt, businessDescription, transcriptRaw)
         .then((fresh) => {
           setScorecards((prev) => ({ ...prev, [id]: fresh }));
           writeScorecard(id, fresh).catch((error) => console.error("Failed to write scorecard:", id, error));
@@ -603,7 +605,7 @@ export function usePerformanceReviewData() {
           });
         });
     },
-    [transcripts, scorecardCriteria, businessDescription]
+    [transcripts, scorecardCriteria, scorecardSummaryPrompt, businessDescription]
   );
 
   // Real generation for the Question Analysis card — same shape as

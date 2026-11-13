@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { useHeaderActions } from "@/elements/AppHeader/AppHeader.context";
-import { readSettings, writeSettings, type ScorecardCriterionDef } from "@/lib/settings";
+import { readSettings, writeSettings, type ScorecardCriterionDef, type SpaceSettings } from "@/lib/settings";
 import { BackgroundImage } from "./children/BackgroundImage/BackgroundImage";
 import { SettingsSidebar, type SettingsCategory } from "./children/SettingsSidebar/SettingsSidebar";
 import { ProfilePanel } from "./children/ProfilePanel/ProfilePanel";
@@ -18,9 +18,11 @@ export function Settings() {
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>("profile");
   const [businessDescription, setBusinessDescription] = useState("");
   const [scorecardCriteria, setScorecardCriteria] = useState<ScorecardCriterionDef[]>([]);
+  const [scorecardSummaryPrompt, setScorecardSummaryPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const businessDescriptionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const scorecardCriteriaTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // One debounce timer per settings field, so typing in one field never
+  // cancels another field's pending write.
+  const writeTimers = useRef<Partial<Record<keyof SpaceSettings, ReturnType<typeof setTimeout>>>>({});
 
   useEffect(() => {
     setBrand({ label: "Settings", showLogo: true });
@@ -33,6 +35,7 @@ export function Settings() {
       if (cancelled) return;
       setBusinessDescription(settings.businessDescription);
       setScorecardCriteria(settings.scorecardCriteria);
+      setScorecardSummaryPrompt(settings.scorecardSummaryPrompt);
       setIsLoading(false);
     });
     return () => {
@@ -40,26 +43,27 @@ export function Settings() {
     };
   }, []);
 
+  function debouncedWrite<K extends keyof SpaceSettings>(key: K, value: SpaceSettings[K]) {
+    if (!isTauri()) return;
+    clearTimeout(writeTimers.current[key]);
+    writeTimers.current[key] = setTimeout(() => {
+      writeSettings({ [key]: value }).catch((error) => console.error("Failed to write settings:", error));
+    }, WRITE_DEBOUNCE_MS);
+  }
+
   function handleBusinessDescriptionChange(value: string) {
     setBusinessDescription(value);
-    if (!isTauri()) return;
-    clearTimeout(businessDescriptionTimer.current);
-    businessDescriptionTimer.current = setTimeout(() => {
-      writeSettings({ businessDescription: value }).catch((error) =>
-        console.error("Failed to write settings:", error)
-      );
-    }, WRITE_DEBOUNCE_MS);
+    debouncedWrite("businessDescription", value);
   }
 
   function handleScorecardCriteriaChange(next: ScorecardCriterionDef[]) {
     setScorecardCriteria(next);
-    if (!isTauri()) return;
-    clearTimeout(scorecardCriteriaTimer.current);
-    scorecardCriteriaTimer.current = setTimeout(() => {
-      writeSettings({ scorecardCriteria: next }).catch((error) =>
-        console.error("Failed to write settings:", error)
-      );
-    }, WRITE_DEBOUNCE_MS);
+    debouncedWrite("scorecardCriteria", next);
+  }
+
+  function handleScorecardSummaryPromptChange(value: string) {
+    setScorecardSummaryPrompt(value);
+    debouncedWrite("scorecardSummaryPrompt", value);
   }
 
   if (isLoading) return null;
@@ -75,7 +79,12 @@ export function Settings() {
             onBusinessDescriptionChange={handleBusinessDescriptionChange}
           />
         ) : (
-          <ScorePanel criteria={scorecardCriteria} onChange={handleScorecardCriteriaChange} />
+          <ScorePanel
+            criteria={scorecardCriteria}
+            onChange={handleScorecardCriteriaChange}
+            summaryPrompt={scorecardSummaryPrompt}
+            onSummaryPromptChange={handleScorecardSummaryPromptChange}
+          />
         )}
       </div>
     </div>

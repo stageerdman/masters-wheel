@@ -5,11 +5,13 @@ import position from "./ScoreRow.position.module.css";
 import styles from "./ScoreRow.styles.module.css";
 
 type ScoreRowProps = {
-  ordinal: number;
+  // Omitted for a fixed row (e.g. the Scorecard's Summary) — no "Score N".
+  ordinal?: number;
   criterion: ScorecardCriterionDef;
   isExpanded: boolean;
   onToggle: () => void;
-  onNameChange: (name: string) => void;
+  // Omitted for a fixed row — the name renders as plain text, not an input.
+  onNameChange?: (name: string) => void;
   onPromptChange: (prompt: string) => void;
   onDelete: () => void;
   canDelete: boolean;
@@ -17,7 +19,8 @@ type ScoreRowProps = {
 
 // One scoring criterion: "Score N" + an inline-editable name on the left;
 // clicking the row (not the name input) drops down a translucent panel to
-// edit the prompt/definition the AI scores this criterion against.
+// edit the prompt/definition the AI scores this criterion against. Also
+// used, without ordinal/name editing/delete, for the fixed Summary row.
 export function ScoreRow({
   ordinal,
   criterion,
@@ -44,18 +47,26 @@ export function ScoreRow({
           }
         }}
       >
-        <span className={`${styles.ordinal} ${position.ordinal}`} data-construction>
-          Score {ordinal}
-        </span>
-        <input
-          type="text"
-          className={`${styles.nameInput} ${position.nameInput}`}
-          data-construction
-          value={criterion.name}
-          onChange={(event) => onNameChange(event.target.value)}
-          onClick={(event) => event.stopPropagation()}
-          placeholder="Name this score"
-        />
+        {ordinal !== undefined && (
+          <span className={`${styles.ordinal} ${position.ordinal}`} data-construction>
+            Score {ordinal}
+          </span>
+        )}
+        {onNameChange ? (
+          <input
+            type="text"
+            className={`${styles.nameInput} ${position.nameInput}`}
+            data-construction
+            value={criterion.name}
+            onChange={(event) => onNameChange(event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            placeholder="Name this score"
+          />
+        ) : (
+          <span className={`${styles.nameInput} ${position.nameInput}`} data-construction>
+            {criterion.name}
+          </span>
+        )}
         {canDelete && (
           <button
             type="button"
@@ -65,7 +76,7 @@ export function ScoreRow({
               event.stopPropagation();
               onDelete();
             }}
-            aria-label={`Delete ${criterion.name || `Score ${ordinal}`}`}
+            aria-label={`Delete ${criterion.name || `Score ${ordinal ?? ""}`}`}
             title="Delete"
           >
             ×
