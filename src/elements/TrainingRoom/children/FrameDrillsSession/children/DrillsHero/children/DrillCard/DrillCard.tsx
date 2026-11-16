@@ -5,8 +5,9 @@ import { BookmarkSimple, Play, Stop } from "@phosphor-icons/react";
 import { ContextMenu } from "@/elements/ContextMenu/ContextMenu";
 import { AnchoredPopup } from "@/elements/AnchoredPopup/AnchoredPopup";
 import { useAnchoredPopup } from "@/lib/useAnchoredPopup";
+import type { TemplateSaveTarget } from "@/elements/TrainingRoom/children/FrameDrillsSession/FrameDrillsSession.script";
 import {
-  TIMER_OPTIONS,
+  timerOptionsFor,
   drillClockMs,
   formatDrillClock,
   timerOptionLabel,
@@ -32,8 +33,7 @@ type DrillCardProps = {
   onTimerChange: (seconds: number | null) => void;
   onPlay: () => void;
   onStop: () => void;
-  // targetId null = new template; otherwise overwrite that template.
-  onSaveTemplate: (targetId: string | null) => void;
+  onSaveTemplate: (target: TemplateSaveTarget) => void;
   onRemove: () => void;
 };
 
@@ -152,7 +152,7 @@ export function DrillCard({
           disabled={isRecording}
           aria-label="Timer"
         >
-          {TIMER_OPTIONS.map((seconds) => (
+          {timerOptionsFor(drill.timerSeconds).map((seconds) => (
             <option key={seconds ?? "none"} value={seconds === null ? "" : String(seconds)}>
               {timerOptionLabel(seconds)}
             </option>
@@ -207,8 +207,8 @@ export function DrillCard({
         <AnchoredPopup anchorRect={saveAnchorRect} onClose={closeSaveMenu}>
           <SaveTemplateMenu
             templates={templates}
-            onSave={(targetId) => {
-              onSaveTemplate(targetId);
+            onSave={(target) => {
+              onSaveTemplate(target);
               closeSaveMenu();
             }}
           />

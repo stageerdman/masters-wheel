@@ -6,8 +6,20 @@
   width: 18rem;
 }
 
+.newForm {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nameInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+}
+
 .newButton {
-  padding: 0.5rem 0.75rem;
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem;
 }
 
 .label {

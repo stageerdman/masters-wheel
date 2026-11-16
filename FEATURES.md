@@ -933,8 +933,9 @@ See `updates/2026-11-16 FRAME-DRILLS - OPEN/`.
 - [x] Hero: a Voice-Training-style feed of drills (newest on top,
       "+ New drill" pinned above; an empty session shows "Add a frame to
       drill"). Each drill = auto-growing frame text + its own play button
-      + its own timer select (No timer / 0:15 … 5:00; a new drill
-      inherits the latest drill's timer) + a live clock.
+      + its own timer select (No timer / 10–60 min in 10-minute steps,
+      default 30:00; a new drill inherits the latest drill's timer) + a
+      live clock.
 - [x] Play records real mic audio (`getUserMedia` + `MediaRecorder` in the
       webview; `src-tauri/Info.plist` declares
       `NSMicrophoneUsageDescription`) and starts the timer together. At
@@ -945,11 +946,12 @@ See `updates/2026-11-16 FRAME-DRILLS - OPEN/`.
       (newest first) with a player. Leaving the session mid-take still
       saves it. A denied mic shows an inline error pointing to System
       Settings.
-- [x] Bookmark icon next to the text: "Save as new template" or replace
-      any existing template. Templates are Space-wide
+- [x] Bookmark icon next to the text: name a new template and save it, or
+      replace any existing template's text (it keeps its name). Templates are Space-wide
       (`<Space>/frame-templates.json`), shared by every Frame Drills
       session.
-- [x] Detail: "FR" (every saved frame — click to add it as a new drill,
+- [x] Detail: "FR" (every saved frame by name, text on hover — click to
+      add it as a new drill,
       right-click to delete) above "NT" (notes), on the same split rail.
       Training Room's `Detail` is now one shared element for Voice
       Training, Chat Roleplay and Frame Drills (Chat Roleplay's separate

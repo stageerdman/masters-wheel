@@ -90,7 +90,7 @@ export function DrillsHero({ sessionId, name, onNameChange, drills, onBeforeReco
                 onTimerChange={(seconds) => drills.setDrillTimer(drill.id, seconds)}
                 onPlay={() => void drills.startRecording(drill, onBeforeRecord)}
                 onStop={drills.stopRecording}
-                onSaveTemplate={(targetId) => drills.saveAsTemplate(drill.text, targetId)}
+                onSaveTemplate={(target) => drills.saveAsTemplate(drill.text, target)}
                 onRemove={() => void drills.removeDrill(drill)}
               />
             ))}

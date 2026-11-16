@@ -42,3 +42,13 @@ Detail (Voice Training's notes-only `Detail`, Chat Roleplay's
 its original `chat-roleplay-detail-split-<id>` storage key so saved split
 layouts survive. Its pane is now `overflow: hidden` (was `auto` for
 notes-only) — each pane's content scrolls itself.
+
+## Follow-up (2026-11-16, same day)
+- Timer options changed to No timer / 10–60 min in 10-minute steps,
+  default 30:00 (dictated). A drill saved with an old value (e.g. 1:00)
+  keeps it as an extra selectable option rather than the select silently
+  showing the wrong time (`timerOptionsFor`).
+- Templates have a user-given `name`, entered in the save popover; the
+  Detail's frames list shows names (text as a hover tooltip). Replacing
+  a template keeps its name. Templates saved before names existed fall
+  back to their first line.

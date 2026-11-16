@@ -1,29 +1,50 @@
 "use client";
 
+import { useState } from "react";
 import type { FrameTemplate } from "@/lib/frameDrills";
+import type { TemplateSaveTarget } from "@/elements/TrainingRoom/children/FrameDrillsSession/FrameDrillsSession.script";
 import position from "./SaveTemplateMenu.position.module.css";
 import styles from "./SaveTemplateMenu.styles.module.css";
 
 type SaveTemplateMenuProps = {
   templates: FrameTemplate[];
-  // null = save as a new template; otherwise overwrite that template.
-  onSave: (targetId: string | null) => void;
+  onSave: (target: TemplateSaveTarget) => void;
 };
 
-// The save-as-template popover's content: one primary "new template"
-// action, then every existing template as a "replace this one" choice.
+// The save-as-template popover's content: name a new template (Enter or
+// Save), or pick an existing template by name to overwrite its text.
 export function SaveTemplateMenu({ templates, onSave }: SaveTemplateMenuProps) {
+  const [name, setName] = useState("");
+  const canSave = name.trim().length > 0;
+
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      <button
-        type="button"
-        className={`${styles.newButton} ${position.newButton}`}
+      <form
+        className={position.newForm}
         data-construction
-        onClick={() => onSave(null)}
-        autoFocus
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (canSave) onSave({ kind: "new", name: name.trim() });
+        }}
       >
-        Save as new template
-      </button>
+        <input
+          className={`${styles.nameInput} ${position.nameInput}`}
+          data-construction
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Template name"
+          aria-label="New template name"
+          autoFocus
+        />
+        <button
+          type="submit"
+          className={`${styles.newButton} ${position.newButton}`}
+          data-construction
+          disabled={!canSave}
+        >
+          Save
+        </button>
+      </form>
       {templates.length > 0 && (
         <>
           <p className={`${styles.label} ${position.label}`} data-construction>
@@ -36,10 +57,10 @@ export function SaveTemplateMenu({ templates, onSave }: SaveTemplateMenuProps) {
                 type="button"
                 className={`${styles.option} ${position.option}`}
                 data-construction
-                onClick={() => onSave(template.id)}
+                onClick={() => onSave({ kind: "replace", id: template.id })}
                 title={template.text}
               >
-                {template.text}
+                {template.name}
               </button>
             ))}
           </div>

@@ -8,6 +8,7 @@ import {
   frameDrillsStateToMeta,
   parseFrameDrillsState,
   parseTemplates,
+  timerOptionsFor,
   upsertTemplate,
 } from "./index.ts";
 
@@ -26,30 +27,38 @@ test("timer counts down to negative; no timer counts up", () => {
   assert.equal(drillClockMs(10_000, null), 10_000);
 });
 
-test("upsertTemplate creates a new template on top", () => {
-  const existing = [{ id: "a", text: "A", updatedAt: "t0" }];
-  const next = upsertTemplate(existing, "B", null, "t1", "b");
+test("upsertTemplate creates a named template on top", () => {
+  const existing = [{ id: "a", name: "A", text: "A text", updatedAt: "t0" }];
+  const next = upsertTemplate(existing, "B text", { kind: "new", name: "  Opener  " }, "t1", "b");
   assert.deepEqual(next, [
-    { id: "b", text: "B", updatedAt: "t1" },
-    { id: "a", text: "A", updatedAt: "t0" },
+    { id: "b", name: "Opener", text: "B text", updatedAt: "t1" },
+    { id: "a", name: "A", text: "A text", updatedAt: "t0" },
   ]);
 });
 
-test("upsertTemplate rewrites an existing template in place and moves it to top", () => {
+test("upsertTemplate replace rewrites text, keeps the name, moves to top", () => {
   const existing = [
-    { id: "a", text: "A", updatedAt: "t0" },
-    { id: "b", text: "B", updatedAt: "t0" },
+    { id: "a", name: "A", text: "A", updatedAt: "t0" },
+    { id: "b", name: "Close", text: "B", updatedAt: "t0" },
   ];
-  const next = upsertTemplate(existing, "B2", "b", "t1", "unused");
+  const next = upsertTemplate(existing, "B2", { kind: "replace", id: "b" }, "t1", "unused");
   assert.deepEqual(next, [
-    { id: "b", text: "B2", updatedAt: "t1" },
-    { id: "a", text: "A", updatedAt: "t0" },
+    { id: "b", name: "Close", text: "B2", updatedAt: "t1" },
+    { id: "a", name: "A", text: "A", updatedAt: "t0" },
   ]);
 });
 
-test("upsertTemplate with a vanished target id falls back to creating one", () => {
-  const next = upsertTemplate([], "X", "gone", "t1", "x");
-  assert.deepEqual(next, [{ id: "x", text: "X", updatedAt: "t1" }]);
+test("upsertTemplate with a vanished target or blank name still gets a name", () => {
+  assert.deepEqual(upsertTemplate([], "X line\nmore", { kind: "replace", id: "gone" }, "t1", "x"), [
+    { id: "x", name: "X line", text: "X line\nmore", updatedAt: "t1" },
+  ]);
+  assert.equal(upsertTemplate([], "Hi", { kind: "new", name: "   " }, "t1", "y")[0].name, "Hi");
+});
+
+test("timer defaults to 30 min in 10-minute steps; odd old values stay selectable", () => {
+  assert.deepEqual(timerOptionsFor(1800), [null, 600, 1200, 1800, 2400, 3000, 3600]);
+  assert.deepEqual(timerOptionsFor(60), [null, 60, 600, 1200, 1800, 2400, 3000, 3600]);
+  assert.equal(formatDrillClock(1800 * 1000), "30:00");
 });
 
 test("drill state round-trips without persisting src, tolerates junk", () => {
@@ -75,8 +84,9 @@ test("drill state round-trips without persisting src, tolerates junk", () => {
 
 test("templates file parsing tolerates corrupt input", () => {
   assert.deepEqual(parseTemplates("not json"), []);
+  // A template saved before names existed falls back to its first line.
   assert.deepEqual(parseTemplates('{"templates":[{"id":"a","text":"A"},{"id":1}]}'), [
-    { id: "a", text: "A", updatedAt: "" },
+    { id: "a", name: "A", text: "A", updatedAt: "" },
   ]);
 });
 

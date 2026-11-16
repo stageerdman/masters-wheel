@@ -12,8 +12,9 @@ type FrameTemplateListProps = {
   onDelete: (template: FrameTemplate) => void;
 };
 
-// Frame Drills' Detail "FR" pane: every saved frame in this Space. Click
-// one to add it to the Hero as a new drill; right-click to delete it.
+// Frame Drills' Detail "FR" pane: every saved frame in this Space, by
+// name (its text shows on hover). Click one to add it to the Hero as a
+// new drill; right-click to delete it.
 export function FrameTemplateList({ templates, onAdd, onDelete }: FrameTemplateListProps) {
   const [menu, setMenu] = useState<{ x: number; y: number; template: FrameTemplate } | null>(null);
 
@@ -38,9 +39,10 @@ export function FrameTemplateList({ templates, onAdd, onDelete }: FrameTemplateL
             event.preventDefault();
             setMenu({ x: event.clientX, y: event.clientY, template });
           }}
-          title="Add to drills"
+          title={template.text}
+          aria-label={`Add "${template.name}" to drills`}
         >
-          {template.text}
+          {template.name}
         </button>
       ))}
       {menu && (

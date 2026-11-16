@@ -31,14 +31,18 @@ export type FrameDrillsState = {
 
 export type FrameTemplate = {
   id: string;
+  // User-given, set when the template is first saved; what the Detail's
+  // frames list shows.
+  name: string;
   text: string;
   updatedAt: string;
 };
 
 // The timer select's choices, in seconds. null = "No timer".
-export const TIMER_OPTIONS: (number | null)[] = [null, 15, 30, 45, 60, 90, 120, 180, 300];
+// Drills are long-form (dictated: default 30 min, in 10-minute steps).
+export const TIMER_OPTIONS: (number | null)[] = [null, 600, 1200, 1800, 2400, 3000, 3600];
 
-export const DEFAULT_TIMER_SECONDS = 60;
+export const DEFAULT_TIMER_SECONDS = 1800;
 
 export function emptyFrameDrillsState(): FrameDrillsState {
   return { drills: [] };
@@ -64,21 +68,40 @@ export function timerOptionLabel(seconds: number | null): string {
   return seconds === null ? "No timer" : formatDrillClock(seconds * 1000);
 }
 
-// Saving a drill as a template: `targetId` null creates a new template on
-// top; otherwise that template's text is rewritten in place (and moved to
-// the top, as the most recently touched).
+// The timer select's choices — plus a drill's current value if it isn't
+// one of them (a drill saved before the options changed), so the select
+// never silently shows the wrong value.
+export function timerOptionsFor(current: number | null): (number | null)[] {
+  if (TIMER_OPTIONS.includes(current)) return TIMER_OPTIONS;
+  return [...TIMER_OPTIONS, current].sort((a, b) => (a ?? -1) - (b ?? -1));
+}
+
+// What to call a template with no name (one saved before names existed).
+export function fallbackTemplateName(text: string): string {
+  const firstLine = text.trim().split("\n")[0] ?? "";
+  return firstLine.length > 40 ? `${firstLine.slice(0, 40).trimEnd()}…` : firstLine || "Untitled frame";
+}
+
+// Saving a drill as a template. `target` "new" creates one on top with
+// the given name; otherwise that template's text is rewritten in place
+// (keeping its name) and moved to the top, as the most recently touched.
 export function upsertTemplate(
   templates: FrameTemplate[],
   text: string,
-  targetId: string | null,
+  target: { kind: "new"; name: string } | { kind: "replace"; id: string },
   now: string,
   newId: string
 ): FrameTemplate[] {
-  if (targetId !== null && templates.some((template) => template.id === targetId)) {
-    const updated = { id: targetId, text, updatedAt: now };
-    return [updated, ...templates.filter((template) => template.id !== targetId)];
+  if (target.kind === "replace") {
+    const existing = templates.find((template) => template.id === target.id);
+    if (existing) {
+      const updated = { ...existing, text, updatedAt: now };
+      return [updated, ...templates.filter((template) => template.id !== target.id)];
+    }
+    return [{ id: newId, name: fallbackTemplateName(text), text, updatedAt: now }, ...templates];
   }
-  return [{ id: newId, text, updatedAt: now }, ...templates];
+  const name = target.name.trim() || fallbackTemplateName(text);
+  return [{ id: newId, name, text, updatedAt: now }, ...templates];
 }
 
 function parseTake(raw: unknown): DrillTake | null {
@@ -146,7 +169,17 @@ export function parseTemplates(text: string): FrameTemplate[] {
     if (!entry || typeof entry !== "object") return [];
     const candidate = entry as Partial<FrameTemplate>;
     if (typeof candidate.id !== "string" || typeof candidate.text !== "string") return [];
-    return [{ id: candidate.id, text: candidate.text, updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : "" }];
+    return [
+      {
+        id: candidate.id,
+        name:
+          typeof candidate.name === "string" && candidate.name.trim()
+            ? candidate.name
+            : fallbackTemplateName(candidate.text),
+        text: candidate.text,
+        updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : "",
+      },
+    ];
   });
 }
 

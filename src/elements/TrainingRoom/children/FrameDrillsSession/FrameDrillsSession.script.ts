@@ -28,6 +28,8 @@ function makeId(prefix: string): string {
   return `${prefix}-${Date.now()}-${nextId}`;
 }
 
+export type TemplateSaveTarget = { kind: "new"; name: string } | { kind: "replace"; id: string };
+
 export type UpdateFrameDrills = (update: (prev: FrameDrillsState) => FrameDrillsState) => void;
 
 type ActiveRecording = { drillId: string; startedAt: number; timerSeconds: number | null };
@@ -71,10 +73,10 @@ export function useFrameDrillsSession(sessionId: string, drills: FrameDrill[], u
     }
   }, []);
 
-  // targetId null = save as a new template; otherwise rewrite that one.
+  // A new named template, or rewrite an existing one's text.
   const saveAsTemplate = useCallback(
-    (text: string, targetId: string | null) => {
-      persistTemplates(upsertTemplate(templates, text, targetId, new Date().toISOString(), makeId("template")));
+    (text: string, target: TemplateSaveTarget) => {
+      persistTemplates(upsertTemplate(templates, text, target, new Date().toISOString(), makeId("template")));
     },
     [templates, persistTemplates]
   );

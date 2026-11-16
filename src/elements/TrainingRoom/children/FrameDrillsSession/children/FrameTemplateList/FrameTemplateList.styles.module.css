@@ -5,9 +5,8 @@
   color: var(--color-text);
   font-family: inherit;
   font-size: var(--text-size-label);
-  line-height: 1.45;
+  font-weight: 600;
   text-align: left;
-  white-space: pre-wrap;
   cursor: pointer;
 }
 
