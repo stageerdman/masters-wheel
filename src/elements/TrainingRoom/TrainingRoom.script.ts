@@ -32,6 +32,12 @@ import {
 } from "@/lib/training";
 import { serializeTranscript, toCanonicalTranscript } from "@/lib/transcript";
 import {
+  emptyFrameDrillsState,
+  frameDrillsStateToMeta,
+  parseFrameDrillsState,
+  type FrameDrillsState,
+} from "@/lib/frameDrills";
+import {
   GENERATE_CANCELLED,
   cancelGenerateTranscript,
   onGenerateTranscriptProgress,
@@ -136,12 +142,35 @@ async function learningStateFromMeta(sessionId: string, raw: unknown): Promise<L
   return { ...parsed, files };
 }
 
+// Same "rebuild src from storedFileName, never trust it from disk" step as
+// learningStateFromMeta above, for each drill's recorded takes.
+async function frameDrillsStateFromMeta(sessionId: string, raw: unknown): Promise<FrameDrillsState | null> {
+  const parsed = parseFrameDrillsState(raw);
+  if (!parsed) return null;
+  const drills = await Promise.all(
+    parsed.drills.map(async (drill) => ({
+      ...drill,
+      takes: await Promise.all(
+        drill.takes.map(async (take) => ({
+          ...take,
+          src: convertFileSrc(await clipAbsolutePath(sessionId, take.storedFileName)),
+        }))
+      ),
+    }))
+  );
+  return { drills };
+}
+
 async function sessionFromSummary(summary: SessionSummary): Promise<TrainingSession> {
   const clips = await Promise.all(summary.clips.map((clip) => clipFromMeta(summary.id, clip)));
   const learning = await learningStateFromMeta(summary.id, summary.learning);
+  const toolType = normalizeToolType(summary.toolType);
+  const frameDrills =
+    (await frameDrillsStateFromMeta(summary.id, summary.frameDrills)) ??
+    (toolType === "frameDrills" ? emptyFrameDrillsState() : null);
   return {
     id: summary.id,
-    toolType: normalizeToolType(summary.toolType),
+    toolType,
     name: summary.name,
     status: isSessionStatus(summary.status) ? summary.status : "open",
     lastUpdatedAt: summary.lastUpdatedAt,
@@ -149,6 +178,7 @@ async function sessionFromSummary(summary: SessionSummary): Promise<TrainingSess
     notes: summary.notes,
     roleplay: parseRoleplayState(summary.roleplay),
     learning,
+    frameDrills,
   };
 }
 
@@ -354,6 +384,7 @@ export function useTrainingRoomData() {
         notes: "",
         roleplay: null,
         learning: toolType === "learning" ? emptyLearningState() : null,
+        frameDrills: toolType === "frameDrills" ? emptyFrameDrillsState() : null,
       };
       setSessions((prev) => [fresh, ...prev]);
       setSelectedIdState(id);
@@ -437,6 +468,28 @@ export function useTrainingRoomData() {
       );
     },
     [writeNow]
+  );
+
+  // Frame Drills' whole state goes through one functional updater, so an
+  // async step (a take finishing its write to disk) always applies on top
+  // of the latest drills rather than a stale snapshot. Every change —
+  // typing included — goes through the same debounced write: the pending
+  // partial always carries the latest full state, so a burst of edits can
+  // never land on disk out of order (mixing in writeNow could let an older
+  // debounced write fire after a newer immediate one).
+  const updateFrameDrills = useCallback(
+    (sessionId: string, update: (prev: FrameDrillsState) => FrameDrillsState) => {
+      setSessions((prev) =>
+        prev.map((session) => {
+          if (session.id !== sessionId) return session;
+          const frameDrills = update(session.frameDrills ?? emptyFrameDrillsState());
+          const lastUpdatedAt = new Date().toISOString();
+          scheduleMetaWrite(sessionId, { frameDrills: frameDrillsStateToMeta(frameDrills), lastUpdatedAt });
+          return { ...session, frameDrills, lastUpdatedAt };
+        })
+      );
+    },
+    [scheduleMetaWrite]
   );
 
   const addClip = useCallback(
@@ -823,7 +876,9 @@ export function useTrainingRoomData() {
     [selectedId, selected, addLearningFiles, addClips]
   );
   const isDragActive = useWindowFileDrop(
-    !isUploadOpen && !isTranscriptUploadOpen && selected !== null,
+    // Frame Drills has no file uploads — a drop there must not turn into
+    // a stray clip.
+    !isUploadOpen && !isTranscriptUploadOpen && selected !== null && selected.toolType !== "frameDrills",
     onWindowFileDrop
   );
 
@@ -851,6 +906,7 @@ export function useTrainingRoomData() {
     renameSession,
     onNotesChange,
     updateRoleplay,
+    updateFrameDrills,
     addClip: uploadClip,
     generateTranscript,
     generationByMedia,

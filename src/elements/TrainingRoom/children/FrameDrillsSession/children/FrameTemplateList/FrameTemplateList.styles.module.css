@@ -1,0 +1,25 @@
+.item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-size-label);
+  line-height: 1.45;
+  text-align: left;
+  white-space: pre-wrap;
+  cursor: pointer;
+}
+
+.item:hover {
+  border-color: var(--color-accent);
+}
+
+.item:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-label);
+}

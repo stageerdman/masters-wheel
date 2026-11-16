@@ -119,7 +119,28 @@ fn notes_text(session: &serde_json::Value) -> String {
             .collect::<Vec<_>>()
             .join("\n\n");
     }
-    session.get("notes").and_then(|v| v.as_str()).unwrap_or_default().to_string()
+    let notes = session.get("notes").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+    // Frame Drills: each drill's frame text is the session's real content
+    // (its takes are audio only) — listed newest first, after any notes.
+    let Some(frame_drills) = session.get("frameDrills").filter(|v| !v.is_null()) else {
+        return notes;
+    };
+    let frames: Vec<String> = frame_drills
+        .get("drills")
+        .and_then(|v| v.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|drill| {
+            let text = drill.get("text").and_then(|t| t.as_str()).filter(|t| !t.trim().is_empty())?;
+            let takes = drill.get("takes").and_then(|t| t.as_array()).map_or(0, Vec::len);
+            Some(format!("- {text} ({takes} recorded take{})", if takes == 1 { "" } else { "s" }))
+        })
+        .collect();
+    if frames.is_empty() {
+        return notes;
+    }
+    let drills = format!("Frame drills:\n{}", frames.join("\n"));
+    if notes.is_empty() { drills } else { format!("{notes}\n\n{drills}") }
 }
 
 // Voice Training's clips and Learning's files each carry their own

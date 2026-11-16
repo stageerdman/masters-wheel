@@ -6,18 +6,21 @@
 import type { BookmarkMeta } from "@/elements/BookmarkBadge/BookmarkBadge";
 import { parseWordTimings } from "@/lib/training";
 import type { DiarizedWord } from "@/lib/transcript/generate";
+import type { FrameDrillsState } from "@/lib/frameDrills";
 import type { RoleplayState } from "./children/ChatRoleplaySession/ChatRoleplaySession.data";
 
 // Detail's content kinds. Voice Training still only ever shows "notes"
 // (its transcript already lives inline in the Hero feed) — the second
 // kind, "trainer", exists for Chat Roleplay's own Detail
-// (ChatRoleplaySession/children/RoleplayDetail), which needs a real AI
+// (the shared Detail, with ChatRoleplaySession's AITrainerPane), which needs a real AI
 // Trainer pane above Notes. Both go through the same generic
 // SplitRail/useSplitRail primitive Performance Review uses — Chat
 // Roleplay is simply the "future discipline" the single-kind comment
 // below used to wait for; see
 // `updates/2026-11-06 TRAINING-ROOM - OPEN/wiki.md`.
-export type DetailContentKind = "notes" | "trainer";
+// "frames" is Frame Drills' saved-templates list, pinned above Notes the
+// same way Chat Roleplay pins its AI Trainer.
+export type DetailContentKind = "notes" | "trainer" | "frames";
 
 // Voice Training's Detail — unchanged, still just Notes.
 export const DETAIL_CONTENT_KIND_ORDER: DetailContentKind[] = ["notes"];
@@ -25,9 +28,13 @@ export const DETAIL_CONTENT_KIND_ORDER: DetailContentKind[] = ["notes"];
 // Chat Roleplay's Detail — AI Trainer pinned above Notes.
 export const CHAT_ROLEPLAY_DETAIL_KIND_ORDER: DetailContentKind[] = ["trainer", "notes"];
 
+// Frame Drills' Detail — saved frames (templates) pinned above Notes.
+export const FRAME_DRILLS_DETAIL_KIND_ORDER: DetailContentKind[] = ["frames", "notes"];
+
 export const DETAIL_CONTENT_KIND_META: Record<DetailContentKind, BookmarkMeta> = {
   notes: { label: "NT", color: "var(--color-bookmark-notes)" },
   trainer: { label: "AI", color: "var(--color-bookmark-ai)" },
+  frames: { label: "FR", color: "var(--color-bookmark-frames)" },
 };
 
 // A session's discipline — picked once, up front, in DisciplinePicker
@@ -35,7 +42,13 @@ export const DETAIL_CONTENT_KIND_META: Record<DetailContentKind, BookmarkMeta> =
 // original single value, renamed to "voiceTraining" once more disciplines
 // joined it — TrainingRoom.script.ts's normalizeToolType() still maps a
 // session.json written under the old name to the new one on load.
-export type TrainingToolType = "voiceTraining" | "chatRoleplay" | "voiceRoleplay" | "mindsetShifting" | "learning";
+export type TrainingToolType =
+  | "voiceTraining"
+  | "chatRoleplay"
+  | "voiceRoleplay"
+  | "mindsetShifting"
+  | "learning"
+  | "frameDrills";
 
 // Every discipline, in the order DisciplinePicker lists them — Voice
 // Training first since it's the only one actually built; the rest follow
@@ -46,6 +59,7 @@ export const TOOL_TYPE_ORDER: TrainingToolType[] = [
   "voiceRoleplay",
   "mindsetShifting",
   "learning",
+  "frameDrills",
 ];
 
 // Fixed per session, driven entirely by its discipline — never user-
@@ -91,6 +105,12 @@ export const TOOL_TYPE_META: Record<
     color: "var(--color-discipline-learning)",
     label: "Learning",
     description: "Upload anything worth studying — a recording, a PDF, a book — and build your own notes around it.",
+    locked: false,
+  },
+  frameDrills: {
+    color: "var(--color-discipline-frame-drills)",
+    label: "Frame Drills",
+    description: "Say your frames out loud against the clock until they come out right every time.",
     locked: false,
   },
 };
@@ -265,4 +285,6 @@ export type TrainingSession = {
   roleplay: RoleplayState | null;
   // Learning's own persisted state — null for every other discipline.
   learning: LearningState | null;
+  // Frame Drills' own persisted state — null for every other discipline.
+  frameDrills: FrameDrillsState | null;
 };

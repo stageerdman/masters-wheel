@@ -18,6 +18,7 @@ const CREST_BY_TOOL_TYPE: Record<TrainingToolType, string> = {
   voiceRoleplay: "#i-circles-voice",
   mindsetShifting: "#i-soul",
   learning: "#i-book",
+  frameDrills: "#i-frame",
 };
 
 // Training Room's full-bleed "choose your discipline" cabinet-select
@@ -61,6 +62,7 @@ export function DisciplinePicker({ onClose, onSelect }: DisciplinePickerProps) {
         <symbol id="i-circles-voice" viewBox="0 0 100 100">{DISCIPLINE_SHAPES.voiceRoleplay("url(#discipline-gold-foil)")}</symbol>
         <symbol id="i-soul" viewBox="0 0 100 100">{DISCIPLINE_SHAPES.mindsetShifting("url(#discipline-gold-foil)")}</symbol>
         <symbol id="i-book" viewBox="0 0 100 100">{DISCIPLINE_SHAPES.learning("url(#discipline-gold-foil)")}</symbol>
+        <symbol id="i-frame" viewBox="0 0 100 100">{DISCIPLINE_SHAPES.frameDrills("url(#discipline-gold-foil)")}</symbol>
         {/* Card decoration: corner scrollwork, a 4-point sparkle, a small lock, a checkmark badge. */}
         <symbol id="discipline-i-scroll" viewBox="0 0 24 24">
           <path

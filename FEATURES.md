@@ -926,6 +926,39 @@ voice instead of coaching analysis. Re-split, Phases 23-27:
       "suggested" tag in the AI Assistant; the first real read promotes
       it to "active" (no prompt — see Phase F above).
 
+### Built (real functionality — Frame Drills discipline, 2026-11-16)
+See `updates/2026-11-16 FRAME-DRILLS - OPEN/`.
+- [x] Sixth discipline in `DisciplinePicker` (frame-brackets-around-play
+      crest, `--color-discipline-frame-drills`).
+- [x] Hero: a Voice-Training-style feed of drills (newest on top,
+      "+ New drill" pinned above; an empty session shows "Add a frame to
+      drill"). Each drill = auto-growing frame text + its own play button
+      + its own timer select (No timer / 0:15 … 5:00; a new drill
+      inherits the latest drill's timer) + a live clock.
+- [x] Play records real mic audio (`getUserMedia` + `MediaRecorder` in the
+      webview; `src-tauri/Info.plist` declares
+      `NSMicrophoneUsageDescription`) and starts the timer together. At
+      zero a "Time's up" pop shows on the card for 4 s and the clock runs
+      into minus in `--color-drill-overtime`. Only one drill can record at
+      a time — every other play is disabled. Stop saves the take as an
+      audio file in the session folder; takes list under their drill
+      (newest first) with a player. Leaving the session mid-take still
+      saves it. A denied mic shows an inline error pointing to System
+      Settings.
+- [x] Bookmark icon next to the text: "Save as new template" or replace
+      any existing template. Templates are Space-wide
+      (`<Space>/frame-templates.json`), shared by every Frame Drills
+      session.
+- [x] Detail: "FR" (every saved frame — click to add it as a new drill,
+      right-click to delete) above "NT" (notes), on the same split rail.
+      Training Room's `Detail` is now one shared element for Voice
+      Training, Chat Roleplay and Frame Drills (Chat Roleplay's separate
+      `RoleplayDetail` copy is gone).
+- [x] Right-click a drill → "Remove drill" (confirms first if it has
+      recordings, and deletes their files).
+- [x] AI Assistant: `get_training_session`'s `notes` includes each
+      drill's frame text and take count.
+
 ### To build (real functionality — not started)
 - [ ] Persisting real per-word timestamps (ElevenLabs returns them, still
       discarded at serialize time) so the lyrics highlight is exact

@@ -41,3 +41,9 @@ export function spaceRecordsDir(folderName: string): string {
 export function spaceTrainingDir(folderName: string): string {
   return `${spaceDir(folderName)}/training`;
 }
+
+// Frame Drills' reusable frames — one Space-wide file, shared by every
+// Frame Drills session in that Space (see src/lib/frameDrills/storage.ts).
+export function spaceFrameTemplatesPath(folderName: string): string {
+  return `${spaceDir(folderName)}/frame-templates.json`;
+}

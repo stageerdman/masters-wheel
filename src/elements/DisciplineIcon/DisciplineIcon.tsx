@@ -72,6 +72,19 @@ function bookShape(paint: string): ReactNode {
   );
 }
 
+// Four corner brackets (the "frame") around a play triangle.
+function frameShape(paint: string): ReactNode {
+  return (
+    <>
+      <path d="M12 34 V12 H34" fill="none" stroke={paint} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M66 12 H88 V34" fill="none" stroke={paint} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M88 66 V88 H66" fill="none" stroke={paint} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M34 88 H12 V66" fill="none" stroke={paint} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M41 34 L67 50 L41 66 Z" fill={paint} strokeLinejoin="round" />
+    </>
+  );
+}
+
 // Keyed by discipline rather than by crest id (DisciplinePicker.tsx keeps
 // its own CREST_BY_TOOL_TYPE → symbol-id map) so both call sites stay
 // typed against TrainingToolType instead of a loose string id.
@@ -81,6 +94,7 @@ export const DISCIPLINE_SHAPES: Record<TrainingToolType, (paint: string) => Reac
   voiceRoleplay: circlesVoiceShape,
   mindsetShifting: soulShape,
   learning: bookShape,
+  frameDrills: frameShape,
 };
 
 type DisciplineIconProps = {

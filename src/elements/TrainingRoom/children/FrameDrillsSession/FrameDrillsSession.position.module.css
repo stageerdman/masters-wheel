@@ -1,0 +1,5 @@
+/* No box of its own — the Hero and Detail sit directly in Training
+   Room's row, exactly like the generic Hero/Detail pair. */
+.root {
+  display: contents;
+}

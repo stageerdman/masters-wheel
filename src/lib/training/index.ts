@@ -116,6 +116,10 @@ export type SessionMetaFields = {
   // "this module doesn't know the shape" boundary as roleplay above.
   // `null` for every other discipline.
   learning: unknown;
+  // Frame Drills' own persisted state (drills + their recorded takes) —
+  // same boundary again, see src/lib/frameDrills. `null` for every other
+  // discipline.
+  frameDrills: unknown;
 };
 
 export type SessionSummary = SessionMetaFields & { id: string };
@@ -130,6 +134,7 @@ function emptyMeta(toolType: string, name: string): SessionMetaFields {
     clips: [],
     roleplay: null,
     learning: null,
+    frameDrills: null,
   };
 }
 
@@ -174,6 +179,7 @@ function parseMeta(text: string): SessionMetaFields | null {
     clips,
     roleplay: candidate.roleplay ?? null,
     learning: candidate.learning ?? null,
+    frameDrills: candidate.frameDrills ?? null,
   };
 }
 

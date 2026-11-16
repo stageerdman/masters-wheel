@@ -24,6 +24,10 @@
       "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     },
     {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
+    },
+    {
       "identifier": "fs:allow-exists",
       "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     },

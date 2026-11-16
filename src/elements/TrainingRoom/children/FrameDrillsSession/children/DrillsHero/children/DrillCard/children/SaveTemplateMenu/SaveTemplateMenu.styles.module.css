@@ -1,0 +1,35 @@
+.newButton {
+  background: var(--color-accent);
+  border: none;
+  border-radius: 6px;
+  color: var(--color-on-chip);
+  font-family: inherit;
+  font-size: var(--text-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.newButton:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);
+}
+
+.label {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-micro);
+}
+
+.option {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-size-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover,
+.option:focus-visible {
+  background: var(--color-border);
+}

@@ -1,0 +1,93 @@
+.root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.textRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  overflow: hidden;
+  padding: 0.25rem 0;
+}
+
+.saveButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.playButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+}
+
+.timerSelect {
+  padding: 0.375rem 0.5rem;
+}
+
+.clock {
+  min-width: 3.5rem;
+}
+
+.recDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+}
+
+.timeUp {
+  margin-left: auto;
+  padding: 0.25rem 0.75rem;
+}
+
+.error {
+  margin: 0;
+}
+
+.takes {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.take {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.takeLabel {
+  flex-shrink: 0;
+  min-width: 6.5rem;
+}
+
+.takeAudio {
+  flex: 1;
+  min-width: 0;
+  height: 2rem;
+}

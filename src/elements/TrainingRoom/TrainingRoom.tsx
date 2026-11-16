@@ -13,6 +13,7 @@ import { ChatRoleplaySession } from "./children/ChatRoleplaySession/ChatRoleplay
 import { MindsetShiftingChat } from "./children/MindsetShiftingChat/MindsetShiftingChat";
 import { LearningHero } from "./children/LearningHero/LearningHero";
 import { LearningDetail } from "./children/LearningDetail/LearningDetail";
+import { FrameDrillsSession } from "./children/FrameDrillsSession/FrameDrillsSession";
 import position from "./TrainingRoom.position.module.css";
 import styles from "./TrainingRoom.styles.module.css";
 
@@ -31,6 +32,7 @@ export function TrainingRoom() {
     renameSession,
     onNotesChange,
     updateRoleplay,
+    updateFrameDrills,
     addClip,
     generateTranscript,
     generationByMedia,
@@ -98,6 +100,14 @@ export function TrainingRoom() {
               onNotesChange={(value) => onNotesChange(selected.id, value)}
             />
           </>
+        ) : selected.toolType === "frameDrills" ? (
+          <FrameDrillsSession
+            key={selected.id}
+            session={selected}
+            onNameChange={(name) => renameSession(selected.id, name)}
+            onNotesChange={(value) => onNotesChange(selected.id, value)}
+            onFrameDrillsChange={(update) => updateFrameDrills(selected.id, update)}
+          />
         ) : selected.toolType === "learning" ? (
           <>
             <LearningHero

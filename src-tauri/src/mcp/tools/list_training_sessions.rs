@@ -13,7 +13,7 @@ pub struct TrainingSessionSummary {
     pub session_id: String,
     pub name: String,
     /// One of "voiceTraining" | "chatRoleplay" | "voiceRoleplay" |
-    /// "mindsetShifting" | "learning" — matches TOOL_TYPE_META's keys in
+    /// "mindsetShifting" | "learning" | "frameDrills" — matches TOOL_TYPE_META's keys in
     /// TrainingRoom.data.ts exactly.
     pub tool_type: String,
     /// "open" | "closed".

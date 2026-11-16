@@ -27,6 +27,7 @@
   --color-bookmark-notes: #d97706;
   --color-bookmark-client-card: #0d9488;
   --color-bookmark-scorecard: #be185d;
+  --color-bookmark-frames: #8c6b85;
   --color-on-chip: #ffffff;
   --color-action-training-ground: #ea580c;
 
@@ -42,6 +43,9 @@
   --color-discipline-voice-roleplay: #b8862f;
   --color-discipline-mindset-shifting: #7a8c6b;
   --color-discipline-learning: #5f7a8c;
+  --color-discipline-frame-drills: #8c6b85;
+  /* A Frame Drill's clock once it runs past its timer into minus. */
+  --color-drill-overtime: #dc2626;
 
   /* Scorecard rating levels — each value *is* the visual identity of that
      rating (Skipped/Poor/Good/Great/Outstanding), same reasoning as the

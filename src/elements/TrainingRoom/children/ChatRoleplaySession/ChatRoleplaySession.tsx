@@ -2,7 +2,9 @@
 
 import type { TrainingSession } from "@/elements/TrainingRoom/TrainingRoom.data";
 import { RoleplayChat } from "./children/RoleplayChat/RoleplayChat";
-import { RoleplayDetail } from "./children/RoleplayDetail/RoleplayDetail";
+import { CHAT_ROLEPLAY_DETAIL_KIND_ORDER } from "@/elements/TrainingRoom/TrainingRoom.data";
+import { Detail } from "../Detail/Detail";
+import { AITrainerPane } from "./children/AITrainerPane/AITrainerPane";
 import { RoleplayHero } from "./children/RoleplayHero/RoleplayHero";
 import { SetupThread } from "./children/SetupThread/SetupThread";
 import { useChatRoleplaySession } from "./ChatRoleplaySession.script";
@@ -120,7 +122,15 @@ export function ChatRoleplaySession({ session, notes, onNotesChange, onNameChang
                 onJumpToLive={() => liveRound && selectRound(liveRound.id)}
               />
             )}
-            <RoleplayDetail sessionId={session.id} notes={notes} onNotesChange={onNotesChange} />
+            <Detail
+              sessionId={session.id}
+              notes={notes}
+              onNotesChange={onNotesChange}
+              kindOrder={CHAT_ROLEPLAY_DETAIL_KIND_ORDER}
+              storageKey={`chat-roleplay-detail-split-${session.id}`}
+              renderKind={(kind) => (kind === "trainer" ? <AITrainerPane sessionId={session.id} /> : null)}
+              notesPlaceholder="Notes — private. Never seen by the AI Trainer or the roleplay AI."
+            />
           </div>
         </>
       )}
