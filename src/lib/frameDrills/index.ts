@@ -190,3 +190,21 @@ export function extensionForMime(mime: string): string {
   if (mime.includes("ogg")) return "ogg";
   return "m4a";
 }
+
+// The file name a downloaded take gets in ~/Downloads: the frame's first
+// words + take number, keeping the stored file's extension. Characters
+// Finder/the filesystem dislike are dropped.
+export function takeDownloadName(drillText: string, takeNumber: number, storedFileName: string): string {
+  const extension = storedFileName.includes(".") ? storedFileName.slice(storedFileName.lastIndexOf(".") + 1) : "m4a";
+  const firstLine = (drillText.trim().split("\n")[0] ?? "").replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
+  const label = firstLine.length > 40 ? firstLine.slice(0, 40).trimEnd() : firstLine || "Frame drill";
+  return `${label} - Take ${takeNumber}.${extension}`;
+}
+
+// "name.ext" → "name (2).ext", "name (3).ext", … — for not overwriting an
+// earlier download with the same name.
+export function numberedFileName(fileName: string, n: number): string {
+  if (n <= 1) return fileName;
+  const dot = fileName.lastIndexOf(".");
+  return dot > 0 ? `${fileName.slice(0, dot)} (${n})${fileName.slice(dot)}` : `${fileName} (${n})`;
+}

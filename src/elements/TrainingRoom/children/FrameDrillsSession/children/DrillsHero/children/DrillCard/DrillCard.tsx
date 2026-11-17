@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BookmarkSimple, Play, Stop } from "@phosphor-icons/react";
+import { BookmarkSimple, Check, DownloadSimple, Play, Stop, Trash } from "@phosphor-icons/react";
 import { ContextMenu } from "@/elements/ContextMenu/ContextMenu";
 import { AnchoredPopup } from "@/elements/AnchoredPopup/AnchoredPopup";
 import { useAnchoredPopup } from "@/lib/useAnchoredPopup";
@@ -11,6 +11,7 @@ import {
   drillClockMs,
   formatDrillClock,
   timerOptionLabel,
+  type DrillTake,
   type FrameDrill,
   type FrameTemplate,
 } from "@/lib/frameDrills";
@@ -35,6 +36,10 @@ type DrillCardProps = {
   onStop: () => void;
   onSaveTemplate: (target: TemplateSaveTarget) => void;
   onRemove: () => void;
+  // The take whose download just finished — its button shows a check.
+  downloadedTakeId: string | null;
+  onDownloadTake: (take: DrillTake, takeNumber: number) => void;
+  onDeleteTake: (take: DrillTake) => void;
 };
 
 // One drill: the frame's text (with a save-as-template icon beside it),
@@ -57,6 +62,9 @@ export function DrillCard({
   onStop,
   onSaveTemplate,
   onRemove,
+  downloadedTakeId,
+  onDownloadTake,
+  onDeleteTake,
 }: DrillCardProps) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const { anchorRef: saveAnchorRef, open: isSaveMenuOpen, anchorRect: saveAnchorRect, toggleOpen: toggleSaveMenu, close: closeSaveMenu } =
@@ -186,20 +194,44 @@ export function DrillCard({
 
       {takeCount > 0 && (
         <ol className={position.takes} data-construction>
-          {drill.takes.map((take, index) => (
-            <li key={take.id} className={position.take} data-construction>
-              <span className={`${styles.takeLabel} ${position.takeLabel}`} data-construction>
-                Take {takeCount - index} · {formatDrillClock(take.durationMs)}
-              </span>
-              <audio
-                className={`${styles.takeAudio} ${position.takeAudio}`}
-                data-construction
-                src={take.src}
-                controls
-                preload="metadata"
-              />
-            </li>
-          ))}
+          {drill.takes.map((take, index) => {
+            const takeNumber = takeCount - index;
+            const isDownloaded = downloadedTakeId === take.id;
+            return (
+              <li key={take.id} className={position.take} data-construction>
+                <span className={`${styles.takeLabel} ${position.takeLabel}`} data-construction>
+                  Take {takeNumber} · {formatDrillClock(take.durationMs)}
+                </span>
+                <audio
+                  className={`${styles.takeAudio} ${position.takeAudio}`}
+                  data-construction
+                  src={take.src}
+                  controls
+                  preload="metadata"
+                />
+                <button
+                  type="button"
+                  className={`${styles.iconButton} ${position.takeButton}`}
+                  data-construction
+                  onClick={() => onDownloadTake(take, takeNumber)}
+                  title={isDownloaded ? "Saved to Downloads" : "Download to Downloads folder"}
+                  aria-label={isDownloaded ? `Take ${takeNumber} saved to Downloads` : `Download take ${takeNumber}`}
+                >
+                  {isDownloaded ? <Check size={16} weight="bold" /> : <DownloadSimple size={16} />}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.iconButton} ${position.takeButton}`}
+                  data-construction
+                  onClick={() => onDeleteTake(take)}
+                  title="Delete take"
+                  aria-label={`Delete take ${takeNumber}`}
+                >
+                  <Trash size={16} />
+                </button>
+              </li>
+            );
+          })}
         </ol>
       )}
 

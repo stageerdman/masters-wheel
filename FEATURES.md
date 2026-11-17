@@ -946,6 +946,10 @@ See `updates/2026-11-16 FRAME-DRILLS - OPEN/`.
       (newest first) with a player. Leaving the session mid-take still
       saves it. A denied mic shows an inline error pointing to System
       Settings.
+- [x] Each take has a download button (copies it to ~/Downloads as
+      "<frame's first line> - Take N.<ext>", never overwriting — adds
+      " (2)" etc.; the icon flips to a check for 2 s) and a trash button
+      (deletes the take and its file immediately, no confirm).
 - [x] Bookmark icon next to the text: name a new template and save it, or
       replace any existing template's text (it keeps its name). Templates are Space-wide
       (`<Space>/frame-templates.json`), shared by every Frame Drills

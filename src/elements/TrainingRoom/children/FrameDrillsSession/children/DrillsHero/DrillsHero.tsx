@@ -92,6 +92,9 @@ export function DrillsHero({ sessionId, name, onNameChange, drills, onBeforeReco
                 onStop={drills.stopRecording}
                 onSaveTemplate={(target) => drills.saveAsTemplate(drill.text, target)}
                 onRemove={() => void drills.removeDrill(drill)}
+                downloadedTakeId={drills.downloadedTakeId}
+                onDownloadTake={(take, takeNumber) => void drills.downloadTake(drill, take, takeNumber)}
+                onDeleteTake={(take) => drills.deleteTake(drill.id, take)}
               />
             ))}
           </div>

@@ -10,14 +10,17 @@ import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import {
   DEFAULT_TIMER_SECONDS,
+  takeDownloadName,
   upsertTemplate,
   type DrillTake,
   type FrameDrill,
   type FrameDrillsState,
   type FrameTemplate,
 } from "@/lib/frameDrills";
-import { loadTemplates, removeTake, saveTemplates, storeTake } from "@/lib/frameDrills/storage";
+import { downloadTake as copyTakeToDownloads, loadTemplates, removeTake, saveTemplates, storeTake } from "@/lib/frameDrills/storage";
 
+// How long a take's download button shows its "Saved" check.
+const DOWNLOADED_MS = 2000;
 // How long the "Time's up" pop stays on the card once the timer hits zero.
 const TIME_UP_POP_MS = 4000;
 const TICK_MS = 200;
@@ -168,6 +171,48 @@ export function useFrameDrillsSession(sessionId: string, drills: FrameDrill[], u
     [sessionId, update]
   );
 
+  // ---- Takes: download to ~/Downloads, delete (no confirm — one click) ----
+  const [downloadedTakeId, setDownloadedTakeId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!downloadedTakeId) return;
+    const timeout = setTimeout(() => setDownloadedTakeId(null), DOWNLOADED_MS);
+    return () => clearTimeout(timeout);
+  }, [downloadedTakeId]);
+
+  const downloadTake = useCallback(
+    async (drill: FrameDrill, take: DrillTake, takeNumber: number) => {
+      const fileName = takeDownloadName(drill.text, takeNumber, take.storedFileName || "take.m4a");
+      try {
+        if (isTauri()) {
+          await copyTakeToDownloads(sessionId, take.storedFileName, fileName);
+        } else {
+          // Dev browser: the take is a blob URL — let the browser download it.
+          const link = document.createElement("a");
+          link.href = take.src;
+          link.download = fileName;
+          link.click();
+        }
+        setDownloadedTakeId(take.id);
+      } catch (error) {
+        console.error("Failed to download take:", sessionId, error);
+        message(String(error), { title: "Couldn't download recording", kind: "error" });
+      }
+    },
+    [sessionId]
+  );
+
+  const deleteTake = useCallback(
+    (drillId: string, take: DrillTake) => {
+      update((prev) =>
+        mapDrill(prev, drillId, (drill) => ({ ...drill, takes: drill.takes.filter((candidate) => candidate.id !== take.id) }))
+      );
+      if (isTauri() && take.storedFileName) {
+        removeTake(sessionId, take.storedFileName).catch((error) => console.error("Failed to remove take:", error));
+      }
+    },
+    [sessionId, update]
+  );
+
   // ---- Recorder: exactly one drill at a time ----
   const [active, setActive] = useState<ActiveRecording | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -268,6 +313,9 @@ export function useFrameDrillsSession(sessionId: string, drills: FrameDrill[], u
     setDrillText,
     setDrillTimer,
     removeDrill,
+    downloadTake,
+    downloadedTakeId,
+    deleteTake,
     focusDrillId,
     clearFocusDrill: () => setFocusDrillId(null),
     activeDrillId: active?.drillId ?? null,

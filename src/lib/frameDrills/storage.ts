@@ -2,11 +2,12 @@
 // recorded take's audio file (inside the session's own training/<id>/
 // folder, so deleting the session deletes its takes too).
 
-import { exists, mkdir, readTextFile, remove, writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { BaseDirectory, copyFile, exists, mkdir, readTextFile, remove, writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { downloadDir, join } from "@tauri-apps/api/path";
 import { BASE_DIR, spaceDir, spaceFrameTemplatesPath, spaceTrainingDir } from "@/lib/spaces/paths";
 import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
 import { clipAbsolutePath } from "@/lib/training";
-import { extensionForMime, parseTemplates, type FrameTemplate } from "./index";
+import { extensionForMime, numberedFileName, parseTemplates, type FrameTemplate } from "./index";
 
 export async function loadTemplates(): Promise<FrameTemplate[]> {
   const path = spaceFrameTemplatesPath(getActiveSpaceFolder());
@@ -42,4 +43,16 @@ export async function storeTake(
 export async function removeTake(sessionId: string, storedFileName: string): Promise<void> {
   const path = `${sessionDir(sessionId)}/${storedFileName}`;
   if (await exists(path, { baseDir: BASE_DIR })) await remove(path, { baseDir: BASE_DIR });
+}
+
+// Copies a take out to ~/Downloads under `fileName`, never overwriting an
+// earlier download — "name (2).m4a" etc. instead. Returns the final path.
+export async function downloadTake(sessionId: string, storedFileName: string, fileName: string): Promise<string> {
+  let finalName = fileName;
+  for (let n = 2; await exists(finalName, { baseDir: BaseDirectory.Download }); n += 1) {
+    finalName = numberedFileName(fileName, n);
+  }
+  const destination = await join(await downloadDir(), finalName);
+  await copyFile(`${sessionDir(sessionId)}/${storedFileName}`, destination, { fromPathBaseDir: BASE_DIR });
+  return destination;
 }

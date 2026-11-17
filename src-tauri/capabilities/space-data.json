@@ -29,7 +29,7 @@
     },
     {
       "identifier": "fs:allow-exists",
-      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
+      "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }, { "path": "$DOWNLOAD/**" }]
     },
     {
       "identifier": "fs:allow-size",

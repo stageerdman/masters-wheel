@@ -5,10 +5,12 @@ import {
   drillClockMs,
   extensionForMime,
   formatDrillClock,
+  numberedFileName,
   frameDrillsStateToMeta,
   parseFrameDrillsState,
   parseTemplates,
   timerOptionsFor,
+  takeDownloadName,
   upsertTemplate,
 } from "./index.ts";
 
@@ -93,4 +95,17 @@ test("templates file parsing tolerates corrupt input", () => {
 test("recorded mime types map to playable extensions", () => {
   assert.equal(extensionForMime("audio/mp4"), "m4a");
   assert.equal(extensionForMime("audio/webm;codecs=opus"), "webm");
+});
+
+test("take download names use the frame's first line and stay filesystem-safe", () => {
+  assert.equal(takeDownloadName("Open with the why\nsecond line", 2, "123-take.m4a"), "Open with the why - Take 2.m4a");
+  assert.equal(takeDownloadName("a/b: c?", 1, "1-take.webm"), "ab c - Take 1.webm");
+  assert.equal(takeDownloadName("   ", 3, "1-take.m4a"), "Frame drill - Take 3.m4a");
+  assert.equal(takeDownloadName("x".repeat(60), 1, "1-take.m4a"), `${"x".repeat(40)} - Take 1.m4a`);
+});
+
+test("numbered file names insert the counter before the extension", () => {
+  assert.equal(numberedFileName("a - Take 1.m4a", 1), "a - Take 1.m4a");
+  assert.equal(numberedFileName("a - Take 1.m4a", 2), "a - Take 1 (2).m4a");
+  assert.equal(numberedFileName("noext", 3), "noext (3)");
 });
