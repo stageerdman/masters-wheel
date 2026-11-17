@@ -77,12 +77,28 @@ export function DrillCard({
     onFocused();
   }, [autoFocus, onFocused]);
 
-  // Grows with its content instead of scrolling inside the card.
+  // Hugs its content instead of scrolling inside the card. Re-measured on
+  // every width change too, not just on text edits: measured while the
+  // layout is still settling (e.g. right after launch, before the panel
+  // split restores), a near-zero width wraps every word onto its own line
+  // and the height would otherwise stay stuck that huge.
   useEffect(() => {
     const node = textRef.current;
     if (!node) return;
-    node.style.height = "auto";
-    node.style.height = `${node.scrollHeight}px`;
+    const fit = () => {
+      node.style.height = "auto";
+      node.style.height = `${node.scrollHeight}px`;
+    };
+    fit();
+    let lastWidth = node.clientWidth;
+    const observer = new ResizeObserver(() => {
+      // Our own height change also fires this — only width matters.
+      if (node.clientWidth === lastWidth) return;
+      lastWidth = node.clientWidth;
+      fit();
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
   }, [drill.text]);
 
   const hasText = drill.text.trim().length > 0;
