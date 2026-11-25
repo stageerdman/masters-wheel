@@ -16,10 +16,10 @@ Tick a box only when its check has really passed.
    - **Check:** the file is committed. Nothing moves while idle. Errors stay calm. Jony can build from it without asking.
 
 3. **Build (Jony)** · `03-ui-spec.md` + `src/elements/PerformanceReview/children/CloudStatus/`
-   - [ ] A short UI spec.
-   - [ ] The cloud icon at the top right of Performance Review, with its states worked out in `cloudState()` in `CloudStatus.script.ts`.
-   - [ ] The popover with live data from `useStorageOverview()`: videos left, GB left, speed/ETA (worked out on the client), errors with Retry, and one Settings link.
-   - [ ] `<StorageStatusLine/>` removed and its folder deleted.
+   - [x] A short UI spec.
+   - [x] The cloud icon at the top right of Performance Review, with its states worked out in `cloudState()` in `CloudStatus.script.ts`.
+   - [x] The popover with live data from `useStorageOverview()`: videos left, GB left, speed/ETA (worked out on the client), errors with Retry, and one Settings link.
+   - [x] `<StorageStatusLine/>` removed and its folder deleted.
    - **Check:** `npx tsc --noEmit`, `npm run lint` and `npm test` pass.
 
 4. **Cleanup review, rebuild, Start (Eraser)** · `04-cleanup-review.md`

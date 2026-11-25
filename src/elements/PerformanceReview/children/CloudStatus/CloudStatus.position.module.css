@@ -1,0 +1,52 @@
+/* 28 px tap target; the ring sits on its edge, the cloud in the middle. */
+.button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+.cloud {
+  grid-area: 1 / 1;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.dot {
+  position: absolute;
+  right: 4px;
+  bottom: 5px;
+  width: 5px;
+  height: 5px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 280px;
+  max-width: 100%;
+  padding: 0.875rem;
+}
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.retry {
+  padding: 0.25rem 0.75rem;
+}
+
+.link {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}

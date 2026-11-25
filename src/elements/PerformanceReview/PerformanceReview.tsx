@@ -10,6 +10,7 @@ import { usePerformanceReviewData, useRecordDrop, useSingleFileDrop } from "./Pe
 import { Navigation } from "./children/Navigation/Navigation";
 import { Hero } from "./children/Hero/Hero";
 import { Detail } from "./children/Detail/Detail";
+import { CloudStatus } from "./children/CloudStatus/CloudStatus";
 import position from "./PerformanceReview.position.module.css";
 import styles from "./PerformanceReview.styles.module.css";
 
@@ -26,7 +27,7 @@ function todayIso(): string {
 }
 
 export function PerformanceReview() {
-  const { setIsland, setBrand } = useHeaderActions();
+  const { setIsland, setBrand, setAccessory } = useHeaderActions();
   const {
     videos,
     selected,
@@ -123,6 +124,13 @@ export function PerformanceReview() {
     setBrand({ label: "Performance Review", showLogo: true });
     return () => setBrand(null);
   }, [setBrand]);
+
+  // The cloud status icon lives at the header's right edge on this page only.
+  useEffect(() => {
+    const titleOf = (recordId: string) => videos.find((video) => video.id === recordId)?.title;
+    setAccessory(<CloudStatus titleOf={titleOf} />);
+    return () => setAccessory(null);
+  }, [setAccessory, videos]);
 
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>

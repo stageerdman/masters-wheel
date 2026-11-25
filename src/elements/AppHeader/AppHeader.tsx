@@ -12,7 +12,7 @@ import styles from "./AppHeader.styles.module.css";
 const HEADER_HIDDEN_ROUTES = ["/"];
 
 export function AppHeader() {
-  const { island, brand } = useHeaderActions();
+  const { island, brand, accessory } = useHeaderActions();
   const pathname = usePathname();
   const label = brand?.label ?? "Master's Wheel";
   const showLogo = brand?.showLogo ?? false;
@@ -54,7 +54,9 @@ export function AppHeader() {
           />
         )}
       </div>
-      <div className={position.rightArea} data-construction />
+      <div className={position.rightArea} data-construction>
+        {accessory}
+      </div>
     </header>
   );
 }

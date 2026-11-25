@@ -37,6 +37,10 @@ type HeaderActionsContextValue = {
   setIsland: (island: HeaderIsland) => void;
   brand: HeaderBrand;
   setBrand: (brand: HeaderBrand) => void;
+  // A small page-owned control for the header's right edge (e.g. the cloud
+  // status icon on Performance Review). Null on every other page.
+  accessory: ReactNode;
+  setAccessory: (accessory: ReactNode) => void;
 };
 
 const HeaderActionsContext = createContext<HeaderActionsContextValue | null>(null);
@@ -44,7 +48,11 @@ const HeaderActionsContext = createContext<HeaderActionsContextValue | null>(nul
 export function HeaderActionsProvider({ children }: { children: ReactNode }) {
   const [island, setIsland] = useState<HeaderIsland>(null);
   const [brand, setBrand] = useState<HeaderBrand>(null);
-  const value = useMemo(() => ({ island, setIsland, brand, setBrand }), [island, brand]);
+  const [accessory, setAccessory] = useState<ReactNode>(null);
+  const value = useMemo(
+    () => ({ island, setIsland, brand, setBrand, accessory, setAccessory }),
+    [island, brand, accessory],
+  );
   return <HeaderActionsContext.Provider value={value}>{children}</HeaderActionsContext.Provider>;
 }
 
