@@ -39,4 +39,4 @@ OneDrive: 1 MB" while the user has 119 videos (66 GB).
 - [x] Phase 3 — every storage command is async on the blocking pool (`with_storage`).
 - [x] Phase 4 — `rescan` emits when the ledger changed; `formatBytes(0)` = "0 MB"; totals test.
   Progress: once the worker runs, the numbers line shows "Uploading N videos · X GB left".
-- [ ] Phase 5
+- [x] Phase 5 — release build installed to /Applications; branch pushed.
