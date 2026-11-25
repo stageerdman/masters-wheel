@@ -47,10 +47,10 @@ Rules:
 | `cloud_only` | `cloud`: cloud alone | `In OneDrive only. Plays from the cloud` |
 | `cloud_and_local` | `cloudDevice`: cloud plus small laptop | `On OneDrive and this Mac` |
 | `local_only` | `device`: laptop alone | `Only on this Mac. Not uploaded yet` |
-| `uploading` | `cloudUp`: cloud with up arrow | `Not in OneDrive yet. On its way` |
+| `uploading` | `cloudUp`: cloud with up arrow | `Not in OneDrive yet. On its way` (true for waiting, checking and paused too) |
 | `stuck` | `cloudAlert`: cloud with `!` | `Upload stuck. Open the cloud icon at the top to see why` |
 
-The screen-reader-only text path goes away, since every state now has a real icon with an `aria-label`. The `uploading` label also covers waiting, checking and paused, so it never says "uploading" (the header popover doesn't either).
+There is no `visible` field: the screen-reader-only text path goes away, since every state now has a real icon with an `aria-label`.
 
 ### Reviewed mark: `VideoListItem.tsx`
 - Shown only when `video.reviewed` is true. Nothing is drawn when false: an empty slot means "still to do".
@@ -82,7 +82,7 @@ The screen-reader-only text path goes away, since every state now has a real ico
    - [x] Uploading: `waiting`, `uploading`, `checking`, `paused` and unknown states → `uploading`.
    - [x] Stuck/failed: `notUploadedFull`, `notUploadedUnreadable`, `missing` → `stuck`. A moving video with `lastError` stays `uploading`.
    - [x] `overview === null` → `unknown` → `backupMark` returns `null`.
-   - [x] `backupMark` returns `{ label, icon }` with the exact labels in the table. (Review F1: dead `visible` field cut. F2: uploading label is now "Not in OneDrive yet. On its way", true when paused or waiting.)
+   - [x] `backupMark` returns `{ label, icon }` with the exact labels in the table. (Review F1 and F2 fixed at integration: `visible` cut; uploading label now true when paused.)
    - [x] Tests cover every raw state, not connected, no entry, null overview, and the label + icon for each state.
    - **Check:** `npm test` passes.
 
@@ -108,6 +108,7 @@ The screen-reader-only text path goes away, since every state now has a real ico
    - [ ] Start opens the new version: `npm run app:start` rebuilds and launches, and the open window shows the new row icons (not the old `•` / `✓`).
    - [ ] All states can be told apart at a glance: cloud only, cloud + this Mac, this Mac only, uploading, stuck and Reviewed each look different by shape, also in greyscale. Hovering each one shows its words.
    - Status (Eraser, 2026-11-25): RETURNED to Jony for F1 (cut the dead `visible` field) and F2 ("Uploading" label shown when paused or waiting); see `04-cleanup-review.md`. The first two boxes wait on those fixes. Start built, installed and launched the new version, but nobody has looked at the window yet, so the last two boxes stay open.
+   - Integration (Columbo, 2026-11-25): F1 and F2 fixed (no `visible` field; uploading label "Not in OneDrive yet. On its way"). `npm run test:all` (67 JS, 111 Rust) and lint pass; `npm run app:start` rebuilt, installed and launched the new version (the first try stops once on the Next.js advisory notice, and the retry passes). The bundle has the new label and not the old one. Nobody has looked at the window yet, so the last two boxes stay open for a person to check.
    - **Check:** the review is written and signed off, and every phase above is ticked. If nobody has looked at the window, say so here and leave the last two boxes open.
 
 ## Done for the whole item
