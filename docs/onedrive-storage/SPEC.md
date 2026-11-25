@@ -190,7 +190,7 @@ Click **Disconnect OneDrive…** and a sheet opens, with Cancel focused:
 | Every video is on this Mac | **Disconnect OneDrive?** · *All your videos are on this Mac and stay there. The copies in OneDrive › Apps › Master's Wheel stay in OneDrive. Master's Wheel stops uploading.* | **[Disconnect]** [Cancel] |
 | Some only in OneDrive, enough room | **Disconnect OneDrive?** · *142 videos are only in OneDrive (41 GB). They'll download back to this Mac first, then OneDrive disconnects. You have 80 GB free.* | **[Download and disconnect]** [Cancel] |
 | Some only in OneDrive, not enough room | *142 videos are only in OneDrive (41 GB), but you have 30 GB free. Free up 11 GB first, or stay connected.* | [Download and disconnect] **disabled** · **[Cancel]** |
-| Some only in OneDrive, signed out or offline | *142 videos are only in OneDrive and can't download right now (you're signed out / offline). If you disconnect anyway, they stay in OneDrive and won't play here until you connect again.* | **[Cancel]** · [Disconnect anyway] (plain text button) |
+| Some only in OneDrive, signed out, offline or access revoked | *142 videos are only in OneDrive and can't download right now (you're signed out / offline / your organization removed access). If you disconnect anyway, they stay in OneDrive and won't play here until you connect again.* | **[Cancel]** · [Disconnect anyway] (plain text button) |
 
 - **While downloading before disconnecting:** the numbers line shows the progress, and the bottom button reads **Stop disconnecting** (keeps the account, in its current mode). Uploads and offloading pause meanwhile.
 - **When done:** the panel goes back to 5.2. The status line and all row glyphs disappear. Sign-in tokens are deleted. Nothing in OneDrive is deleted.
@@ -230,6 +230,7 @@ Rules:
 - **Smart bringing a video home:** the cloud glyph stays while it downloads, then swaps to a check when it's complete. No progress on the row.
 - **Upload and transcription progress never share a row.** Transcription progress stays where it is today (TranscriptionProgress in the detail pane).
 - Short network or server errors are **Paused** with automatic retries, never "Not uploaded".
+- **Organization revoked access:** rows behave as *signed out* (uploads show *Paused*, cloud rows are dimmed), but cloud rows use the short label **Not available** and the full line *Safe in OneDrive, but your organization no longer allows Master's Wheel to open it.* No new glyph.
 
 **Motion (the only motion in this feature):** the ring's stroke grows with progress (SVG stroke-dashoffset). When the receipt lands, the full ring becomes a check with one 150 ms scale from 0.9 to 1, with no bounce and no colour flash. Every other glyph change is an instant swap. With `prefers-reduced-motion`: the ring moves in 10% steps and the check swaps in with no scale. **The check is driven by the real confirmation, never by a timer.** No sound anywhere.
 
@@ -242,7 +243,8 @@ Rules:
 
 | Priority | State | Text | Colour |
 |---|---|---|---|
-| 1 | Signed out | **Signed out of OneDrive** · uploads paused | accent |
+| 1 | Signed out (also after a wrong-account sign-in) | **Signed out of OneDrive** · uploads paused | accent |
+| 1 | Organization revoked access | **OneDrive access removed** · uploads stopped | accent |
 | 2 | OneDrive full | **OneDrive is full** · 3 videos not uploaded | accent |
 | 3 | Offline, something only in OneDrive | **Offline** · 12 videos need internet to play | muted |
 | 3 | Offline, nothing only in OneDrive | **Offline** · uploads continue when you're back | muted |
@@ -277,6 +279,7 @@ Rules:
   - Signed out: *This video is in OneDrive. Sign in again in Settings › Storage to play it.*
   - Missing: *We can't find this video in OneDrive. It may have been deleted there.*
   - Stranded: *This video is in OneDrive. Connect OneDrive in Settings › Storage to play it.*
+  - Org revoked: *This video is in OneDrive, but your organization no longer allows Master's Wheel to open it.*
 - **Re-transcribe a video only in OneDrive:** the existing TranscriptionProgress shows **Fetching from OneDrive…** first, then the normal steps. In Always in cloud the fetched copy is removed afterwards. In Smart it counts as watched (subject to §7 rule 5). Offline or signed out: re-transcribe is disabled, with the matching line above as its tooltip.
 
 ---
@@ -326,7 +329,7 @@ Rules:
 | 12 | Signed out | notice + accent status line + dimmed cloud rows | Signed out of OneDrive | Sign in again |
 | 13 | Wrong account | notice | That's a different account… | Sign in again |
 | 14 | OneDrive full | notice + accent status line + Not uploaded rows | OneDrive is full | Manage storage |
-| 15 | Org revoked | notice | …no longer allows… | Disconnect (bottom) |
+| 15 | Org revoked | notice + accent status line + dimmed "Not available" cloud rows | …no longer allows… / OneDrive access removed | Disconnect (bottom) |
 | 16 | Offline | muted status line + dimmed cloud rows | Offline · … | none (clears by itself) |
 | 17 | Row: waiting / uploading / checking / paused | rings | 6.1 | none (plays) |
 | 18 | Row: safe on this Mac / only in OneDrive | check / cloud | tooltip only | plays / streams |
