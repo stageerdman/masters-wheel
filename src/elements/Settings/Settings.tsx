@@ -8,6 +8,7 @@ import { BackgroundImage } from "./children/BackgroundImage/BackgroundImage";
 import { SettingsSidebar, type SettingsCategory } from "./children/SettingsSidebar/SettingsSidebar";
 import { ProfilePanel } from "./children/ProfilePanel/ProfilePanel";
 import { ScorePanel } from "./children/ScorePanel/ScorePanel";
+import { StoragePanel } from "./children/StoragePanel/StoragePanel";
 import position from "./Settings.position.module.css";
 import styles from "./Settings.styles.module.css";
 
@@ -78,13 +79,15 @@ export function Settings() {
             businessDescription={businessDescription}
             onBusinessDescriptionChange={handleBusinessDescriptionChange}
           />
-        ) : (
+        ) : activeCategory === "score" ? (
           <ScorePanel
             criteria={scorecardCriteria}
             onChange={handleScorecardCriteriaChange}
             summaryPrompt={scorecardSummaryPrompt}
             onSummaryPromptChange={handleScorecardSummaryPromptChange}
           />
+        ) : (
+          <StoragePanel />
         )}
       </div>
     </div>
