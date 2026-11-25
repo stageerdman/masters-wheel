@@ -3,7 +3,7 @@
 import { useState, type RefObject } from "react";
 import { MediaPlayer } from "@/elements/MediaPlayer/MediaPlayer";
 import { MetaPanel } from "./children/MetaPanel/MetaPanel";
-import type { VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
+import { CALL_STATE_META, type VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
 import position from "./Hero.position.module.css";
 import styles from "./Hero.styles.module.css";
 
@@ -49,7 +49,7 @@ export function Hero({
 
   return (
     <section className={`${styles.root} ${position.root}`} data-construction>
-      <div className={position.titleBlock} data-construction>
+      <div key={`title-${video.id}`} className={`${styles.pageTurn} ${position.titleBlock}`} data-construction>
         {isEditingTitle ? (
           <input
             className={`${styles.titleInput} ${position.titleInput}`}
@@ -82,6 +82,7 @@ export function Hero({
           date={video.date}
           closedDate={video.closedDate}
           isWon={video.state === "closed"}
+          outcomeLabel={video.state ? CALL_STATE_META[video.state].label : null}
           onOfferedAmountChange={onOfferedAmountChange}
           onOfferedCurrencyChange={onOfferedCurrencyChange}
           onDescriptionChange={onDescriptionChange}
@@ -103,7 +104,7 @@ export function Hero({
           </button>
         )}
       </div>
-      <div className={position.textSlot} data-construction>
+      <div key={`text-${video.id}`} className={`${styles.pageTurn} ${position.textSlot}`} data-construction>
         <textarea
           className={`${styles.notes} ${position.notes}`}
           data-construction

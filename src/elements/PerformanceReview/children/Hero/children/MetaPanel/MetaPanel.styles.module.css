@@ -2,23 +2,24 @@
   background: transparent;
 }
 
-.toggle {
+/* The facts line doubles as the way in: quiet text, no chrome. */
+.facts {
   background: transparent;
   border: none;
+  border-radius: 4px;
   color: var(--color-text-muted);
+  font-family: inherit;
   font-size: var(--text-size-label);
-  letter-spacing: 0.1em;
+  text-align: left;
   cursor: pointer;
 }
 
-.toggle:hover {
+.facts:hover {
   color: var(--color-text);
 }
 
-.panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+.facts:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
 }
 
 .fieldLabel {
@@ -26,7 +27,7 @@
   font-size: var(--text-size-micro);
 }
 
-.dateInput {
+.input {
   background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
@@ -35,47 +36,19 @@
   font-size: var(--text-size-label);
 }
 
-.dateInput:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-accent);
-}
-
-.dateInput:disabled {
+.input::placeholder {
   color: var(--color-text-muted);
-  cursor: not-allowed;
 }
 
-.amountInput {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font-size: var(--text-size-label);
-}
-
-.amountInput:focus-visible {
+.input:focus-visible {
   box-shadow: 0 0 0 2px var(--color-accent);
 }
 
 .descriptionInput {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: var(--text-size-label);
   resize: none;
-}
-
-.descriptionInput::placeholder {
-  color: var(--color-text-muted);
-}
-
-.descriptionInput:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-accent);
 }
 
 .charCount {
   color: var(--color-text-muted);
   font-size: var(--text-size-micro);
-  align-self: flex-end;
 }

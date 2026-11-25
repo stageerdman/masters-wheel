@@ -41,10 +41,28 @@
   color: var(--color-text);
 }
 
+/* Turn the page: a new session's title and notes fade 0.6 → 1 (02-magic).
+   Not on the media slot — the player must never flicker. */
+@media (prefers-reduced-motion: no-preference) {
+  .pageTurn {
+    animation: hero-page-turn 140ms ease-out;
+  }
+}
+
+@keyframes hero-page-turn {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Notes sit on the page like paper: no box at rest, a ring only on focus. */
 .notes {
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text);
-  border: 1px solid var(--color-border);
+  border: none;
   border-radius: 6px;
   font-family: inherit;
   font-size: var(--text-size-body);

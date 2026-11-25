@@ -4,18 +4,21 @@
   align-items: flex-start;
 }
 
-.toggle {
-  padding: 0.15rem 0.3rem;
+.facts {
+  padding: 0.15rem 0;
 }
 
 .panel {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin-top: 0.4rem;
-  padding: 0.75rem;
+  margin-top: 0.75rem;
   width: 100%;
   max-width: 22rem;
+}
+
+.charCount {
+  align-self: flex-end;
 }
 
 .field {
