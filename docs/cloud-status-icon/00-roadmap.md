@@ -12,7 +12,7 @@ Tick a box only when its check has really passed.
    - **Check:** the file is committed. Each moment names the real fields in `src/lib/onedrive/storage.ts` it depends on.
 
 2. **Magic (Merlin)** · `02-magic.md`
-   - [ ] At most 2 to 3 quiet touches, each with a name, its timing in ms, when it fires, and a reduced-motion version.
+   - [x] At most 2 to 3 quiet touches, each with a name, its timing in ms, when it fires, and a reduced-motion version.
    - **Check:** the file is committed. Nothing moves while idle. Errors stay calm. Jony can build from it without asking.
 
 3. **Build (Jony)** · `03-ui-spec.md` + `src/elements/PerformanceReview/children/CloudStatus/`
