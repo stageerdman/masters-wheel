@@ -23,9 +23,9 @@ Tick a box only when its check has really passed.
    - **Check:** `npx tsc --noEmit`, `npm run lint` and `npm test` pass.
 
 4. **Cleanup review, rebuild, Start (Eraser)** · `04-cleanup-review.md`
-   - [ ] No leftover banner code, text, imports or css. The cloud icon is the only place to see upload status in Performance Review.
-   - [ ] The popover holds only the essentials. Magic stays quiet and respects reduced motion. The per-session backed-up checks are still there.
-   - [ ] `npm run app:start` rebuilds and opens the app. The window that opens shows the cloud icon, and the popover opens on click.
+   - [x] No leftover banner code, text, imports or css. The cloud icon is the only place to see upload status in Performance Review.
+   - [x] The popover holds only the essentials. Magic stays quiet and respects reduced motion. The per-session backed-up checks are still there.
+   - [ ] `npm run app:start` rebuilds and opens the app. The window that opens shows the cloud icon, and the popover opens on click. *(The rebuild, install and launch passed, and the new code is in the bundle. Nobody has looked at the window or clicked the icon yet, because Eraser has no screen tool. Tick this once someone has seen both.)*
    - **Check:** the review is written and signed off, and every phase above is ticked.
 
 ## Done for the whole item

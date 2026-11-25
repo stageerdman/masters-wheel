@@ -12,6 +12,7 @@ import {
   addSample,
   ariaLabel,
   cloudState,
+  isMoving,
   isPaused,
   progress,
   timeLeft,
@@ -153,7 +154,12 @@ function Details({ overview: o, state, paused, count, eta, titleOf, onRetry, onN
   const notice = state === "problem" || o.signInPending ? problemNotice(o, titleOf) : null;
   const line = statusLine(o);
   const lineText = line ? `${line.lead}${line.rest}` : null;
-  const errors = o.videos.filter((v) => v.lastError !== null);
+  // Each fact is said once: the idle line yields to the notice, the offline
+  // line only shows when it's really the offline sentence and the idle line
+  // isn't already saying it, and stuck videos (which the notice covers and
+  // which won't retry by themselves) never get "retrying in a moment".
+  const offlineText = !o.online && state !== "idle" && line?.lead === "Offline" ? lineText : null;
+  const errors = o.videos.filter((v) => v.lastError !== null && isMoving(v));
   const linkLabel =
     notice?.action === "signIn" ? "Sign in to OneDrive" : notice?.action === "manageStorage" ? "Manage storage" : "Storage settings";
 
@@ -177,7 +183,7 @@ function Details({ overview: o, state, paused, count, eta, titleOf, onRetry, onN
           {LID_SENTENCE}
         </p>
       )}
-      {state === "idle" && lineText && (
+      {state === "idle" && !notice && lineText && (
         <p className={styles.text} data-construction>
           {lineText}
         </p>
@@ -187,9 +193,9 @@ function Details({ overview: o, state, paused, count, eta, titleOf, onRetry, onN
           {videos(count)} · {formatBytes(o.uploadBytesLeft)} left
         </p>
       )}
-      {!o.online && lineText ? (
+      {offlineText ? (
         <p className={styles.muted} data-construction>
-          {lineText}
+          {offlineText}
         </p>
       ) : (
         !paused && eta && (

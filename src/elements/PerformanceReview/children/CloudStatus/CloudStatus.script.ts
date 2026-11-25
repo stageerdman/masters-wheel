@@ -11,7 +11,7 @@ const SAFE: readonly VideoState[] = ["safeOnMac", "inCloud"];
 // Stuck until the user (or OneDrive) does something; left out of the ring.
 const STUCK: readonly VideoState[] = ["notUploadedUnreadable", "notUploadedFull", "missing"];
 
-function isMoving(v: VideoStatus): boolean {
+export function isMoving(v: VideoStatus): boolean {
   return !SAFE.includes(v.state) && !STUCK.includes(v.state);
 }
 
