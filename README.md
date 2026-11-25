@@ -21,11 +21,16 @@ Open http://localhost:3000.
 ```bash
 npm install
 npm run app:build   # builds the Next.js static export, then the .app
-npm run app:dev      # native window against the dev server above
+npm run app:open    # opens this checkout's build
+npm run app:install # copies it to /Applications/Master's Wheel.app
+npm run app:start   # build + install + open (the studio's Start button)
+npm run app:dev     # native window against the dev server above
 ```
 
-`app:build` produces a `.app` bundle under
-`src-tauri/target/release/bundle/macos/` (or wherever `CARGO_TARGET_DIR`/a
-shared Cargo target dir is configured on the machine). `app:dev` expects
+`app:build` always puts the `.app` in this checkout's
+`src-tauri/target/release/bundle/macos/`: it overrides the machine-wide
+shared Cargo target dir, which every worktree writes to, so the app opened
+from there could be any branch's build (that is why OneDrive storage was
+missing from the launched app). `app:dev` expects
 `npm run dev` already running on :3000 — it never starts or stops that
 server itself.

@@ -55,6 +55,15 @@ Durable decisions and lessons. The roadmap and live status live in
   per-Space modes).
 
 ## Lessons and gotchas
+- **"OneDrive is missing from the app" was a stale build, not the code.**
+  `~/.cargo/config.toml` points every checkout at one shared Cargo target,
+  so the `.app` there was whichever worktree built last, and
+  `/Applications/Master's Wheel.app` hadn't been reinstalled since early
+  November. Fix: `app:build` pins `CARGO_TARGET_DIR` to this checkout's
+  `src-tauri/target`; `.project`'s `run: npm run app:start` builds, installs
+  to /Applications and opens that copy (scripts/app-bundle.mjs). Also: the
+  video-list status line is hidden by design until OneDrive is connected
+  (SPEC 6.2), so a never-connected user only sees Settings › Storage.
 - **Keychain prompts on rebuilds.** The app is unsigned, so every rebuild
   is a "new" app to the Keychain, and macOS asks once to allow access to
   the stored item. That's expected in development, not a bug.
