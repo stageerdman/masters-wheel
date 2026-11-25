@@ -125,7 +125,12 @@ mod tests {
         let cancelled = AtomicBool::new(true);
         assert_eq!(loopback.wait_for_redirect(POLL, &cancelled), Err(OneDriveError::SignInCancelled));
         drop(loopback);
-        let again = Loopback::bind_preferring(port).unwrap();
-        assert_eq!(again.port, port);
+        // tiny_http closes the listener on its own accept thread just after
+        // the drop, so the port frees up shortly, not at the drop itself.
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while TcpListener::bind((Ipv4Addr::LOCALHOST, port)).is_err() {
+            assert!(Instant::now() < deadline, "port {port} was never released");
+            std::thread::sleep(Duration::from_millis(20));
+        }
     }
 }
