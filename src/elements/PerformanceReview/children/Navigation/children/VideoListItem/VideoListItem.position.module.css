@@ -32,9 +32,14 @@
   gap: 0.4rem;
 }
 
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
+/* A fixed slot per mark (storage, then Reviewed): keeps its width when
+   empty so the marks read as columns down the list. */
+.slot {
+  width: 14px;
+  height: 14px;
+  display: flex;
+}
+
+.slot > span {
+  display: flex;
 }

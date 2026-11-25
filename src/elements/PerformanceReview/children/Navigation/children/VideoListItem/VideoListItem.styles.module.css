@@ -38,24 +38,22 @@
   font-size: var(--text-size-micro);
 }
 
-/* Two quiet marks, quieter than everything else in the row. */
-.reviewedMark {
+/* Row marks: line icons in currentColor. Storage is muted; shape, not
+   colour, tells the states apart. Full opacity keeps 3:1 contrast. */
+.mark {
   color: var(--color-text-muted);
-  font-size: var(--text-size-label);
-  line-height: 1;
-  opacity: 0.7;
-  --mark-rest: 0.7;
 }
 
-.backupMark {
-  color: var(--color-text-muted);
-  font-size: var(--text-size-micro);
-  line-height: 1;
-  opacity: 0.45;
-  --mark-rest: 0.45;
+.stuck {
+  color: var(--color-status-failed);
 }
 
-/* Settle: a mark that arrives live fades in to its resting opacity. */
+/* The louder of the two: it serves the daily "what's left?" scan. */
+.reviewed {
+  color: var(--color-reviewed);
+}
+
+/* Settle: a mark that arrives live fades in. */
 @media (prefers-reduced-motion: no-preference) {
   .settle {
     animation: settle 600ms cubic-bezier(0.2, 0, 0, 1);
@@ -67,11 +65,6 @@
     opacity: 0;
   }
   to {
-    opacity: var(--mark-rest);
+    opacity: 1;
   }
-}
-
-.srOnly {
-  clip-path: inset(50%);
-  white-space: nowrap;
 }

@@ -1,5 +1,5 @@
-// Run with `npm test`. The quiet "backed up" mark on each session row
-// (docs/performance-review-redesign/03-ui-spec.md).
+// Run with `npm test`. The storage icon on each session row
+// (docs/session-row-icons/03-ui-spec.md).
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -8,7 +8,7 @@ import {
   toBackupState,
 } from "../../elements/PerformanceReview/PerformanceReview.backup.ts";
 
-const video = (state, recordId = "r1") => ({
+const video = (state, recordId = "r1", extra = {}) => ({
   spaceId: "s1",
   recordId,
   fileName: "call.mp4",
@@ -16,34 +16,93 @@ const video = (state, recordId = "r1") => ({
   percent: 0,
   size: 1,
   keepUntil: null,
+  ...extra,
 });
 
-test("toBackupState: safe copies count as backed up", () => {
-  assert.equal(toBackupState({ connected: true, video: video("safeOnMac") }), "backed_up");
-  assert.equal(toBackupState({ connected: true, video: video("inCloud") }), "backed_up");
+const on = (state, extra) => toBackupState({ connected: true, video: video(state, "r1", extra) });
+
+test("toBackupState: inCloud is cloud only", () => {
+  assert.equal(on("inCloud"), "cloud_only");
 });
 
-test("toBackupState: anything still moving or stuck is pending", () => {
-  for (const state of ["waiting", "uploading", "checking", "paused", "notUploadedFull", "notUploadedUnreadable", "missing"]) {
-    assert.equal(toBackupState({ connected: true, video: video(state) }), "pending", state);
+test("toBackupState: safeOnMac is cloud and this Mac", () => {
+  assert.equal(on("safeOnMac"), "cloud_and_local");
+});
+
+test("toBackupState: not connected or no entry yet is this Mac only", () => {
+  assert.equal(toBackupState({ connected: false, video: video("inCloud") }), "local_only");
+  assert.equal(toBackupState({ connected: false, video: undefined }), "local_only");
+  assert.equal(toBackupState({ connected: true, video: undefined }), "local_only");
+});
+
+test("toBackupState: moving, paused and unknown states are uploading", () => {
+  for (const state of ["waiting", "uploading", "checking", "paused", "somethingNew"]) {
+    assert.equal(on(state), "uploading", state);
   }
 });
 
-test("toBackupState: no OneDrive or no video means not connected", () => {
-  assert.equal(toBackupState({ connected: false, video: video("inCloud") }), "not_connected");
-  assert.equal(toBackupState({ connected: true, video: undefined }), "not_connected");
+test("toBackupState: only safeOnMac and inCloud are safe", () => {
+  const safe = ["waiting", "uploading", "checking", "paused", "notUploadedFull", "notUploadedUnreadable", "missing", "safeOnMac", "inCloud"]
+    .filter((state) => ["cloud_only", "cloud_and_local"].includes(on(state)));
+  assert.deepEqual(safe, ["safeOnMac", "inCloud"]);
+});
+
+test("toBackupState: full, unreadable and missing are stuck", () => {
+  for (const state of ["notUploadedFull", "notUploadedUnreadable", "missing"]) {
+    assert.equal(on(state), "stuck", state);
+  }
+});
+
+test("toBackupState: a moving video with lastError stays uploading", () => {
+  assert.equal(on("uploading", { lastError: "network", retryAt: 1 }), "uploading");
+  assert.equal(on("waiting", { lastError: "network", retryAt: 1 }), "uploading");
 });
 
 test("backupStateFor finds the session's video in the overview", () => {
   const overview = { connected: true, videos: [video("uploading", "r1"), video("inCloud", "r2")] };
-  assert.equal(backupStateFor(overview, "s1", "r2"), "backed_up");
-  assert.equal(backupStateFor(overview, "s1", "r1"), "pending");
-  assert.equal(backupStateFor(overview, "other", "r2"), "not_connected");
-  assert.equal(backupStateFor(null, "s1", "r2"), "not_connected");
+  assert.equal(backupStateFor(overview, "s1", "r2"), "cloud_only");
+  assert.equal(backupStateFor(overview, "s1", "r1"), "uploading");
+  assert.equal(backupStateFor(overview, "other", "r2"), "local_only");
+  assert.equal(backupStateFor({ connected: false, videos: [] }, "s1", "r2"), "local_only");
 });
 
-test("backupMark: shows for backed up, hidden for pending, absent when not connected", () => {
-  assert.deepEqual(backupMark("backed_up"), { visible: true, label: "Video backed up to OneDrive" });
-  assert.deepEqual(backupMark("pending"), { visible: false, label: "Not backed up yet" });
-  assert.equal(backupMark("not_connected"), null);
+test("backupStateFor: no overview yet is unknown, and draws nothing", () => {
+  assert.equal(backupStateFor(null, "s1", "r2"), "unknown");
+  assert.equal(backupMark("unknown"), null);
 });
+
+test("backupMark: one icon and one plain label per state", () => {
+  assert.deepEqual(backupMark("cloud_only"), {
+    visible: true,
+    icon: "cloud",
+    label: "In OneDrive only. Plays from the cloud",
+  });
+  assert.deepEqual(backupMark("cloud_and_local"), {
+    visible: true,
+    icon: "cloudDevice",
+    label: "On OneDrive and this Mac",
+  });
+  assert.deepEqual(backupMark("local_only"), {
+    visible: true,
+    icon: "device",
+    label: "Only on this Mac. Not uploaded yet",
+  });
+  assert.deepEqual(backupMark("uploading"), {
+    visible: true,
+    icon: "cloudUp",
+    label: "Uploading to OneDrive…",
+  });
+  assert.deepEqual(backupMark("stuck"), {
+    visible: true,
+    icon: "cloudAlert",
+    label: "Upload stuck. Open the cloud icon at the top to see why",
+  });
+});
+
+test("backupMark: every state has its own icon", () => {
+  const icons = ["cloud_only", "cloud_and_local", "local_only", "uploading", "stuck"].map(
+    (state) => backupMark(state).icon
+  );
+  assert.equal(new Set(icons).size, icons.length);
+});
+
