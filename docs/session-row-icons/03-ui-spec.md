@@ -35,7 +35,7 @@ The svg is `aria-hidden`. Its slot `<span>` carries `role="img"`, `title` (the t
 | cloud only | `inCloud` | `cloud`: cloud alone | `--color-text-muted` | In OneDrive only. Plays from the cloud |
 | cloud + this Mac | `safeOnMac` | `cloudDevice`: small cloud top-left, laptop bottom-right | `--color-text-muted` | On OneDrive and this Mac |
 | this Mac only | OneDrive not connected, or no entry for this video yet | `device`: laptop alone | `--color-text-muted` | Only on this Mac. Not uploaded yet |
-| uploading | `waiting`, `uploading`, `checking`, `paused`, any new state; also with a passing `lastError` | `cloudUp`: cloud with an up arrow inside (static) | `--color-text-muted` | Uploading to OneDrive… |
+| uploading | `waiting`, `uploading`, `checking`, `paused`, any new state; also with a passing `lastError` | `cloudUp`: cloud with an up arrow inside (static) | `--color-text-muted` | Not in OneDrive yet. On its way |
 | stuck | `notUploadedFull`, `notUploadedUnreadable`, `missing` (same list as `STUCK` in `CloudStatus.script.ts`) | `cloudAlert`: cloud with `!` inside | `--color-status-failed` | Upload stuck. Open the cloud icon at the top to see why |
 | Reviewed | `video.reviewed` is true | `reviewed`: check in a circle | `--color-reviewed` | Reviewed: you marked this call as reviewed |
 | not reviewed | `video.reviewed` is false | none (slot empty) | – | – |
@@ -59,7 +59,7 @@ The stuck colour uses the existing `--color-status-failed` token. There is no se
 - The tooltip appears after the usual hover delay (native `title`). The icons are not separate tab stops: the whole row is the one control.
 
 ## Build notes
-- `PerformanceReview.backup.ts`: `BackupState`, `toBackupState`, `backupStateFor`, `backupMark(state) → { visible: true, label, icon } | null`, `StorageIcon`.
+- `PerformanceReview.backup.ts`: `BackupState`, `toBackupState`, `backupStateFor`, `backupMark(state) → { label, icon } | null`, `StorageIcon`.
 - `VideoListItem.tsx`: two `position.slot` spans; `styles.mark` (+ `styles.stuck` / `styles.reviewed`); `useArrivedLive(value, arrives)` takes a predicate.
 - Tests: `src/lib/performanceReview/backupMark.test.mjs` covers every raw state, not connected, no entry, a null overview, `lastError`, and the label and icon for each state.
 

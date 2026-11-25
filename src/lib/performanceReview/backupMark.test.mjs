@@ -73,27 +73,22 @@ test("backupStateFor: no overview yet is unknown, and draws nothing", () => {
 
 test("backupMark: one icon and one plain label per state", () => {
   assert.deepEqual(backupMark("cloud_only"), {
-    visible: true,
     icon: "cloud",
     label: "In OneDrive only. Plays from the cloud",
   });
   assert.deepEqual(backupMark("cloud_and_local"), {
-    visible: true,
     icon: "cloudDevice",
     label: "On OneDrive and this Mac",
   });
   assert.deepEqual(backupMark("local_only"), {
-    visible: true,
     icon: "device",
     label: "Only on this Mac. Not uploaded yet",
   });
   assert.deepEqual(backupMark("uploading"), {
-    visible: true,
     icon: "cloudUp",
-    label: "Uploading to OneDrive…",
+    label: "Not in OneDrive yet. On its way",
   });
   assert.deepEqual(backupMark("stuck"), {
-    visible: true,
     icon: "cloudAlert",
     label: "Upload stuck. Open the cloud icon at the top to see why",
   });

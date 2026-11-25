@@ -49,17 +49,19 @@ export type StorageIcon = "cloud" | "cloudDevice" | "device" | "cloudUp" | "clou
 
 // What a session row draws for a storage state: null = nothing at all.
 // `label` is both the tooltip and the aria-label.
-export type BackupMark = { visible: boolean; label: string; icon: StorageIcon } | null;
+export type BackupMark = { label: string; icon: StorageIcon } | null;
 
 const MARKS: Record<Exclude<BackupState, "unknown">, { label: string; icon: StorageIcon }> = {
   cloud_only: { icon: "cloud", label: "In OneDrive only. Plays from the cloud" },
   cloud_and_local: { icon: "cloudDevice", label: "On OneDrive and this Mac" },
   local_only: { icon: "device", label: "Only on this Mac. Not uploaded yet" },
-  uploading: { icon: "cloudUp", label: "Uploading to OneDrive…" },
+  // Also covers waiting, checking and paused, so the words stay true for
+  // all of them (the header popover never calls a paused upload "uploading").
+  uploading: { icon: "cloudUp", label: "Not in OneDrive yet. On its way" },
   stuck: { icon: "cloudAlert", label: "Upload stuck. Open the cloud icon at the top to see why" },
 };
 
 export function backupMark(state: BackupState): BackupMark {
   if (state === "unknown") return null;
-  return { visible: true, ...MARKS[state] };
+  return { ...MARKS[state] };
 }
