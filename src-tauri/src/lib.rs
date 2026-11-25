@@ -89,13 +89,17 @@ pub fn run() {
       transcode::transcode_to_mp4
     ])
     .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
+      // Release builds log too: a stalled upload must leave a trail. The
+      // file sits in the app data folder (logs/), next to the ledger.
+      let mut logger = tauri_plugin_log::Builder::default()
+        .level(log::LevelFilter::Info)
+        .max_file_size(5_000_000)
+        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne);
+      if let Ok(data_dir) = app.path().app_data_dir() {
+        let folder = tauri_plugin_log::TargetKind::Folder { path: data_dir.join("logs"), file_name: Some("app".into()) };
+        logger = logger.target(tauri_plugin_log::Target::new(folder));
       }
+      app.handle().plugin(logger.build())?;
       if let Ok(documents) = app.path().document_dir() {
         // Guesses "Default" as the initial root — correct on every
         // launch except the rare case where the user's last-active Space
