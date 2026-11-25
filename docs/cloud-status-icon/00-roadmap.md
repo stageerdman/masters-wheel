@@ -25,7 +25,7 @@ Tick a box only when its check has really passed.
 4. **Cleanup review, rebuild, Start (Eraser)** · `04-cleanup-review.md`
    - [x] No leftover banner code, text, imports or css. The cloud icon is the only place to see upload status in Performance Review.
    - [x] The popover holds only the essentials. Magic stays quiet and respects reduced motion. The per-session backed-up checks are still there.
-   - [ ] `npm run app:start` rebuilds and opens the app. The window that opens shows the cloud icon, and the popover opens on click. *(The rebuild, install and launch passed, and the new code is in the bundle. Nobody has looked at the window or clicked the icon yet, because Eraser has no screen tool. Tick this once someone has seen both.)*
+   - [ ] `npm run app:start` rebuilds and opens the app. The window that opens shows the cloud icon, and the popover opens on click. *(The rebuild, install and launch passed, and the new code is in the bundle. Nobody has looked at the window or clicked the icon yet, because Eraser has no screen tool. Tick this once someone has seen both.)* Integration (Columbo, 2026-11-25): the full `npm run test:all` passed (61 JS, 111 Rust), and so did lint on the changed elements. A fresh `app:build` passed. The built `out/` has the popover text and no `StorageStatusLine`, and `app-bundle launch` installed and opened it. Nobody has looked at the window yet.
    - **Check:** the review is written and signed off, and every phase above is ticked.
 
 ## Done for the whole item
