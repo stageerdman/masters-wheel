@@ -33,6 +33,8 @@ struct Shared {
     ledger_path: PathBuf,
     context: Context,
     stream_urls: Mutex<HashMap<String, (String, Instant)>>,
+    // Tells the webview the overview is stale.
+    changed: Box<dyn Fn() + Send + Sync>,
 }
 
 #[derive(Clone)]
@@ -49,16 +51,14 @@ impl StorageService {
             log::warn!(target: "storage", "[start] {e}; starting with an empty ledger");
             Ledger::default()
         });
-        let context = Context { wheel_root: wheel_root.clone(), scratch: data_dir.join("onedrive").join("chunks"), chunk_size: CHUNK_SIZE };
-        let service = Self(Arc::new(Shared {
-            engine: Mutex::new(Engine::new(ledger, wheel_root)),
-            poked: Mutex::new(false),
-            wake: Condvar::new(),
-            recheck: AtomicBool::new(true),
-            ledger_path,
-            context,
-            stream_urls: Mutex::new(HashMap::new()),
-        }));
+        let scratch = data_dir.join("onedrive").join("chunks");
+        let emitter = app.clone();
+        let changed = move || {
+            if let Err(e) = emitter.emit(CHANGED_EVENT, ()) {
+                log::warn!(target: "storage", "[changed] {e}");
+            }
+        };
+        let service = Self::new(ledger, ledger_path, wheel_root, scratch, Box::new(changed));
         let worker = service.clone();
         std::thread::Builder::new()
             .name("storage".into())
@@ -67,10 +67,27 @@ impl StorageService {
         service
     }
 
-    // Runs `change` on the engine, saves, and nudges the worker.
+    fn new(ledger: Ledger, ledger_path: PathBuf, wheel_root: PathBuf, scratch: PathBuf, changed: Box<dyn Fn() + Send + Sync>) -> Self {
+        let context = Context { wheel_root: wheel_root.clone(), scratch, chunk_size: CHUNK_SIZE };
+        Self(Arc::new(Shared {
+            engine: Mutex::new(Engine::new(ledger, wheel_root)),
+            poked: Mutex::new(false),
+            wake: Condvar::new(),
+            recheck: AtomicBool::new(true),
+            ledger_path,
+            context,
+            stream_urls: Mutex::new(HashMap::new()),
+            changed,
+        }))
+    }
+
+    // Runs `change` on the engine, saves, tells the webview, and nudges the
+    // worker. The webview must hear about it even when no job follows
+    // (a mode switch with nothing to move, a plain disconnect).
     pub fn update<T>(&self, change: impl FnOnce(&mut Engine) -> T) -> T {
         let result = change(&mut self.engine());
         self.save();
+        (self.0.changed)();
         self.poke();
         result
     }
@@ -152,7 +169,7 @@ impl StorageService {
                 last_scan = Some(Instant::now());
             }
             if self.read(Engine::disconnect_ready) {
-                self.finish_disconnect(&session, app);
+                self.finish_disconnect(&session);
                 continue;
             }
             let (now, disk) = (unix_now(), self.disk());
@@ -163,19 +180,19 @@ impl StorageService {
             let outcome = perform(&job, &cloud, &self.0.context);
             self.engine().finish(&job, outcome, unix_now(), self.disk());
             self.save();
-            let _ = app.emit(CHANGED_EVENT, ());
+            (self.0.changed)();
         }
     }
 
     // "Download and disconnect" brought the last video home.
-    fn finish_disconnect(&self, session: &OneDriveSession, app: &AppHandle) {
+    // On success disconnect_now's update has already told the webview.
+    fn finish_disconnect(&self, session: &OneDriveSession) {
         if let Err(e) = self.disconnect_now(session) {
             // Stay in "disconnecting" so the panel keeps its Stop button;
             // the next pass tries again.
             log::error!(target: "storage", "[disconnect] {e}");
             self.idle();
         }
-        let _ = app.emit(CHANGED_EVENT, ());
     }
 
     fn refresh_account(&self, session: &OneDriveSession) {
@@ -186,9 +203,13 @@ impl StorageService {
                 None
             }
         };
-        let mut engine = self.engine();
-        engine.set_account(account);
-        engine.wake();
+        {
+            let mut engine = self.engine();
+            engine.set_account(account);
+            engine.wake();
+        }
+        // Signing in or out changes the panel even if no job follows.
+        (self.0.changed)();
     }
 
     // Only while connected: someone who never connects keeps today's app.
@@ -213,5 +234,55 @@ impl StorageService {
         let poked = self.0.poked.lock().expect("storage poke mutex");
         let (mut poked, _) = self.0.wake.wait_timeout_while(poked, IDLE_WAIT, |poked| !*poked).expect("storage poke mutex");
         *poked = false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::AtomicUsize;
+
+    use super::*;
+    use crate::storage::model::Mode;
+    use crate::storage::testdir::TestDir;
+
+    // No worker thread: only `update` runs, so any change heard came from it.
+    fn service(dir: &TestDir) -> (StorageService, Arc<AtomicUsize>) {
+        let heard = Arc::new(AtomicUsize::new(0));
+        let counter = heard.clone();
+        let changed = Box::new(move || {
+            counter.fetch_add(1, Ordering::SeqCst);
+        });
+        let root = dir.path().to_path_buf();
+        let service = StorageService::new(Ledger::default(), root.join("videos.json"), root.clone(), root.join("chunks"), changed);
+        (service, heard)
+    }
+
+    #[test]
+    fn a_mode_switch_with_nothing_to_move_tells_the_webview() {
+        let dir = TestDir::new("service-mode");
+        let (service, heard) = service(&dir);
+        service.update(|engine| engine.set_mode(Mode::Smart));
+        assert_eq!(heard.load(Ordering::SeqCst), 1);
+        assert_eq!(service.read(|engine| engine.ledger.mode), Mode::Smart);
+    }
+
+    #[test]
+    fn a_plain_disconnect_tells_the_webview() {
+        let dir = TestDir::new("service-disconnect");
+        let (service, heard) = service(&dir);
+        service.update(|engine| engine.set_account(Some("a@b".into())));
+        service.update(Engine::disconnected);
+        assert_eq!(heard.load(Ordering::SeqCst), 2);
+        assert!(!service.read(|engine| engine.ledger.connected));
+    }
+
+    #[test]
+    fn stop_disconnecting_with_nothing_downloading_tells_the_webview() {
+        let dir = TestDir::new("service-stop");
+        let (service, heard) = service(&dir);
+        service.update(|engine| engine.set_disconnecting(true));
+        service.update(|engine| engine.set_disconnecting(false));
+        assert_eq!(heard.load(Ordering::SeqCst), 2);
+        assert!(!service.read(|engine| engine.ledger.disconnecting));
     }
 }
