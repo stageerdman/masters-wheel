@@ -3,10 +3,13 @@
 // This side only decides *what* goes where (layout.ts).
 
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { listSpaces } from "@/lib/spaces";
+import { errorMessage } from "./commandError";
 import { MANIFEST_PATH, buildManifest, parseManifest, skeletonFolders } from "./layout";
 import { wakeStorage } from "./storage";
 
+export * from "./commandError";
 export * from "./layout";
 export * from "./storage";
 
@@ -37,8 +40,15 @@ export function cancelConnectOneDrive(): Promise<void> {
   return invoke("onedrive_cancel_connect");
 }
 
-export function disconnectOneDrive(): Promise<OneDriveStatus> {
-  return thenWakeStorage(invoke<OneDriveStatus>("onedrive_disconnect"));
+// "Show in OneDrive": opens the app folder on OneDrive web.
+export function showFolderInOneDrive(): Promise<void> {
+  return invoke("onedrive_show_folder");
+}
+
+const MANAGE_STORAGE_URL = "https://onedrive.live.com/?v=managestorage";
+
+export function openManageStorage(): Promise<void> {
+  return openUrl(MANAGE_STORAGE_URL);
 }
 
 // Creates the Space/Section folders for every Space and refreshes
@@ -47,7 +57,7 @@ export async function ensureAppFolder(): Promise<void> {
   const spaces = await listSpaces();
   for (const path of skeletonFolders(spaces)) {
     await invoke("onedrive_ensure_folder", { path }).catch((error) => {
-      throw new Error(`Couldn't create the OneDrive folder "${path}": ${error}`);
+      throw new Error(`Couldn't create the OneDrive folder "${path}": ${errorMessage(error)}`);
     });
   }
   const previous = parseManifest(await invoke<string | null>("onedrive_read_text", { path: MANIFEST_PATH }));

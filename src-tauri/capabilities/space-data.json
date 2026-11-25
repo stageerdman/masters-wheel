@@ -8,6 +8,10 @@
     "dialog:allow-message",
     "opener:allow-reveal-item-in-dir",
     {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://onedrive.live.com/*" }]
+    },
+    {
       "identifier": "fs:allow-mkdir",
       "allow": [{ "path": "$DOCUMENT/Master's Wheel" }, { "path": "$DOCUMENT/Master's Wheel/**" }]
     },

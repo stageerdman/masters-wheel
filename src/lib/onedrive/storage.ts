@@ -30,11 +30,17 @@ export type VideoStatus = {
 
 export type StorageOverview = {
   mode: StorageMode;
+  // Connected on purpose; with `signedIn` false that means signed out.
+  connected: boolean;
+  account: string | null;
+  disconnecting: boolean;
   online: boolean;
   signedIn: boolean;
   revoked: boolean;
   cloudFull: boolean;
   uploadBytesLeft: number;
+  // What the current mode (or a running disconnect) still has to move.
+  pending: SwitchPreview;
   videos: VideoStatus[];
 };
 
@@ -45,6 +51,8 @@ export type SwitchPreview = {
   toMacBytes: number;
   freeBytes: number;
   enoughRoom: boolean;
+  // When there isn't enough room: how much to free up first.
+  shortBytes: number;
 };
 
 // Emitted after every storage job; re-read the overview when it fires.
@@ -86,4 +94,19 @@ export function wakeStorage(): Promise<void> {
 
 export function retryUnreadableVideos(): Promise<void> {
   return invoke("storage_retry_unreadable");
+}
+
+// What a disconnect would bring home: everything comes back, as in Backup.
+export function previewDisconnect(): Promise<SwitchPreview> {
+  return previewStorageSwitch("backup");
+}
+
+// downloadFirst: bring every video only in OneDrive home, then sign out
+// (SPEC 5.7). false = disconnect now ("Disconnect" / "Disconnect anyway").
+export function disconnectStorage(downloadFirst: boolean): Promise<void> {
+  return invoke("storage_disconnect", { downloadFirst });
+}
+
+export function stopDisconnecting(): Promise<void> {
+  return invoke("storage_stop_disconnect");
 }

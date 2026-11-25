@@ -63,6 +63,8 @@ pub struct SwitchPreview {
     pub to_mac_bytes: u64,
     pub free_bytes: u64,
     pub enough_room: bool,
+    // When there isn't enough room: how much to free up first.
+    pub short_bytes: u64,
 }
 
 pub fn overview(engine: &Engine, now: u64) -> Overview {
@@ -102,6 +104,7 @@ pub fn preview_switch(engine: &Engine, mode: Mode, now: u64, disk: Option<DiskSp
         to_mac_bytes: 0,
         free_bytes: disk.map_or(0, |d| d.free),
         enough_room: true,
+        short_bytes: 0,
     };
     for v in engine.ledger.videos.values().filter(|v| !v.removed) {
         let wants = wants_on_mac(v, mode, now);
@@ -115,6 +118,7 @@ pub fn preview_switch(engine: &Engine, mode: Mode, now: u64, disk: Option<DiskSp
     }
     if preview.to_mac > 0 {
         preview.enough_room = disk.is_some_and(|d| d.has_room_for(preview.to_mac_bytes, mode));
+        preview.short_bytes = disk.map_or(0, |d| d.shortfall(preview.to_mac_bytes, mode));
     }
     preview
 }

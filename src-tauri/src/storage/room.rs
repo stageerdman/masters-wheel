@@ -18,11 +18,19 @@ impl DiskSpace {
     // Free space left after downloading `size` more bytes must stay above
     // the floor.
     pub fn has_room_for(&self, size: u64, mode: Mode) -> bool {
-        let floor = match mode {
+        self.free.saturating_sub(size) > self.floor(mode)
+    }
+
+    // How much the user must free up before `size` fits ("Free up N first").
+    pub fn shortfall(&self, size: u64, mode: Mode) -> u64 {
+        (size + self.floor(mode) + 1).saturating_sub(self.free)
+    }
+
+    fn floor(&self, mode: Mode) -> u64 {
+        match mode {
             Mode::Smart => (self.total / 10).max(5 * GB),
             Mode::Backup | Mode::AlwaysInCloud => GB,
-        };
-        self.free.saturating_sub(size) > floor
+        }
     }
 }
 
@@ -59,6 +67,16 @@ mod tests {
         let disk = DiskSpace { free: 10 * GB, total: 1000 * GB };
         assert!(disk.has_room_for(8 * GB, Mode::Backup));
         assert!(!disk.has_room_for(9 * GB, Mode::Backup));
+    }
+
+    #[test]
+    fn shortfall_is_exactly_what_makes_it_fit() {
+        let disk = DiskSpace { free: 30 * GB, total: 1000 * GB };
+        let short = disk.shortfall(49 * GB, Mode::Backup);
+        assert!(short > 19 * GB && short <= 20 * GB + 1);
+        let freed = DiskSpace { free: disk.free + short, ..disk };
+        assert!(freed.has_room_for(49 * GB, Mode::Backup));
+        assert_eq!(disk.shortfall(GB, Mode::Backup), 0);
     }
 
     #[test]
