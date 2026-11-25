@@ -3,8 +3,10 @@ import {
   CALL_STATE_META,
   backupMark,
   humanDate,
+  type BackupState,
   type VideoRecord,
 } from "@/elements/PerformanceReview/PerformanceReview.data";
+import { RowIcon } from "./RowIcon";
 import position from "./VideoListItem.position.module.css";
 import styles from "./VideoListItem.styles.module.css";
 
@@ -19,32 +21,38 @@ type VideoListItemProps = {
 // been classified yet (state: null) — never guesses a real state.
 const UNSET_META = { glyph: "○", color: "var(--color-text-muted)" };
 
-// True only when `value` turned on after first paint — so a mark that
-// arrives live (upload finished, review ticked) settles in, and one that
-// was already there on open just sits.
+const REVIEWED_LABEL = "Reviewed: you marked this call as reviewed";
+
+// True only when `value` changed after first paint in a way `arrives`
+// accepts — so a mark that arrives live (upload finished, review ticked)
+// settles in, and one that was already there on open just sits.
 // Adjusted during render (React's pattern for this, as in Hero).
-// `from` limits which earlier value counts as "live": the backed-up mark
-// settles only from `pending`, never from `not_connected` — the storage
-// overview loads after first paint, and every row would fade in at once.
-function useArrivedLive<T>(value: T, on: T, from?: T): boolean {
+function useArrivedLive<T>(value: T, arrives: (from: T, to: T) => boolean): boolean {
   const [previous, setPrevious] = useState(value);
   const [arrived, setArrived] = useState(false);
   if (value !== previous) {
     setPrevious(value);
-    setArrived(value === on && (from === undefined || previous === from));
+    setArrived(arrives(previous, value));
   }
   return arrived;
 }
 
-// A session row: outcome glyph, title over a human date, then two quiet
-// marks on the right — reviewed, and backed up to OneDrive. Loudness runs
-// title › glyph › reviewed › backed up. See
-// docs/performance-review-redesign/03-ui-spec.md.
+// Storage settles only from `uploading` to a safe state — never from
+// `unknown`: the overview loads after first paint, and every row would
+// fade in at once.
+const becameSafe = (from: BackupState, to: BackupState) =>
+  from === "uploading" && (to === "cloud_only" || to === "cloud_and_local");
+const turnedOn = (_from: boolean, to: boolean) => to;
+
+// A session row: outcome glyph, title over a human date, then two marks in
+// fixed slots on the right — storage, then Reviewed. Each slot keeps its
+// width when empty, so the marks line up as columns down the list.
+// See docs/session-row-icons/03-ui-spec.md.
 export function VideoListItem({ video, active, onClick, onContextMenu }: VideoListItemProps) {
   const meta = video.state ? CALL_STATE_META[video.state] : UNSET_META;
   const mark = backupMark(video.backup);
-  const reviewSettles = useArrivedLive(video.reviewed, true);
-  const backupSettles = useArrivedLive(video.backup, "backed_up", "pending");
+  const reviewSettles = useArrivedLive(video.reviewed, turnedOn);
+  const backupSettles = useArrivedLive(video.backup, becameSafe);
 
   return (
     <button
@@ -73,35 +81,34 @@ export function VideoListItem({ video, active, onClick, onContextMenu }: VideoLi
         </span>
       </span>
       <span className={position.marks} data-construction>
-        {video.reviewed && (
-          <span
-            className={`${styles.reviewedMark} ${reviewSettles ? styles.settle : ""}`}
-            data-construction
-            data-mark="reviewed"
-            role="img"
-            aria-label="Reviewed"
-            title="Reviewed"
-          >
-            •
-          </span>
-        )}
-        {mark?.visible && (
-          <span
-            className={`${styles.backupMark} ${backupSettles ? styles.settle : ""}`}
-            data-construction
-            data-mark="backup"
-            role="img"
-            aria-label={mark.label}
-            title={mark.label}
-          >
-            ✓
-          </span>
-        )}
-        {mark && !mark.visible && (
-          <span className={`${styles.srOnly} ${position.srOnly}`} data-construction>
-            {mark.label}
-          </span>
-        )}
+        <span className={position.slot} data-construction>
+          {mark && (
+            <span
+              className={`${styles.mark} ${video.backup === "stuck" ? styles.stuck : ""} ${backupSettles ? styles.settle : ""}`}
+              data-construction
+              data-mark="backup"
+              role="img"
+              aria-label={mark.label}
+              title={mark.label}
+            >
+              <RowIcon name={mark.icon} />
+            </span>
+          )}
+        </span>
+        <span className={position.slot} data-construction>
+          {video.reviewed && (
+            <span
+              className={`${styles.mark} ${styles.reviewed} ${reviewSettles ? styles.settle : ""}`}
+              data-construction
+              data-mark="reviewed"
+              role="img"
+              aria-label={REVIEWED_LABEL}
+              title={REVIEWED_LABEL}
+            >
+              <RowIcon name="reviewed" />
+            </span>
+          )}
+        </span>
       </span>
     </button>
   );
