@@ -41,7 +41,13 @@ test("bytes read like Finder", () => {
   assert.equal(formatBytes(12.4 * GB), "12.4 GB");
   assert.equal(formatBytes(31 * GB), "31 GB");
   assert.equal(formatBytes(850_000_000), "850 MB");
-  assert.equal(formatBytes(0), "1 MB");
+  assert.equal(formatBytes(1), "1 MB");
+  assert.equal(formatBytes(0), "0 MB");
+});
+
+// Broke before: an empty (not yet scanned) overview read "1 MB" for both.
+test("totals are honest when nothing is known yet", () => {
+  assert.equal(numbersLine(overview()), "On this Mac: 0 MB · In OneDrive: 0 MB");
 });
 
 test("numbers line shows movement first, then totals", () => {

@@ -32,8 +32,10 @@ export const MODE_NAMES: Record<StorageMode, string> = {
 const GB = 1_000_000_000;
 const MB = 1_000_000;
 
-// Decimal units, like Finder: 12.4 GB, 31 GB, 850 MB.
+// Decimal units, like Finder: 12.4 GB, 31 GB, 850 MB. Nothing is "0 MB";
+// only a real but tiny size rounds up to 1 MB.
 export function formatBytes(bytes: number): string {
+  if (bytes <= 0) return "0 MB";
   if (bytes >= GB) return `${trimZero((bytes / GB).toFixed(1))} GB`;
   return `${Math.max(1, Math.round(bytes / MB))} MB`;
 }
