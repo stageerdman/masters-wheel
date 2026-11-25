@@ -24,7 +24,7 @@ import { listRecords } from "@/lib/records";
 export type PanelLine = { text: string; tone: "muted" | "accent" };
 
 // The line under Connect after a sign-in that didn't succeed (SPEC 5.3).
-const CONNECT_LINES: Record<Exclude<CommandErrorKind, "portBusy">, PanelLine> = {
+const CONNECT_LINES: Record<CommandErrorKind, PanelLine> = {
   cancelled: { text: "Not connected. Your videos stay on this Mac, as before.", tone: "muted" },
   orgBlocked: {
     text: "Your organization doesn't allow Master's Wheel to use OneDrive. Ask your IT team, or connect with another account.",
@@ -34,10 +34,8 @@ const CONNECT_LINES: Record<Exclude<CommandErrorKind, "portBusy">, PanelLine> = 
   other: { text: "Couldn't connect to OneDrive. Please try again.", tone: "accent" },
 };
 
-// The busy-port sentence comes from Rust, which owns the port number.
 function connectLine(error: unknown): PanelLine {
-  const kind = errorKind(error);
-  return kind === "portBusy" ? { text: errorMessage(error), tone: "accent" } : CONNECT_LINES[kind];
+  return CONNECT_LINES[errorKind(error)];
 }
 
 const ACTION_FAILED: PanelLine = { text: "That didn't work. Please try again.", tone: "accent" };

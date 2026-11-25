@@ -10,7 +10,8 @@ use url::form_urlencoded::Serializer;
 use super::error::OneDriveError;
 
 // The "Master's Wheel" app registration in Microsoft Entra (Mobile and
-// desktop, public client, Redirect URI http://localhost:47821). A public
+// desktop, public client, Redirect URI http://localhost:47821; Microsoft
+// ignores a localhost port, so any port loopback.rs picks matches). A public
 // client ID identifies the app, it isn't a secret, so it ships in the build;
 // `ONEDRIVE_CLIENT_ID` overrides it for a different registration.
 pub const CLIENT_ID: &str = "15f9ee87-a71e-487f-aea8-2b68e80b30a6";

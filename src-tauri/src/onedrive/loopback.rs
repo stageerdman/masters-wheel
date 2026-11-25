@@ -1,6 +1,10 @@
 // One-shot localhost listener that catches Microsoft's redirect back from
-// the browser. It always listens on REDIRECT_PORT, so the Redirect URI in
-// the app registration is one exact, known address.
+// the browser. It tries PREFERRED_PORT and, if something else holds it,
+// takes any free port: for a "Mobile and desktop" app registration,
+// Microsoft ignores the port of an http://localhost redirect URI (RFC 8252
+// loopback rule), so every port matches the registered URI.
+// The listener is closed when the Loopback is dropped, i.e. as soon as
+// sign-in finishes, fails or is cancelled.
 
 use std::io::ErrorKind;
 use std::net::{Ipv4Addr, TcpListener};
@@ -11,9 +15,10 @@ use tiny_http::{Header, Response, Server, StatusCode};
 
 use super::error::OneDriveError;
 
-// Rarely used by other software (not 3000/8080-style dev ports). Must match
-// the Redirect URI registered in Entra: http://localhost:47821
-pub const REDIRECT_PORT: u16 = 47821;
+// Not 47821: the app's own media server (media_server.rs) holds that one.
+// Below macOS's ephemeral range (49152+), so the OS rarely hands it out.
+pub const PREFERRED_PORT: u16 = 38291;
+const ANY_FREE_PORT: u16 = 0;
 
 const POLL: Duration = Duration::from_millis(500);
 const DONE_PAGE: &str = "<!doctype html><meta charset=utf-8><title>Master's Wheel</title>\
@@ -31,14 +36,19 @@ pub struct Loopback {
 
 impl Loopback {
     pub fn bind() -> Result<Self, OneDriveError> {
-        Self::bind_on(REDIRECT_PORT)
+        Self::bind_preferring(PREFERRED_PORT)
     }
 
-    fn bind_on(port: u16) -> Result<Self, OneDriveError> {
-        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, port)).map_err(|e| match e.kind() {
-            ErrorKind::AddrInUse => OneDriveError::PortBusy(port),
-            _ => OneDriveError::Internal(format!("couldn't open local sign-in port {port}: {e}")),
-        })?;
+    fn bind_preferring(port: u16) -> Result<Self, OneDriveError> {
+        let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, port)) {
+            Err(e) if e.kind() == ErrorKind::AddrInUse => TcpListener::bind((Ipv4Addr::LOCALHOST, ANY_FREE_PORT)),
+            other => other,
+        }
+        .map_err(|e| OneDriveError::Internal(format!("couldn't open a local sign-in port: {e}")))?;
+        let port = listener
+            .local_addr()
+            .map_err(|e| OneDriveError::Internal(format!("couldn't read the local sign-in port: {e}")))?
+            .port();
         let server = Server::from_listener(listener, None)
             .map_err(|e| OneDriveError::Internal(format!("couldn't serve local sign-in port {port}: {e}")))?;
         Ok(Self { server, port })
@@ -81,25 +91,41 @@ impl Loopback {
 mod tests {
     use super::*;
 
-    #[test]
-    fn redirect_uri_is_the_fixed_port() {
-        assert_eq!(REDIRECT_PORT, 47821);
-        assert_eq!(redirect_uri(REDIRECT_PORT), "http://localhost:47821");
+    fn free_port() -> u16 {
+        TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap().local_addr().unwrap().port()
     }
 
     #[test]
-    fn binds_the_given_port_and_reports_it_in_the_redirect_uri() {
-        let port = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap().local_addr().unwrap().port();
-        let loopback = Loopback::bind_on(port).unwrap();
+    fn preferred_port_is_not_the_media_servers() {
+        assert_ne!(PREFERRED_PORT, 47821);
+        assert_eq!(redirect_uri(PREFERRED_PORT), "http://localhost:38291");
+    }
+
+    #[test]
+    fn binds_the_preferred_port_when_free() {
+        let port = free_port();
+        let loopback = Loopback::bind_preferring(port).unwrap();
         assert_eq!(loopback.redirect_uri(), format!("http://localhost:{port}"));
     }
 
     #[test]
-    fn a_busy_port_is_a_port_busy_error() {
+    fn a_busy_preferred_port_falls_back_to_a_free_one() {
         let taken = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
-        let port = taken.local_addr().unwrap().port();
-        let error = Loopback::bind_on(port).err().expect("bind must fail while the port is taken");
-        assert_eq!(error, OneDriveError::PortBusy(port));
-        assert_eq!(error.kind(), "portBusy");
+        let busy = taken.local_addr().unwrap().port();
+        let loopback = Loopback::bind_preferring(busy).unwrap();
+        assert_ne!(loopback.port, busy);
+        assert_ne!(loopback.port, 0);
+        assert_eq!(loopback.redirect_uri(), format!("http://localhost:{}", loopback.port));
+    }
+
+    #[test]
+    fn the_port_is_released_once_sign_in_ends() {
+        let port = free_port();
+        let loopback = Loopback::bind_preferring(port).unwrap();
+        let cancelled = AtomicBool::new(true);
+        assert_eq!(loopback.wait_for_redirect(POLL, &cancelled), Err(OneDriveError::SignInCancelled));
+        drop(loopback);
+        let again = Loopback::bind_preferring(port).unwrap();
+        assert_eq!(again.port, port);
     }
 }

@@ -9,10 +9,6 @@ test("reads the kind and message the Rust side sends", () => {
   assert.equal(errorMessage(error), "AADSTS65001");
 });
 
-test("a busy sign-in port keeps its own kind", () => {
-  assert.equal(errorKind({ kind: "portBusy", message: "Another program is using port 47821" }), "portBusy");
-});
-
 test("anything unexpected is 'other' and still has a message", () => {
   assert.equal(errorKind("boom"), "other");
   assert.equal(errorKind({ kind: "weird" }), "other");

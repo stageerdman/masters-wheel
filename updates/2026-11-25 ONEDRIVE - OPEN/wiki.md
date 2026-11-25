@@ -6,7 +6,7 @@ Durable decisions and lessons. The roadmap and live status live in
 ## Where the code lives
 - `src-tauri/src/onedrive/`: one file per job. `pkce.rs` (verifier and
   challenge), `auth.rs` (authorize URL, token request and response),
-  `loopback.rs` (the one-shot `http://localhost:47821` redirect listener),
+  `loopback.rs` (the one-shot `http://localhost:<port>` redirect listener),
   `curl.rs` (runs curl with its config on stdin), `graph.rs` (app-folder
   calls: `me`, `special/approot`, create folder), `token_store.rs`
   (Keychain), `session.rs` (in-memory access token plus refresh),
@@ -67,11 +67,20 @@ Durable decisions and lessons. The roadmap and live status live in
 - **Keychain prompts on rebuilds.** The app is unsigned, so every rebuild
   is a "new" app to the Keychain, and macOS asks once to allow access to
   the stored item. That's expected in development, not a bug.
-- **Fixed redirect port 47821.** The user asked for one exact, rarely used
-  port instead of a random one: the loopback always binds
-  `REDIRECT_PORT` (loopback.rs) and the registered Redirect URI is
-  `http://localhost:47821`. A busy port becomes `PortBusy` (kind
-  `portBusy`), whose Rust sentence the Storage panel shows as is.
+- **Redirect port: 38291, else any free port.** The first choice, a fixed
+  47821, clashed with the app itself: `media_server.rs` binds
+  `127.0.0.1:47821` at launch, so every sign-in failed with "Another
+  program is using port 47821". The loopback now tries `PREFERRED_PORT`
+  (38291, below macOS's 49152+ ephemeral range) and falls back to an
+  OS-assigned free port, so a busy port can't block sign-in and the
+  `portBusy` error is gone. This works because, for a Mobile and desktop
+  registration, Microsoft ignores the port of an `http://localhost`
+  redirect URI (RFC 8252 loopback rule); the registered
+  `http://localhost:47821` matches every port. Host (`localhost`, not
+  `127.0.0.1`) and path (none) must still match. The listener closes when
+  `Loopback` drops, on success, failure, timeout or cancel; a test rebinds
+  the same port to prove it. Lesson: grep the code for a port before
+  picking one.
 - **The client ID ships in the build** (`auth::CLIENT_ID`). It's a public
   client ID, not a secret. `.env` is read from the folder the app was
   built in, so a `.env`-only ID vanished from builds made anywhere else.

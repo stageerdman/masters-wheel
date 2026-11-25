@@ -107,9 +107,15 @@ engine doesn't keep the switch's starting count, so only "left" shows).
    app folder). Supported accounts: "Accounts in any organizational
    directory and personal Microsoft accounts".
 2. Authentication → Add a platform → **Mobile and desktop applications** →
-   custom redirect URI `http://localhost:47821`. The app always listens on
-   that port (`REDIRECT_PORT` in `src-tauri/src/onedrive/loopback.rs`). If
-   another program holds it, Connect says so instead of failing silently.
+   custom redirect URI `http://localhost` (the existing
+   `http://localhost:47821` also works). Microsoft ignores the port of a
+   localhost redirect URI on this platform, so no change is needed when the
+   app's port changes. The app listens on `PREFERRED_PORT` (38291, in
+   `src-tauri/src/onedrive/loopback.rs`), or on any free port if something
+   else holds it, and closes it as soon as sign-in ends.
+   Why not 47821 any more (2026-11-25): the app's own video media server
+   (`media_server.rs`) binds 47821 at launch, so sign-in always hit
+   "Another program is using port 47821".
 3. API permissions: Microsoft Graph → delegated `Files.ReadWrite.AppFolder`,
    `User.Read`, `offline_access`.
 4. Done (2026-11-25): the registration exists, and its client ID is built in
@@ -136,15 +142,16 @@ after the password step, so a wrong Redirect URI would only show up in
 step 1.
 
 ### Live check (steps)
-The app registration's Redirect URI must be exactly
-`http://localhost:47821` (Mobile and desktop platform).
+The app registration's Redirect URI must be `http://localhost` with any
+port or none (Mobile and desktop platform), and no path.
 Run on the newest built `.app` (`npm run app:build`), with at least two
 Performance Review videos, one added today and one older than 14 days
 (set its file date back). Back up the app data folder first. Each step
 passes only if what's listed is true. Look in OneDrive on the web under
 `Apps/Master's Wheel/`.
 1. **Connect.** Settings › Storage › Connect opens the Microsoft login.
-   The browser returns to `http://localhost:47821/?code=…` and shows
+   No "port" error appears. The browser returns to
+   `http://localhost:38291/?code=…` (or another port if 38291 was busy) and shows
    "You can close this tab." After sign-in the panel shows the account, the app folder exists with
    `<Space>/<Section>/` folders and `manifest.json`, and the status line
    appears in the video list.
