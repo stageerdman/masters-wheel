@@ -16,8 +16,8 @@ use super::cloud::{Cloud, GraphCloud};
 use super::engine::Engine;
 use super::ledger::Ledger;
 use super::room::{DiskSpace, disk_space};
-use super::scan::scan;
-use super::work::{CHUNK_SIZE, Context, perform};
+use super::scan::{Found, scan};
+use super::work::{CHUNK_SIZE, Context, Job, Outcome, perform};
 
 const IDLE_WAIT: Duration = Duration::from_secs(60);
 const SCAN_EVERY: Duration = Duration::from_secs(20);
@@ -178,10 +178,18 @@ impl StorageService {
                 continue;
             };
             let outcome = perform(&job, &cloud, &self.0.context);
-            self.engine().finish(&job, outcome, unix_now(), self.disk());
-            self.save();
-            (self.0.changed)();
+            self.finish_job(&job, outcome);
         }
+    }
+
+    // Disk space is read before the engine lock: `disk()` takes that same
+    // lock, and a std Mutex taken twice deadlocks the worker (and then every
+    // command waiting on the engine).
+    fn finish_job(&self, job: &Job, outcome: Outcome) {
+        let disk = self.disk();
+        self.engine().finish(job, outcome, unix_now(), disk);
+        self.save();
+        (self.0.changed)();
     }
 
     // "Download and disconnect" brought the last video home.
@@ -223,11 +231,22 @@ impl StorageService {
         };
         match scan(&root) {
             Ok(found) => {
-                self.engine().reconcile(&found);
-                self.save();
+                if self.reconcile(&found) {
+                    self.save();
+                    // The panel may have read its overview before this scan.
+                    (self.0.changed)();
+                }
             }
             Err(e) => log::warn!(target: "storage", "[scan] {e}"),
         }
+    }
+
+    // True when what's on disk changed the ledger.
+    fn reconcile(&self, found: &[Found]) -> bool {
+        let mut engine = self.engine();
+        let before = engine.ledger.clone();
+        engine.reconcile(found);
+        engine.ledger != before
     }
 
     fn idle(&self) {
@@ -255,6 +274,64 @@ mod tests {
         let root = dir.path().to_path_buf();
         let service = StorageService::new(Ledger::default(), root.join("videos.json"), root.clone(), root.join("chunks"), changed);
         (service, heard)
+    }
+
+    // `count` hero videos of different sizes in one Space, signed in.
+    // Returns their total size in bytes.
+    fn many_videos(dir: &TestDir, service: &StorageService, count: usize) -> u64 {
+        dir.write("spaces.json", r#"{"spaces":[{"id":"s1","folderName":"Acme"}]}"#);
+        let mut total = 0;
+        for n in 0..count {
+            let body = "x".repeat(100 + n);
+            dir.write(&format!("Acme/records/r{n}/hero.mp4"), &body);
+            dir.write(&format!("Acme/records/r{n}/notes.json"), "{}");
+            total += body.len() as u64;
+        }
+        service.update(|engine| engine.set_account(Some("a@b".into())));
+        total
+    }
+
+    // Broke before: finishing a job locked the engine twice and froze the
+    // worker, and with it every command (pressing Smart hung the app).
+    #[test]
+    fn finishing_a_job_then_switching_to_smart_with_many_videos_does_not_block() {
+        let dir = TestDir::new("service-no-block");
+        let (service, _) = service(&dir);
+        many_videos(&dir, &service, 150);
+        service.rescan();
+        let disk = service.disk();
+        let job = service.read(|engine| engine.plan(unix_now(), disk)).expect("an upload to do");
+
+        let (done, finished) = std::sync::mpsc::channel();
+        let worker = service.clone();
+        std::thread::spawn(move || {
+            worker.finish_job(&job, Outcome::SessionStarted("https://upload".into()));
+            worker.update(|engine| engine.set_mode(Mode::Smart));
+            let disk = worker.disk();
+            worker.read(|engine| crate::storage::status::preview_switch(engine, Mode::Smart, unix_now(), disk));
+            done.send(()).unwrap();
+        });
+        finished.recv_timeout(Duration::from_secs(5)).expect("the storage engine stayed locked");
+        assert_eq!(service.read(|engine| engine.ledger.mode), Mode::Smart);
+    }
+
+    // Broke before: the scan filled the ledger silently, so the panel kept
+    // its empty first overview and showed placeholder totals.
+    #[test]
+    fn a_scan_tells_the_webview_and_the_totals_match_the_files() {
+        let dir = TestDir::new("service-totals");
+        let (service, heard) = service(&dir);
+        let total = many_videos(&dir, &service, 40);
+        let before = heard.load(Ordering::SeqCst);
+
+        service.rescan();
+        assert_eq!(heard.load(Ordering::SeqCst), before + 1);
+        let overview = service.read(|engine| crate::storage::status::overview(engine, unix_now()));
+        assert_eq!(overview.videos.len(), 40);
+        assert_eq!(overview.videos.iter().map(|v| v.size).sum::<u64>(), total);
+
+        service.rescan();
+        assert_eq!(heard.load(Ordering::SeqCst), before + 1, "nothing changed, nothing to tell");
     }
 
     #[test]
