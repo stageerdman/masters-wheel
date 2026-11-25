@@ -31,7 +31,7 @@ export function Navigation({
   const [query, setQuery] = useState("");
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null);
   const filtered = videos
-    .filter((video) => `${video.title} ${video.date}`.toLowerCase().includes(query.toLowerCase()))
+    .filter((video) => `${video.title} ${video.date} ${video.description}`.toLowerCase().includes(query.toLowerCase()))
     .sort(compareNewestFirst);
 
   return (

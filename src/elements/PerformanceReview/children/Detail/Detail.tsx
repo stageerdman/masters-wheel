@@ -71,7 +71,7 @@ export function Detail({
 
   return (
     <aside className={`${styles.root} ${position.root}`} data-construction>
-      <div className={position.panes} data-construction>
+      <div key={video.id} className={`${styles.pageTurn} ${position.panes}`} data-construction>
         <div
           className={position.pane}
           data-construction

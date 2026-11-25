@@ -55,7 +55,8 @@ import {
   type TrackSelection,
   type TranscriptGenerationState,
 } from "@/lib/transcript/generate";
-import { compareNewestFirst, type CallState, type VideoRecord } from "./PerformanceReview.data";
+import { useStorageOverview } from "@/lib/onedrive/useStorageOverview";
+import { backupStateFor, compareNewestFirst, type CallState, type VideoRecord } from "./PerformanceReview.data";
 
 const WRITE_DEBOUNCE_MS = 400;
 
@@ -71,6 +72,9 @@ function isCallState(value: string | null): value is CallState {
 
 export function usePerformanceReviewData() {
   const [summaries, setSummaries] = useState<RecordSummary[]>([]);
+  // Re-read on every storage change, so a row's backed-up mark settles in
+  // live as its upload finishes.
+  const { overview: storageOverview } = useStorageOverview();
   const [docs, setDocs] = useState<Record<string, string>>({});
   const [transcripts, setTranscripts] = useState<Record<string, string | null>>({});
   // One level of undo for a transcript speaker rename, keyed by record id
@@ -326,6 +330,7 @@ export function usePerformanceReviewData() {
       ? heroStreamUrl(selectedSummary.id, selectedSummary.heroFileName)
       : null;
 
+  const spaceId = getActiveSpace().id;
   const videos: VideoRecord[] = summaries.map((summary) => ({
     id: summary.id,
     state: isCallState(summary.state) ? summary.state : null,
@@ -343,6 +348,7 @@ export function usePerformanceReviewData() {
     reviewed: summary.reviewed,
     openCount: summary.openCount,
     scorecard: scorecards[summary.id] ?? null,
+    backup: backupStateFor(storageOverview, spaceId, summary.id),
   }));
 
   const selected = videos.find((video) => video.id === selectedId) ?? null;

@@ -13,6 +13,12 @@ import {
   ScorecardIcon,
   TranscriptIcon,
 } from "./children/KindIcon/KindIcon";
+import type { BackupState } from "./PerformanceReview.backup";
+
+// Backed-up state per session: read only by toBackupState() — see
+// PerformanceReview.backup.ts.
+export { toBackupState, backupStateFor, backupMark } from "./PerformanceReview.backup";
+export type { BackupState, BackupMark, RawBackup } from "./PerformanceReview.backup";
 
 // Which view Detail can show, and how each renders as a bookmark badge
 // (color + icon, the 2-letter label kept as a fallback — see this element's own
@@ -124,4 +130,21 @@ export type VideoRecord = {
   openCount: number;
   // null until "Generate Scorecard" has been run at least once.
   scorecard: Scorecard | null;
+  // Whether this session's video is safely in OneDrive — see toBackupState().
+  backup: BackupState;
 };
+
+// "Today", "Yesterday", "Tue 18 Nov", or "Tue 18 Nov 2025" outside this
+// year. Takes an ISO yyyy-mm-dd; anything else is shown as-is.
+export function humanDate(iso: string, now: Date = new Date()): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return iso;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((today.getTime() - date.getTime()) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  const options: Intl.DateTimeFormatOptions = { weekday: "short", day: "numeric", month: "short" };
+  if (date.getFullYear() !== now.getFullYear()) options.year = "numeric";
+  return date.toLocaleDateString("en-GB", options).replace(",", "");
+}
