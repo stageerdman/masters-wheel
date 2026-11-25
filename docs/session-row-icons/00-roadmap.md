@@ -75,38 +75,39 @@ Every visible state returns `visible: true`. The screen-reader-only text path (`
    - **Check:** the file is committed. Each row case names the raw fields it depends on.
 
 2. **Storage state and labels (Jony)** · `PerformanceReview.backup.ts`, `src/lib/performanceReview/backupMark.test.mjs`
-   - [ ] `BackupState` has the six values above. The old values are gone everywhere (`grep` finds no `backed_up`, `pending` or `not_connected` in `src/elements/PerformanceReview`).
-   - [ ] Cloud only: `inCloud` → `cloud_only`.
-   - [ ] Cloud + this Mac: `safeOnMac` → `cloud_and_local`.
-   - [ ] This Mac only: not connected, or no entry yet → `local_only`.
-   - [ ] Uploading: `waiting`, `uploading`, `checking`, `paused` and unknown states → `uploading`.
-   - [ ] Stuck/failed: `notUploadedFull`, `notUploadedUnreadable`, `missing` → `stuck`. A moving video with `lastError` stays `uploading`.
-   - [ ] `overview === null` → `unknown` → `backupMark` returns `null`.
-   - [ ] `backupMark` returns `{ visible, label, icon }` with the exact labels in the table.
-   - [ ] Tests cover every raw state, not connected, no entry, null overview, and the label + icon for each state.
+   - [x] `BackupState` has the six values above. The old values are gone everywhere (`grep` finds no `backed_up`, `pending` or `not_connected` in `src/elements/PerformanceReview`).
+   - [x] Cloud only: `inCloud` → `cloud_only`.
+   - [x] Cloud + this Mac: `safeOnMac` → `cloud_and_local`.
+   - [x] This Mac only: not connected, or no entry yet → `local_only`.
+   - [x] Uploading: `waiting`, `uploading`, `checking`, `paused` and unknown states → `uploading`.
+   - [x] Stuck/failed: `notUploadedFull`, `notUploadedUnreadable`, `missing` → `stuck`. A moving video with `lastError` stays `uploading`.
+   - [x] `overview === null` → `unknown` → `backupMark` returns `null`.
+   - [x] `backupMark` returns `{ visible, label, icon }` with the exact labels in the table. (Review F1: `visible` is now dead; cut it. F2: the uploading label needs words that are true when paused.)
+   - [x] Tests cover every raw state, not connected, no entry, null overview, and the label + icon for each state.
    - **Check:** `npm test` passes.
 
 3. **Reviewed mark (Jony)** · `VideoListItem.tsx`
-   - [ ] The `•` is replaced by the check-in-circle icon, with `title` and `aria-label` "Reviewed: you marked this call as reviewed".
-   - [ ] Nothing is drawn when not reviewed.
+   - [x] The `•` is replaced by the check-in-circle icon, with `title` and `aria-label` "Reviewed: you marked this call as reviewed".
+   - [x] Nothing is drawn when not reviewed.
    - **Check:** it is never a bare dot. Hovering shows the tooltip. VoiceOver reads the words.
 
 4. **Icon set and tooltips (Jony)** · `VideoListItem/` + `03-ui-spec.md`
-   - [ ] One icon component draws all six icons in one line style. The `✓` glyph is gone from the row.
-   - [ ] Every icon has `role="img"`, a `title` and an `aria-label` in words, from `backupMark().label` or the Reviewed label.
-   - [ ] At most two marks per row, in fixed slots (storage, then Reviewed). Nothing else is added to the row.
-   - [ ] The settle animation and reduced motion still work; storage settles only from `uploading` to safe.
-   - [ ] Unused CSS (old `.backupMark` glyph styles, `.srOnly` if unused) is removed.
-   - [ ] `03-ui-spec.md` describes each state: icon, colour, label, when it shows, and how it settles.
+   - [x] One icon component draws all six icons in one line style. The `✓` glyph is gone from the row.
+   - [x] Every icon has `role="img"`, a `title` and an `aria-label` in words, from `backupMark().label` or the Reviewed label.
+   - [x] At most two marks per row, in fixed slots (storage, then Reviewed). Nothing else is added to the row.
+   - [x] The settle animation and reduced motion still work; storage settles only from `uploading` to safe.
+   - [x] Unused CSS (old `.backupMark` glyph styles, `.srOnly` if unused) is removed.
+   - [x] `03-ui-spec.md` describes each state: icon, colour, label, when it shows, and how it settles.
    - **Check:** `npx tsc --noEmit`, `npm run lint` and `npm test` pass.
 
 5. **Cleanup review and integration (Eraser)** · `04-cleanup-review.md`
    - [ ] No leftovers: no `•` or `✓` glyphs on the row, no dead labels, no old `BackupState` values, no unused CSS.
    - [ ] No fact is said twice: the row shows this video's state only. Progress, reasons and Retry stay in the cloud popover.
-   - [ ] Tests pass: `npm run test:all`.
-   - [ ] Build passes: `npm run build` and `npm run app:build`.
+   - [x] Tests pass: `npm run test:all`.
+   - [x] Build passes: `npm run build` and `npm run app:build`.
    - [ ] Start opens the new version: `npm run app:start` rebuilds and launches, and the open window shows the new row icons (not the old `•` / `✓`).
    - [ ] All states can be told apart at a glance: cloud only, cloud + this Mac, this Mac only, uploading, stuck and Reviewed each look different by shape, also in greyscale. Hovering each one shows its words.
+   - Status (Eraser, 2026-11-25): RETURNED to Jony for F1 (cut the dead `visible` field) and F2 ("Uploading" label shown when paused or waiting); see `04-cleanup-review.md`. The first two boxes wait on those fixes. Start built, installed and launched the new version, but nobody has looked at the window yet, so the last two boxes stay open.
    - **Check:** the review is written and signed off, and every phase above is ticked. If nobody has looked at the window, say so here and leave the last two boxes open.
 
 ## Done for the whole item
