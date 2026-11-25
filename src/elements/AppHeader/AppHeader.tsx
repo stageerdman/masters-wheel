@@ -1,30 +1,35 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useHeaderActions } from "./AppHeader.context";
+import { goHome, isHeaderHidden } from "./AppHeader.script";
 import { ActionIsland } from "./children/ActionIsland/ActionIsland";
 import position from "./AppHeader.position.module.css";
 import styles from "./AppHeader.styles.module.css";
 
-// Main Menu is the minimal front door — no chrome above it.
-const HEADER_HIDDEN_ROUTES = ["/"];
-
 export function AppHeader() {
   const { island, brand, accessory } = useHeaderActions();
   const pathname = usePathname();
+  const router = useRouter();
   const label = brand?.label ?? "Master's Wheel";
   const showLogo = brand?.showLogo ?? false;
 
-  if (HEADER_HIDDEN_ROUTES.includes(pathname)) {
+  if (isHeaderHidden(pathname)) {
     return null;
   }
 
   return (
     <header className={`${styles.root} ${position.root}`} data-construction>
       <div className={position.logoArea} data-construction>
-        <Link href="/" className={`${styles.wordmarkLink} ${position.wordmarkLink}`} data-construction>
+        <button
+          type="button"
+          onClick={() => goHome(router)}
+          aria-label={`${label} — back to Main Menu`}
+          title="Back to Main Menu"
+          className={`${styles.wordmarkLink} ${position.wordmarkLink}`}
+          data-construction
+        >
           {showLogo && (
             <Image
               src="/masters-wheel-logo.png"
@@ -38,7 +43,7 @@ export function AppHeader() {
           <span className={styles.wordmark} data-construction>
             {label}
           </span>
-        </Link>
+        </button>
       </div>
       <div className={position.islandArea} data-construction>
         {island && (

@@ -10,7 +10,11 @@
 }
 
 .wordmarkLink {
+  background: none;
+  border: none;
   border-radius: 0.25rem;
+  font: inherit;
+  cursor: pointer;
 }
 
 .wordmarkLink:focus-visible {
