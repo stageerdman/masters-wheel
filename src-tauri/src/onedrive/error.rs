@@ -5,7 +5,6 @@ use std::fmt;
 // where it happened, so a log line names the full path.
 #[derive(Debug, Clone, PartialEq)]
 pub enum OneDriveError {
-    NotConfigured,
     NotConnected,
     SignInCancelled,
     SignInTimedOut,
@@ -47,7 +46,6 @@ impl OneDriveError {
     // What the Settings panel needs to pick its line (SPEC 5.3).
     pub fn kind(&self) -> &'static str {
         match self {
-            Self::NotConfigured => "notConfigured",
             Self::SignInCancelled => "cancelled",
             Self::OrgBlocked(_) => "orgBlocked",
             Self::PortBusy(_) => "portBusy",
@@ -74,10 +72,6 @@ impl From<OneDriveError> for CommandError {
 impl fmt::Display for OneDriveError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NotConfigured => write!(
-                f,
-                "OneDrive isn't set up in this build yet (ONEDRIVE_CLIENT_ID is missing). See the ONEDRIVE update's setup steps."
-            ),
             Self::NotConnected => write!(f, "OneDrive isn't connected."),
             Self::SignInCancelled => write!(f, "Sign-in was cancelled."),
             Self::SignInTimedOut => write!(f, "Sign-in took too long, so it was stopped. Try again."),

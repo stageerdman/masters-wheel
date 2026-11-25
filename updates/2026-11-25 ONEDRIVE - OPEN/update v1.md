@@ -112,11 +112,30 @@ engine doesn't keep the switch's starting count, so only "left" shows).
    another program holds it, Connect says so instead of failing silently.
 3. API permissions: Microsoft Graph → delegated `Files.ReadWrite.AppFolder`,
    `User.Read`, `offline_access`.
-4. Put the Application (client) ID in the project `.env` as
-   `ONEDRIVE_CLIENT_ID=...`. It's a public client ID, not a secret. There is
-   no client secret.
+4. Done (2026-11-25): the registration exists, and its client ID is built in
+   as `CLIENT_ID` in `src-tauri/src/onedrive/auth.rs` (a public client ID,
+   not a secret; no client secret). `ONEDRIVE_CLIENT_ID` in `.env`
+   overrides it. The registration allows **personal accounts only**, so
+   sign-in uses the `/consumers` endpoint (see wiki).
 
-### Live check (once `ONEDRIVE_CLIENT_ID` is set)
+### Live check results (2026-11-25, agent, no person signed in)
+Checked against Microsoft's real endpoints with the real client ID:
+- Microsoft knows the app ("Master's Wheel") and treats it as a public
+  client: a token request with a dummy code or refresh token gets
+  `invalid_grant` (AADSTS70000), not "client secret required".
+- **Found and fixed:** on `/common` every token request was refused
+  (AADSTS9002331, personal-accounts-only app). The app now uses
+  `/consumers`, where the same requests get through to the grant check.
+- The authorize page for our exact URL (client ID, `http://localhost:47821`,
+  scopes, PKCE) loads Microsoft's sign-in page with no error.
+- All tests pass and the newest `.app` is built.
+
+Still needs a person, because each step needs a real Microsoft sign-in:
+steps 1–8 below. Note: Microsoft doesn't check the redirect URI until
+after the password step, so a wrong Redirect URI would only show up in
+step 1.
+
+### Live check (steps)
 The app registration's Redirect URI must be exactly
 `http://localhost:47821` (Mobile and desktop platform).
 Run on the newest built `.app` (`npm run app:build`), with at least two

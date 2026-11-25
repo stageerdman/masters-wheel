@@ -21,7 +21,6 @@ const EXPIRY_MARGIN: Duration = Duration::from_secs(60);
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Status {
-    pub configured: bool,
     pub connected: bool,
     pub account: Option<String>,
 }
@@ -45,26 +44,25 @@ pub struct OneDriveSession {
     pending_sign_in: Mutex<Option<Arc<AtomicBool>>>,
 }
 
-fn client_id() -> Result<String, OneDriveError> {
+fn client_id() -> String {
     std::env::var("ONEDRIVE_CLIENT_ID")
         .ok()
         .map(|id| id.trim().to_string())
         .filter(|id| !id.is_empty())
-        .ok_or(OneDriveError::NotConfigured)
+        .unwrap_or_else(|| auth::CLIENT_ID.to_string())
 }
 
 impl OneDriveSession {
     pub fn status(&self) -> Result<Status, OneDriveError> {
-        let configured = client_id().is_ok();
         let mut state = self.lock();
         let account = cached_account(&mut state)?;
-        Ok(Status { configured, connected: account.is_some(), account: account.map(|a| a.name) })
+        Ok(Status { connected: account.is_some(), account: account.map(|a| a.name) })
     }
 
     // Opens the browser on Microsoft's sign-in page via `open_url` and
     // blocks until the redirect comes back (or times out / is cancelled).
     pub fn sign_in(&self, open_url: impl Fn(&str) -> Result<(), OneDriveError>) -> Result<Status, OneDriveError> {
-        let client_id = client_id()?;
+        let client_id = client_id();
         let cancelled = self.start_pending_sign_in();
         let trace = pkce::random_token(4)?;
         log::info!(target: "onedrive", "[{trace}] sign_in: started");
@@ -101,7 +99,7 @@ impl OneDriveSession {
             }
         }
         let account = cached_account(&mut state)?.ok_or(OneDriveError::NotConnected)?;
-        let tokens = match request_tokens(&auth::refresh_form(&client_id()?, &account.refresh_token)) {
+        let tokens = match request_tokens(&auth::refresh_form(&client_id(),&account.refresh_token)) {
             Err(OneDriveError::SignInExpired) => {
                 // The refresh token is dead; keeping it would fail forever.
                 token_store::clear()?;

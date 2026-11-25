@@ -15,8 +15,6 @@ export * from "./panelText";
 export * from "./storage";
 
 export type OneDriveStatus = {
-  // false when this build has no ONEDRIVE_CLIENT_ID (no app registration).
-  configured: boolean;
   connected: boolean;
   account: string | null;
 };

@@ -63,9 +63,15 @@ Durable decisions and lessons. The roadmap and live status live in
   `REDIRECT_PORT` (loopback.rs) and the registered Redirect URI is
   `http://localhost:47821`. A busy port becomes `PortBusy` (kind
   `portBusy`), whose Rust sentence the Storage panel shows as is.
-- **Live sign-in needs `ONEDRIVE_CLIENT_ID`** in `.env`. Without it the
-  Storage panel says OneDrive isn't set up and the rest of the app is
-  unaffected.
+- **The client ID ships in the build** (`auth::CLIENT_ID`). It's a public
+  client ID, not a secret. `.env` is read from the folder the app was
+  built in, so a `.env`-only ID vanished from builds made anywhere else.
+  `ONEDRIVE_CLIENT_ID` still overrides it for a different registration.
+- **Personal accounts only → `/consumers`.** The registration allows
+  personal Microsoft accounts only. On `/common` Microsoft refuses every
+  token request for it (AADSTS9002331, "use the /consumers endpoint"),
+  so `auth::AUTHORITY` is `/consumers`. Widen the registration to work
+  accounts too and it can go back to `/common`.
 - **Rust tests run via `npm run test:rust`** (cargo is refused in the agent
   shell). `npm run test:all` runs both suites and is the `.project` test
   line.

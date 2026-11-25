@@ -10,7 +10,6 @@ import {
   ensureAppFolder,
   errorKind,
   errorMessage,
-  getOneDriveStatus,
   previewDisconnect,
   previewStorageSwitch,
   setStorageMode,
@@ -32,7 +31,6 @@ const CONNECT_LINES: Record<Exclude<CommandErrorKind, "portBusy">, PanelLine> = 
     tone: "accent",
   },
   offline: { text: "You're offline. Connect to the internet, then try again.", tone: "muted" },
-  notConfigured: { text: "OneDrive isn't set up in this build yet.", tone: "accent" },
   other: { text: "Couldn't connect to OneDrive. Please try again.", tone: "accent" },
 };
 
@@ -79,21 +77,6 @@ export function useConnect() {
   const cancel = () => cancelConnectOneDrive().catch((error) => logError("cancelConnect", error));
 
   return { waiting, line, connect, cancel };
-}
-
-// false when this build has no app registration (no ONEDRIVE_CLIENT_ID).
-export function useConfigured(): boolean | null {
-  const [configured, setConfigured] = useState<boolean | null>(null);
-  useEffect(() => {
-    if (!isTauri()) return;
-    getOneDriveStatus()
-      .then((status) => setConfigured(status.configured))
-      .catch((error) => {
-        logError("status", error);
-        setConfigured(false);
-      });
-  }, []);
-  return configured;
 }
 
 // Record id → title, for naming videos in the problem notice.

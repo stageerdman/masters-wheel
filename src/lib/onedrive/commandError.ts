@@ -3,9 +3,9 @@
 // the user sees; the message is for the log. Only "portBusy" shows its
 // message, because it names the port, which lives in Rust (loopback.rs).
 
-export type CommandErrorKind = "notConfigured" | "cancelled" | "orgBlocked" | "portBusy" | "offline" | "other";
+export type CommandErrorKind = "cancelled" | "orgBlocked" | "portBusy" | "offline" | "other";
 
-const KINDS: readonly CommandErrorKind[] = ["notConfigured", "cancelled", "orgBlocked", "portBusy", "offline", "other"];
+const KINDS: readonly CommandErrorKind[] = ["cancelled", "orgBlocked", "portBusy", "offline", "other"];
 
 function field(error: unknown, name: "kind" | "message"): unknown {
   return typeof error === "object" && error !== null ? (error as Record<string, unknown>)[name] : undefined;

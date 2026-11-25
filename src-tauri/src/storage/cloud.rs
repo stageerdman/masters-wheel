@@ -26,7 +26,7 @@ impl From<OneDriveError> for CloudError {
     fn from(error: OneDriveError) -> Self {
         match error {
             OneDriveError::Http(m) => Self::Offline(m),
-            OneDriveError::NotConnected | OneDriveError::SignInExpired | OneDriveError::NotConfigured => Self::SignedOut,
+            OneDriveError::NotConnected | OneDriveError::SignInExpired =>Self::SignedOut,
             OneDriveError::Graph { status: 401, .. } => Self::SignedOut,
             OneDriveError::Graph { status: 403, .. } => Self::Revoked,
             OneDriveError::Graph { status: 404, .. } => Self::NotFound,

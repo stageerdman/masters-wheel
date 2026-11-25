@@ -17,7 +17,7 @@ import { AccountBlock } from "./children/AccountBlock/AccountBlock";
 import { ConfirmSheet } from "./children/ConfirmSheet/ConfirmSheet";
 import { ModePicker } from "./children/ModePicker/ModePicker";
 import { ProblemNotice } from "./children/ProblemNotice/ProblemNotice";
-import { useConfigured, useConnect, useRecordTitles, useSheets, type PanelLine } from "./StoragePanel.script";
+import { useConnect, useRecordTitles, useSheets, type PanelLine } from "./StoragePanel.script";
 import position from "./StoragePanel.position.module.css";
 import styles from "./StoragePanel.styles.module.css";
 
@@ -27,7 +27,6 @@ import styles from "./StoragePanel.styles.module.css";
 export function StoragePanel() {
   const heading = useRef<HTMLHeadingElement>(null);
   const { overview, refresh } = useStorageOverview();
-  const configured = useConfigured();
   const connection = useConnect();
 
   async function connect() {
@@ -54,7 +53,7 @@ export function StoragePanel() {
       ) : overview === null ? null : overview.connected ? (
         <Connected overview={overview} connection={connection} onSignIn={connect} />
       ) : (
-        <NotConnected configured={configured !== false} connection={connection} onConnect={connect} />
+        <NotConnected connection={connection} onConnect={connect} />
       )}
     </div>
   );
@@ -76,7 +75,7 @@ function Line({ line }: { line: PanelLine | null }) {
 }
 
 // 5.2 and 5.3: what everyone sees until they connect.
-function NotConnected({ configured, connection, onConnect }: { configured: boolean; connection: Connection; onConnect: () => void }) {
+function NotConnected({ connection, onConnect }: { connection: Connection; onConnect: () => void }) {
   return (
     <>
       <div className={position.section} data-construction>
@@ -93,7 +92,7 @@ function NotConnected({ configured, connection, onConnect }: { configured: boole
             type="button"
             className={`${styles.button} ${styles.primary} ${position.button}`}
             data-construction
-            disabled={connection.waiting || !configured}
+            disabled={connection.waiting}
             onClick={onConnect}
           >
             {connection.waiting ? "Waiting for Microsoft sign-in…" : "Connect OneDrive"}
@@ -104,9 +103,9 @@ function NotConnected({ configured, connection, onConnect }: { configured: boole
             </button>
           )}
         </div>
-        <Line line={configured ? connection.line : { text: "OneDrive isn't set up in this build yet.", tone: "muted" }} />
+        <Line line={connection.line} />
         <p className={`${styles.micro} ${position.text}`} data-construction>
-          Works with personal and work Microsoft accounts. Only videos are uploaded. Notes, transcripts and scores stay on this Mac.
+          Works with personal Microsoft accounts. Only videos are uploaded. Notes, transcripts and scores stay on this Mac.
         </p>
       </div>
     </>

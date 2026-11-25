@@ -9,8 +9,15 @@ use url::form_urlencoded::Serializer;
 
 use super::error::OneDriveError;
 
-// `common` accepts both personal Microsoft accounts and work/school ones.
-pub const AUTHORITY: &str = "https://login.microsoftonline.com/common/oauth2/v2.0";
+// The "Master's Wheel" app registration in Microsoft Entra (Mobile and
+// desktop, public client, Redirect URI http://localhost:47821). A public
+// client ID identifies the app, it isn't a secret, so it ships in the build;
+// `ONEDRIVE_CLIENT_ID` overrides it for a different registration.
+pub const CLIENT_ID: &str = "15f9ee87-a71e-487f-aea8-2b68e80b30a6";
+// The registration allows personal Microsoft accounts only, and Microsoft
+// refuses its token requests on `common` (AADSTS9002331). If the
+// registration is widened to work accounts too, switch this to `common`.
+pub const AUTHORITY: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0";
 // Least privilege: only the app's own folder, plus the account's name for
 // the Settings panel, plus a refresh token so the user signs in once.
 pub const SCOPES: &str = "Files.ReadWrite.AppFolder User.Read offline_access";
@@ -120,7 +127,7 @@ mod tests {
     fn authorize_url_carries_pkce_state_and_scopes() {
         let url = Url::parse(&authorize_url("cid", "http://localhost:5123", "chal", "st8")).unwrap();
         let params: HashMap<String, String> = url.query_pairs().into_owned().collect();
-        assert_eq!(url.path(), "/common/oauth2/v2.0/authorize");
+        assert_eq!(url.path(), "/consumers/oauth2/v2.0/authorize");
         assert_eq!(params["client_id"], "cid");
         assert_eq!(params["redirect_uri"], "http://localhost:5123");
         assert_eq!(params["code_challenge"], "chal");
