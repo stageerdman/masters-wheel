@@ -181,6 +181,7 @@ fn request_tokens(form: &str) -> Result<TokenSet, OneDriveError> {
         url: &auth::token_endpoint(),
         headers: vec!["Content-Type: application/x-www-form-urlencoded".into()],
         body: Some(form),
+        ..Default::default()
     })?;
     auth::parse_token_response(&response.body)
 }

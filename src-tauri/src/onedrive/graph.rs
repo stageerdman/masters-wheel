@@ -6,7 +6,7 @@
 use super::curl::{self, HttpRequest, HttpResponse};
 use super::error::OneDriveError;
 
-const GRAPH: &str = "https://graph.microsoft.com/v1.0";
+pub(super) const GRAPH: &str = "https://graph.microsoft.com/v1.0";
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct Account {
@@ -66,15 +66,15 @@ pub fn write_text(token: &str, path: &str, text: &str) -> Result<(), OneDriveErr
     }
 }
 
-fn call(token: &str, method: &str, url: &str, body: Option<&str>) -> Result<HttpResponse, OneDriveError> {
+pub(super) fn call(token: &str, method: &str, url: &str, body: Option<&str>) -> Result<HttpResponse, OneDriveError> {
     let mut headers = vec![format!("Authorization: Bearer {token}")];
     if body.is_some() {
         headers.push("Content-Type: application/json".into());
     }
-    curl::send(&HttpRequest { method, url, headers, body })
+    curl::send(&HttpRequest { method, url, headers, body, ..Default::default() })
 }
 
-fn json(response: &HttpResponse) -> Result<serde_json::Value, OneDriveError> {
+pub(super) fn json(response: &HttpResponse) -> Result<serde_json::Value, OneDriveError> {
     if !response.is_success() {
         return Err(graph_error(response));
     }
@@ -84,7 +84,7 @@ fn json(response: &HttpResponse) -> Result<serde_json::Value, OneDriveError> {
     })
 }
 
-fn graph_error(response: &HttpResponse) -> OneDriveError {
+pub(super) fn graph_error(response: &HttpResponse) -> OneDriveError {
     let message = serde_json::from_str::<serde_json::Value>(&response.body)
         .ok()
         .and_then(|v| v.pointer("/error/message").and_then(|m| m.as_str()).map(str::to_string))
@@ -92,7 +92,7 @@ fn graph_error(response: &HttpResponse) -> OneDriveError {
     OneDriveError::Graph { status: response.status, message }
 }
 
-fn split_path(path: &str) -> Result<Vec<String>, OneDriveError> {
+pub(super) fn split_path(path: &str) -> Result<Vec<String>, OneDriveError> {
     let segments: Vec<String> = path.split('/').filter(|s| !s.is_empty()).map(str::to_string).collect();
     if segments.iter().any(|s| s == "." || s == "..") {
         return Err(OneDriveError::Internal(format!("invalid OneDrive path {path:?}")));
@@ -100,7 +100,7 @@ fn split_path(path: &str) -> Result<Vec<String>, OneDriveError> {
     Ok(segments)
 }
 
-fn item_url(segments: &[String]) -> String {
+pub(super) fn item_url(segments: &[String]) -> String {
     let root = format!("{GRAPH}/me/drive/special/approot");
     if segments.is_empty() {
         return root;

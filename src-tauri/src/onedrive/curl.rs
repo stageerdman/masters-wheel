@@ -5,6 +5,7 @@
 // codes, refresh tokens and bearer tokens.
 
 use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use super::error::OneDriveError;
@@ -14,6 +15,35 @@ pub struct HttpRequest<'a> {
     pub url: &'a str,
     pub headers: Vec<String>,
     pub body: Option<&'a str>,
+    // The body is this file's bytes (video upload chunks).
+    pub body_file: Option<&'a Path>,
+    // The response body goes into this file, resuming from its current
+    // size (video downloads). The returned body is then empty.
+    pub output_file: Option<&'a Path>,
+    pub transfer: Transfer,
+}
+
+impl Default for HttpRequest<'_> {
+    fn default() -> Self {
+        Self {
+            method: "GET",
+            url: "",
+            headers: vec![],
+            body: None,
+            body_file: None,
+            output_file: None,
+            transfer: Transfer::Short,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Transfer {
+    // API calls: give up after two minutes.
+    Short,
+    // Multi-GB downloads and upload chunks: no overall limit, but a
+    // connection that stalls for a minute is dropped (and retried later).
+    Long,
 }
 
 #[derive(Debug, PartialEq)]
@@ -35,8 +65,14 @@ pub fn send(request: &HttpRequest) -> Result<HttpResponse, OneDriveError> {
     // -L: Graph answers file-content GETs with a redirect to a
     // pre-authenticated download URL. curl drops our Authorization header
     // on the cross-host hop, which is what that URL wants.
+    let limits: &[&str] = match request.transfer {
+        Transfer::Short => &["--max-time", "120"],
+        Transfer::Long => &["--speed-limit", "1", "--speed-time", "60"],
+    };
     let mut child = Command::new("curl")
-        .args(["-sS", "-L", "--connect-timeout", "30", "--max-time", "120", "-w", &write_out, "-K", "-"])
+        .args(["-sS", "-L", "--connect-timeout", "30", "-w", &write_out])
+        .args(limits)
+        .args(["-K", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -62,6 +98,13 @@ pub fn build_config(request: &HttpRequest) -> String {
         // data-raw, not data/data-binary: those read a file when the value
         // starts with "@".
         lines.push(format!("data-raw = {}", quote(body)));
+    }
+    if let Some(file) = request.body_file {
+        lines.push(format!("data-binary = {}", quote(&format!("@{}", file.display()))));
+    }
+    if let Some(file) = request.output_file {
+        lines.push(format!("output = {}", quote(&file.display().to_string())));
+        lines.push("continue-at = \"-\"".into());
     }
     lines.join("\n") + "\n"
 }
@@ -96,6 +139,7 @@ mod tests {
             url: "https://x.test/a b",
             headers: vec!["Authorization: Bearer t\"k".into()],
             body: Some("{\"a\":\"b\\c\"}\n"),
+            ..Default::default()
         });
         assert_eq!(
             config,
@@ -105,8 +149,17 @@ mod tests {
 
     #[test]
     fn config_has_no_body_line_without_a_body() {
-        let config = build_config(&HttpRequest { method: "GET", url: "u", headers: vec![], body: None });
+        let config = build_config(&HttpRequest { url: "u", ..Default::default() });
         assert!(!config.contains("data"));
+    }
+
+    #[test]
+    fn config_streams_file_bodies_and_resumes_file_outputs() {
+        let chunk = Path::new("/tmp/a b/chunk");
+        let part = Path::new("/tmp/.hero-download.part");
+        let config = build_config(&HttpRequest { body_file: Some(chunk), output_file: Some(part), ..Default::default() });
+        assert!(config.contains("data-binary = \"@/tmp/a b/chunk\"\n"));
+        assert!(config.contains("output = \"/tmp/.hero-download.part\"\ncontinue-at = \"-\"\n"));
     }
 
     #[test]
