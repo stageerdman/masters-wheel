@@ -48,7 +48,9 @@ export function videos(count: number): string {
   return `${count} ${count === 1 ? "video" : "videos"}`;
 }
 
-const UPLOADING: readonly VideoState[] = ["waiting", "uploading", "checking", "paused"];
+// "paused" is left out: a paused upload isn't moving, and the status line
+// already says why (signed out, offline).
+const UPLOADING: readonly VideoState[] = ["waiting", "uploading", "checking"];
 const SAFE: readonly VideoState[] = ["safeOnMac", "inCloud"];
 
 function inState(o: StorageOverview, states: readonly VideoState[]): VideoStatus[] {
@@ -105,6 +107,13 @@ export function problemNotice(o: StorageOverview, titleOf: TitleOf): Notice | nu
       action: null,
     };
   }
+  if (o.signInPending) {
+    return {
+      lead: "Waiting for Keychain access.",
+      rest: " If macOS asks about Master's Wheel, click Always Allow so uploads can start.",
+      action: null,
+    };
+  }
   if (!o.signedIn) {
     const stuck = inState(o, ["inCloud"]).length;
     const rest = stuck > 0
@@ -152,10 +161,13 @@ function unreadableNotice(o: StorageOverview, titleOf: TitleOf): Notice | null {
   };
 }
 
+const SIGN_IN_PENDING: StatusLine = { lead: "Checking your OneDrive sign-in", rest: " · uploads start after", tone: "muted" };
+
 // The status line under the video list (6.2), or null when it's hidden.
 export function statusLine(o: StorageOverview): StatusLine | null {
   if (!o.connected) return strandedLine(o);
   if (o.revoked) return { lead: "OneDrive access removed", rest: " · uploads stopped", tone: "accent" };
+  if (o.signInPending) return SIGN_IN_PENDING;
   if (!o.signedIn) return { lead: "Signed out of OneDrive", rest: " · uploads paused", tone: "accent" };
   if (o.cloudFull) {
     const notUploaded = inState(o, ["notUploadedFull"]).length;

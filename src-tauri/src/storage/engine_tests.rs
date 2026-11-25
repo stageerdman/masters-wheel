@@ -208,6 +208,21 @@ fn offline_nothing_moves_and_it_continues_when_back() {
 }
 
 #[test]
+fn a_failed_try_says_why_and_retries_later() {
+    let mut w = World::new(Mode::Backup);
+    w.step(T0, ROOMY);
+    w.cloud.fail_with(Some(CloudError::Transient("HTTP 503".into())));
+    w.step(T0, ROOMY);
+    let retry = w.engine.retry(KEY).expect("a retry is planned");
+    assert_eq!(retry.reason, "HTTP 503");
+    assert!(retry.at > T0);
+    assert!(w.engine.plan(T0, ROOMY).is_none(), "waits out the backoff");
+    w.cloud.fail_with(None);
+    w.settle(T0 + 60, ROOMY);
+    assert!(w.engine.retry(KEY).is_none() && w.video().is_safe());
+}
+
+#[test]
 fn a_safe_video_is_not_offloaded_while_offline() {
     let mut w = World::new(Mode::Backup);
     w.settle(T0, ROOMY);

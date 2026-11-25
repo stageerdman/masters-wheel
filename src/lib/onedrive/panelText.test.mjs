@@ -15,7 +15,7 @@ const GB = 1_000_000_000;
 const still = { toCloud: 0, toCloudBytes: 0, toMac: 0, toMacBytes: 0, freeBytes: 80 * GB, enoughRoom: true, shortBytes: 0 };
 
 function video(state, size = GB, recordId = "r1") {
-  return { spaceId: "s1", recordId, fileName: "hero.mp4", state, percent: 0, size, keepUntil: null };
+  return { spaceId: "s1", recordId, fileName: "hero.mp4", state, percent: 0, size, keepUntil: null, lastError: null, retryAt: null };
 }
 
 function overview(changes = {}) {
@@ -26,6 +26,7 @@ function overview(changes = {}) {
     disconnecting: false,
     online: true,
     signedIn: true,
+    signInPending: false,
     revoked: false,
     cloudFull: false,
     uploadBytesLeft: 0,
@@ -62,6 +63,19 @@ test("numbers line shows movement first, then totals", () => {
 
   const smart = overview({ mode: "smart", videos: [video("safeOnMac", 2 * GB), video("inCloud", 3 * GB)] });
   assert.equal(numbersLine(smart), "On this Mac: 2 GB · In OneDrive: 5 GB · Freed 3 GB");
+});
+
+// Broke before: signed out (or waiting on a Keychain prompt) still read
+// "Uploading 119 videos · 66.4 GB left", though nothing could move.
+test("paused uploads are not called uploading", () => {
+  const paused = overview({ signedIn: false, videos: [video("paused", 2 * GB)], uploadBytesLeft: 2 * GB });
+  assert.equal(numbersLine(paused), "On this Mac: 2 GB · In OneDrive: 0 MB");
+});
+
+test("while the sign-in is being read, the panel says so and asks for Keychain access", () => {
+  const pending = overview({ signedIn: false, signInPending: true, videos: [video("paused")] });
+  assert.equal(statusLine(pending).lead, "Checking your OneDrive sign-in");
+  assert.equal(problemNotice(pending, noTitles).lead, "Waiting for Keychain access.");
 });
 
 test("only the highest-priority problem shows, with its one fix", () => {
