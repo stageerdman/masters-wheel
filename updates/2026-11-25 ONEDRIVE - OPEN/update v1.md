@@ -115,6 +115,37 @@ engine doesn't keep the switch's starting count, so only "left" shows).
    `ONEDRIVE_CLIENT_ID=...`. It's a public client ID, not a secret. There is
    no client secret.
 
+### Live check (once `ONEDRIVE_CLIENT_ID` is set)
+Run on the newest built `.app` (`npm run app:build`), with at least two
+Performance Review videos, one added today and one older than 14 days
+(set its file date back). Back up the app data folder first. Each step
+passes only if what's listed is true. Look in OneDrive on the web under
+`Apps/Master's Wheel/`.
+1. **Connect.** Settings › Storage › Connect opens the Microsoft login.
+   After sign-in the panel shows the account, the app folder exists with
+   `<Space>/<Section>/` folders and `manifest.json`, and the status line
+   appears in the video list.
+2. **Backup (default).** Both videos upload (the numbers line counts down
+   to "all safe"). Both are in OneDrive under their month folder and both
+   are still on this Mac.
+3. **Always in cloud.** The switch sheet lists both videos. After you
+   confirm, the local files are gone only once OneDrive has them. Both
+   still list and play ("streaming" from OneDrive). Quit and reopen: still
+   playable.
+4. **Smart.** The switch brings the recent video home and leaves the old
+   one in OneDrive. Opening the old one plays it and brings it home when
+   there's room.
+5. **Backup again.** Everything comes home. The radio stays on the chosen
+   mode the whole time.
+6. **Offline.** Turn Wi-Fi off: the status line says offline and nothing
+   is lost. Turn it on: work resumes by itself.
+7. **Remove.** Delete a record: its OneDrive copy disappears.
+8. **Disconnect.** In Always in cloud, "Download and disconnect" brings
+   every video home, then shows the disconnected screen. "Stop
+   disconnecting" cancels it. Reconnect, then plain "Disconnect" switches
+   at once and leaves the videos in OneDrive. Reconnecting the same
+   account uploads nothing twice.
+
 ## Decisions
 - **Rust owns all tokens and every Graph call.** The webview only ever sees
   `{ configured, connected, account }`. Token exchange can't run from the
