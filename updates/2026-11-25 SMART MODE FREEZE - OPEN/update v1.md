@@ -35,7 +35,8 @@ OneDrive: 1 MB" while the user has 119 videos (66 GB).
 
 ## Status
 - [x] Phase 1
-- [ ] Phase 2
-- [ ] Phase 3
-- [ ] Phase 4
+- [x] Phase 2 — `finish_job` reads disk first; test with 150 videos + Smart switch under a 5 s timeout.
+- [x] Phase 3 — every storage command is async on the blocking pool (`with_storage`).
+- [x] Phase 4 — `rescan` emits when the ledger changed; `formatBytes(0)` = "0 MB"; totals test.
+  Progress: once the worker runs, the numbers line shows "Uploading N videos · X GB left".
 - [ ] Phase 5
