@@ -1,10 +1,11 @@
 // OneDrive and storage commands reject with { kind, message }
 // (src-tauri/src/onedrive/error.rs CommandError). The kind picks the line
-// the user sees; the message is for the log.
+// the user sees; the message is for the log. Only "portBusy" shows its
+// message, because it names the port, which lives in Rust (loopback.rs).
 
-export type CommandErrorKind = "notConfigured" | "cancelled" | "orgBlocked" | "offline" | "other";
+export type CommandErrorKind = "notConfigured" | "cancelled" | "orgBlocked" | "portBusy" | "offline" | "other";
 
-const KINDS: readonly CommandErrorKind[] = ["notConfigured", "cancelled", "orgBlocked", "offline", "other"];
+const KINDS: readonly CommandErrorKind[] = ["notConfigured", "cancelled", "orgBlocked", "portBusy", "offline", "other"];
 
 function field(error: unknown, name: "kind" | "message"): unknown {
   return typeof error === "object" && error !== null ? (error as Record<string, unknown>)[name] : undefined;

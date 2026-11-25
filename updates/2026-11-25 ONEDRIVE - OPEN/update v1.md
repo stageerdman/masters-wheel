@@ -19,7 +19,7 @@ Each phase ends with tests that lock in what it built.
 
 1. **Sign-in and app folder** (this item)
    - [x] Optional Microsoft sign-in: OAuth 2.0 auth code + PKCE, a loopback
-         redirect on `http://localhost:<port>`, Microsoft Graph,
+         redirect on the fixed `http://localhost:47821`, Microsoft Graph,
          least-privilege scopes (`Files.ReadWrite.AppFolder User.Read
          offline_access`).
    - [x] Refresh token kept in the macOS Keychain. The access token is
@@ -107,8 +107,9 @@ engine doesn't keep the switch's starting count, so only "left" shows).
    app folder). Supported accounts: "Accounts in any organizational
    directory and personal Microsoft accounts".
 2. Authentication → Add a platform → **Mobile and desktop applications** →
-   custom redirect URI `http://localhost`. (Microsoft ignores the port for
-   localhost, so the random port the app picks matches.)
+   custom redirect URI `http://localhost:47821`. The app always listens on
+   that port (`REDIRECT_PORT` in `src-tauri/src/onedrive/loopback.rs`). If
+   another program holds it, Connect says so instead of failing silently.
 3. API permissions: Microsoft Graph → delegated `Files.ReadWrite.AppFolder`,
    `User.Read`, `offline_access`.
 4. Put the Application (client) ID in the project `.env` as
@@ -116,13 +117,16 @@ engine doesn't keep the switch's starting count, so only "left" shows).
    no client secret.
 
 ### Live check (once `ONEDRIVE_CLIENT_ID` is set)
+The app registration's Redirect URI must be exactly
+`http://localhost:47821` (Mobile and desktop platform).
 Run on the newest built `.app` (`npm run app:build`), with at least two
 Performance Review videos, one added today and one older than 14 days
 (set its file date back). Back up the app data folder first. Each step
 passes only if what's listed is true. Look in OneDrive on the web under
 `Apps/Master's Wheel/`.
 1. **Connect.** Settings › Storage › Connect opens the Microsoft login.
-   After sign-in the panel shows the account, the app folder exists with
+   The browser returns to `http://localhost:47821/?code=…` and shows
+   "You can close this tab." After sign-in the panel shows the account, the app folder exists with
    `<Space>/<Section>/` folders and `manifest.json`, and the status line
    appears in the video list.
 2. **Backup (default).** Both videos upload (the numbers line counts down

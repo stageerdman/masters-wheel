@@ -10,6 +10,8 @@ pub enum OneDriveError {
     SignInCancelled,
     SignInTimedOut,
     SignInExpired,
+    // Another program holds the fixed sign-in redirect port.
+    PortBusy(u16),
     // The account's organization doesn't allow this app (admin consent,
     // conditional access).
     OrgBlocked(String),
@@ -48,6 +50,7 @@ impl OneDriveError {
             Self::NotConfigured => "notConfigured",
             Self::SignInCancelled => "cancelled",
             Self::OrgBlocked(_) => "orgBlocked",
+            Self::PortBusy(_) => "portBusy",
             Self::Http(_) => "offline",
             _ => "other",
         }
@@ -79,6 +82,10 @@ impl fmt::Display for OneDriveError {
             Self::SignInCancelled => write!(f, "Sign-in was cancelled."),
             Self::SignInTimedOut => write!(f, "Sign-in took too long, so it was stopped. Try again."),
             Self::SignInExpired => write!(f, "Your OneDrive sign-in expired. Connect again."),
+            Self::PortBusy(port) => write!(
+                f,
+                "Another program is using port {port}, which Microsoft sign-in needs. Close it, then try again."
+            ),
             Self::OrgBlocked(m) => write!(f, "Your organization doesn't allow this app ({m})."),
             Self::Auth(m) => write!(f, "Microsoft sign-in failed ({m})."),
             Self::Http(m) => write!(f, "Couldn't reach Microsoft ({m})."),

@@ -6,7 +6,7 @@ Durable decisions and lessons. The roadmap and live status live in
 ## Where the code lives
 - `src-tauri/src/onedrive/`: one file per job. `pkce.rs` (verifier and
   challenge), `auth.rs` (authorize URL, token request and response),
-  `loopback.rs` (the one-shot `http://localhost:<port>` redirect listener),
+  `loopback.rs` (the one-shot `http://localhost:47821` redirect listener),
   `curl.rs` (runs curl with its config on stdin), `graph.rs` (app-folder
   calls: `me`, `special/approot`, create folder), `token_store.rs`
   (Keychain), `session.rs` (in-memory access token plus refresh),
@@ -58,10 +58,11 @@ Durable decisions and lessons. The roadmap and live status live in
 - **Keychain prompts on rebuilds.** The app is unsigned, so every rebuild
   is a "new" app to the Keychain, and macOS asks once to allow access to
   the stored item. That's expected in development, not a bug.
-- **Localhost redirect port.** Microsoft ignores the port for
-  `http://localhost` redirect URIs on "Mobile and desktop" registrations,
-  so the random free port the app binds matches the registered
-  `http://localhost`.
+- **Fixed redirect port 47821.** The user asked for one exact, rarely used
+  port instead of a random one: the loopback always binds
+  `REDIRECT_PORT` (loopback.rs) and the registered Redirect URI is
+  `http://localhost:47821`. A busy port becomes `PortBusy` (kind
+  `portBusy`), whose Rust sentence the Storage panel shows as is.
 - **Live sign-in needs `ONEDRIVE_CLIENT_ID`** in `.env`. Without it the
   Storage panel says OneDrive isn't set up and the rest of the app is
   unaffected.

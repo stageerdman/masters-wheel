@@ -1,8 +1,9 @@
 // One-shot localhost listener that catches Microsoft's redirect back from
-// the browser. Microsoft ignores the port when matching a registered
-// `http://localhost` redirect for desktop apps, so we bind any free port.
+// the browser. It always listens on REDIRECT_PORT, so the Redirect URI in
+// the app registration is one exact, known address.
 
-use std::net::Ipv4Addr;
+use std::io::ErrorKind;
+use std::net::{Ipv4Addr, TcpListener};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
@@ -10,10 +11,18 @@ use tiny_http::{Header, Response, Server, StatusCode};
 
 use super::error::OneDriveError;
 
+// Rarely used by other software (not 3000/8080-style dev ports). Must match
+// the Redirect URI registered in Entra: http://localhost:47821
+pub const REDIRECT_PORT: u16 = 47821;
+
 const POLL: Duration = Duration::from_millis(500);
 const DONE_PAGE: &str = "<!doctype html><meta charset=utf-8><title>Master's Wheel</title>\
 <body style=\"font-family:-apple-system,sans-serif;padding:3rem\">\
 <h2>You can close this tab.</h2><p>Go back to Master's Wheel.</p></body>";
+
+pub fn redirect_uri(port: u16) -> String {
+    format!("http://localhost:{port}")
+}
 
 pub struct Loopback {
     server: Server,
@@ -22,18 +31,21 @@ pub struct Loopback {
 
 impl Loopback {
     pub fn bind() -> Result<Self, OneDriveError> {
-        let server = Server::http((Ipv4Addr::LOCALHOST, 0))
-            .map_err(|e| OneDriveError::Internal(format!("couldn't open a local sign-in port: {e}")))?;
-        let port = server
-            .server_addr()
-            .to_ip()
-            .map(|addr| addr.port())
-            .ok_or_else(|| OneDriveError::Internal("local sign-in port has no address".into()))?;
+        Self::bind_on(REDIRECT_PORT)
+    }
+
+    fn bind_on(port: u16) -> Result<Self, OneDriveError> {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, port)).map_err(|e| match e.kind() {
+            ErrorKind::AddrInUse => OneDriveError::PortBusy(port),
+            _ => OneDriveError::Internal(format!("couldn't open local sign-in port {port}: {e}")),
+        })?;
+        let server = Server::from_listener(listener, None)
+            .map_err(|e| OneDriveError::Internal(format!("couldn't serve local sign-in port {port}: {e}")))?;
         Ok(Self { server, port })
     }
 
     pub fn redirect_uri(&self) -> String {
-        format!("http://localhost:{}", self.port)
+        redirect_uri(self.port)
     }
 
     // Returns the path+query of the first request that carries a query
@@ -62,5 +74,32 @@ impl Loopback {
             let _ = request.respond(Response::from_string(DONE_PAGE).with_header(html));
             return Ok(url);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn redirect_uri_is_the_fixed_port() {
+        assert_eq!(REDIRECT_PORT, 47821);
+        assert_eq!(redirect_uri(REDIRECT_PORT), "http://localhost:47821");
+    }
+
+    #[test]
+    fn binds_the_given_port_and_reports_it_in_the_redirect_uri() {
+        let port = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap().local_addr().unwrap().port();
+        let loopback = Loopback::bind_on(port).unwrap();
+        assert_eq!(loopback.redirect_uri(), format!("http://localhost:{port}"));
+    }
+
+    #[test]
+    fn a_busy_port_is_a_port_busy_error() {
+        let taken = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = taken.local_addr().unwrap().port();
+        let error = Loopback::bind_on(port).err().expect("bind must fail while the port is taken");
+        assert_eq!(error, OneDriveError::PortBusy(port));
+        assert_eq!(error.kind(), "portBusy");
     }
 }
