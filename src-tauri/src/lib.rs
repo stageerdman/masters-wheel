@@ -8,6 +8,7 @@ mod onedrive;
 mod rnnoise;
 mod roleplay;
 mod spaces;
+mod storage;
 mod transcode;
 mod transcribe;
 mod util;
@@ -74,6 +75,14 @@ pub fn run() {
       roleplay::generate_roleplay_turn,
       roleplay::generate_session_adjustment,
       roleplay::generate_insight,
+      storage::commands::storage_overview,
+      storage::commands::storage_preview_switch,
+      storage::commands::storage_set_mode,
+      storage::commands::storage_video_opened,
+      storage::commands::storage_video_closed,
+      storage::commands::storage_video_removed,
+      storage::commands::storage_wake,
+      storage::commands::storage_retry_unreadable,
       spaces::migrate_legacy_data_to_default_space,
       spaces::switch_space_media_root,
       transcode::transcode_to_mp4
@@ -93,8 +102,18 @@ pub fn run() {
         // and calls switch_space_media_root with the real active Space
         // moments later (src/lib/spaces/context.tsx's init effect), well
         // before anything could actually request a video.
-        let initial_root = documents.join("Master's Wheel").join("Default").join("records");
-        app.manage(media_server::spawn(initial_root));
+        let wheel_root = documents.join("Master's Wheel");
+        let initial_root = wheel_root.join("Default").join("records");
+        let media = media_server::spawn(initial_root);
+        if let Ok(data_dir) = app.path().app_data_dir() {
+          let storage = storage::StorageService::spawn(app.handle().clone(), wheel_root, data_dir);
+          let (streams, handle) = (storage.clone(), app.handle().clone());
+          media.set_cloud_fallback(std::sync::Arc::new(move |path| {
+            streams.stream_url_for_path(path, &handle.state::<onedrive::OneDriveSession>())
+          }));
+          app.manage(storage);
+        }
+        app.manage(media);
       }
       app.manage(mcp::bridge::spawn(app.handle().clone()));
       Ok(())

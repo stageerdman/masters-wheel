@@ -35,20 +35,30 @@ use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 const PORT: u16 = 47821;
 const WORKER_THREADS: usize = 4;
 
+// For a video that isn't on this Mac: a URL it can be streamed from
+// instead (OneDrive, see storage/service.rs), given its would-be path.
+pub type CloudFallback = Arc<dyn Fn(&Path) -> Option<String> + Send + Sync>;
+
 #[derive(Clone)]
 pub struct MediaServerHandle {
   root: Arc<Mutex<PathBuf>>,
+  fallback: Arc<Mutex<Option<CloudFallback>>>,
 }
 
 impl MediaServerHandle {
   pub fn set_root(&self, new_root: PathBuf) {
     *self.root.lock().expect("media server root mutex poisoned") = new_root;
   }
+
+  pub fn set_cloud_fallback(&self, fallback: CloudFallback) {
+    *self.fallback.lock().expect("media server fallback mutex poisoned") = Some(fallback);
+  }
 }
 
 pub fn spawn(initial_root: PathBuf) -> MediaServerHandle {
   let root = Arc::new(Mutex::new(initial_root));
-  let handle = MediaServerHandle { root: Arc::clone(&root) };
+  let fallback: Arc<Mutex<Option<CloudFallback>>> = Arc::new(Mutex::new(None));
+  let handle = MediaServerHandle { root: Arc::clone(&root), fallback: Arc::clone(&fallback) };
 
   let server = match Server::http((Ipv4Addr::LOCALHOST, PORT)) {
     Ok(server) => Arc::new(server),
@@ -61,10 +71,12 @@ pub fn spawn(initial_root: PathBuf) -> MediaServerHandle {
   for _ in 0..WORKER_THREADS {
     let server = Arc::clone(&server);
     let root = Arc::clone(&root);
+    let fallback = Arc::clone(&fallback);
     std::thread::spawn(move || {
       while let Ok(request) = server.recv() {
         let current_root = root.lock().expect("media server root mutex poisoned").clone();
-        handle_request(request, &current_root);
+        let current_fallback = fallback.lock().expect("media server fallback mutex poisoned").clone();
+        handle_request(request, &current_root, current_fallback.as_ref());
       }
     });
   }
@@ -72,25 +84,26 @@ pub fn spawn(initial_root: PathBuf) -> MediaServerHandle {
   handle
 }
 
-fn handle_request(request: Request, root: &Path) {
+fn handle_request(request: Request, root: &Path, fallback: Option<&CloudFallback>) {
   let raw_path = request.url().split('?').next().unwrap_or("");
   let decoded = percent_decode(raw_path.trim_start_matches('/'));
-
-  let resolved = match resolve_within_root(root, &decoded) {
-    Some(path) => path,
-    None => {
-      let _ = request.respond(Response::empty(StatusCode(404)));
-      return;
-    }
-  };
 
   // Reject directories explicitly — opening one as a `File` succeeds on
   // macOS, but reading from it later never completes, hanging the
   // connection rather than erroring.
-  if !resolved.is_file() {
-    let _ = request.respond(Response::empty(StatusCode(404)));
-    return;
-  }
+  let resolved = match resolve_within_root(root, &decoded).filter(|path| path.is_file()) {
+    Some(path) => path,
+    None => {
+      // Not on this Mac: stream it from OneDrive if it's there. The
+      // fallback only knows exact video paths, so `..` can't reach it.
+      let response = match fallback.and_then(|f| f(&root.join(&decoded))) {
+        Some(url) => Response::empty(StatusCode(302)).with_header(header("Location", &url)),
+        None => Response::empty(StatusCode(404)),
+      };
+      let _ = request.respond(response);
+      return;
+    }
+  };
 
   let file = match File::open(&resolved) {
     Ok(file) => file,
