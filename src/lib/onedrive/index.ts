@@ -9,6 +9,7 @@ import { errorMessage } from "./commandError";
 import { MANIFEST_PATH, buildManifest, parseManifest, skeletonFolders } from "./layout";
 import { wakeStorage } from "./storage";
 
+export * from "./backedUp";
 export * from "./commandError";
 export * from "./layout";
 export * from "./panelText";

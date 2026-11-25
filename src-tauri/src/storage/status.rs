@@ -34,6 +34,9 @@ pub struct VideoStatus {
     pub size: u64,
     // Smart only: when it leaves this Mac (Unix seconds).
     pub keep_until: Option<u64>,
+    // After a failed try: why, and when it tries again (Unix seconds).
+    pub last_error: Option<String>,
+    pub retry_at: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -46,6 +49,8 @@ pub struct Overview {
     pub disconnecting: bool,
     pub online: bool,
     pub signed_in: bool,
+    // The sign-in hasn't been read yet (it may be waiting on a Keychain prompt).
+    pub sign_in_pending: bool,
     pub revoked: bool,
     pub cloud_full: bool,
     pub upload_bytes_left: u64,
@@ -86,6 +91,7 @@ pub fn overview(engine: &Engine, now: u64) -> Overview {
         disconnecting: ledger.disconnecting,
         online: engine.online(now),
         signed_in: engine.health.signed_in,
+        sign_in_pending: ledger.connected && !engine.health.account_checked,
         revoked: engine.health.revoked,
         cloud_full: engine.cloud_full(now),
         upload_bytes_left,
@@ -147,7 +153,10 @@ fn video_status(engine: &Engine, v: &Video, now: u64) -> VideoStatus {
         VideoState::Waiting
     };
     let keep_until = (engine.ledger.mode == Mode::Smart && v.on_mac).then(|| v.smart_keep_until());
+    let retry = engine.retry(&v.key());
     VideoStatus {
+        last_error: retry.as_ref().map(|r| r.reason.to_string()),
+        retry_at: retry.map(|r| r.at),
         space_id: v.space_id.clone(),
         record_id: v.record_id.clone(),
         file_name: v.file_name.clone(),

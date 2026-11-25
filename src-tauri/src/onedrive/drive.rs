@@ -8,7 +8,7 @@ use std::path::Path;
 
 use super::curl::{self, HttpRequest, HttpResponse, Transfer};
 use super::error::OneDriveError;
-use super::graph::{GRAPH, call, graph_error, item_url, json, split_path};
+use super::graph::{call, graph_error, item_id_url, item_url, json, split_path};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DriveItem {
@@ -96,11 +96,6 @@ pub fn download(download_url: &str, part: &Path) -> Result<(), OneDriveError> {
     Err(OneDriveError::Graph { status: response.status, message: "download failed".into() })
 }
 
-fn item_id_url(id: &str) -> String {
-    let safe: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '!' | '-' | '_')).collect();
-    format!("{GRAPH}/me/drive/items/{safe}")
-}
-
 fn optional_item(response: HttpResponse) -> Result<Option<DriveItem>, OneDriveError> {
     if response.status == 404 {
         return Ok(None);
@@ -155,11 +150,5 @@ mod tests {
     fn chunk_errors_keep_their_status() {
         assert!(matches!(reply(416, r#"{"error":{"message":"range"}}"#), Err(OneDriveError::Graph { status: 416, .. })));
         assert!(matches!(reply(202, "{}"), Err(OneDriveError::Graph { status: 202, .. })));
-    }
-
-    #[test]
-    fn item_ids_cannot_escape_the_items_path() {
-        assert_eq!(item_id_url("8A3F!123"), "https://graph.microsoft.com/v1.0/me/drive/items/8A3F!123");
-        assert_eq!(item_id_url("../x?y"), "https://graph.microsoft.com/v1.0/me/drive/items/xy");
     }
 }

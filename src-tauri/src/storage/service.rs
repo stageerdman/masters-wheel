@@ -203,7 +203,10 @@ impl StorageService {
         }
     }
 
+    // The first read waits on the Keychain; an unsigned build asks macOS for
+    // access there, and nothing uploads until someone answers.
     fn refresh_account(&self, session: &OneDriveSession) {
+        log::info!(target: "storage", "[account] reading the sign-in from the Keychain");
         let account = match session.status() {
             Ok(status) => status.account.filter(|_| status.connected),
             Err(e) => {
@@ -211,6 +214,7 @@ impl StorageService {
                 None
             }
         };
+        log::info!(target: "storage", "[account] signed in: {}", account.is_some());
         {
             let mut engine = self.engine();
             engine.set_account(account);

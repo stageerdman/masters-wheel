@@ -24,12 +24,23 @@ pub struct Health {
     pub full_until: u64,
     pub signed_in: bool,
     pub revoked: bool,
+    // False until the sign-in has been read once. That read can wait on a
+    // macOS Keychain prompt, and until then nothing can upload.
+    pub account_checked: bool,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 struct Backoff {
     attempts: u32,
     until: u64,
+    reason: String,
+}
+
+// Why a video's last try failed, and when it tries again (Unix seconds).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Retry<'a> {
+    pub at: u64,
+    pub reason: &'a str,
 }
 
 pub struct Engine {
@@ -67,6 +78,7 @@ impl Engine {
     pub fn set_account(&mut self, account: Option<String>) {
         self.health.signed_in = account.is_some();
         self.health.revoked = false;
+        self.health.account_checked = true;
         let Some(name) = account else { return };
         if self.ledger.account.as_deref().is_some_and(|old| old != name) {
             log::info!(target: "storage", "[account] switched; on-Mac videos upload again");
@@ -228,12 +240,22 @@ impl Engine {
                     video.problem = Some(Problem::Missing);
                 }
             }
-            CloudError::RangeMismatch | CloudError::Transient(_) => {
-                let b = self.backoff.entry(key.to_string()).or_default();
-                b.attempts += 1;
-                b.until = now + (5u64 << b.attempts.min(8)).min(MAX_BACKOFF_SECONDS);
-            }
+            CloudError::RangeMismatch => self.back_off(key, "OneDrive lost track of the upload".into(), now),
+            CloudError::Transient(reason) => self.back_off(key, reason, now),
         }
+    }
+
+    fn back_off(&mut self, key: &str, reason: String, now: u64) {
+        let b = self.backoff.entry(key.to_string()).or_default();
+        b.attempts += 1;
+        b.until = now + (5u64 << b.attempts.min(8)).min(MAX_BACKOFF_SECONDS);
+        log::warn!(target: "storage", "[{key}] try {} failed, again in {}s: {reason}", b.attempts, b.until - now);
+        b.reason = reason;
+    }
+
+    // Set while a failed video waits to try again; cleared once a try works.
+    pub fn retry(&self, key: &str) -> Option<Retry<'_>> {
+        self.backoff.get(key).map(|b| Retry { at: b.until, reason: &b.reason })
     }
 
     // The cloud copy was just confirmed; the local one goes only if every

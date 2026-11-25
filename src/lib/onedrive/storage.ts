@@ -26,6 +26,9 @@ export type VideoStatus = {
   size: number;
   // Smart only: when it leaves this Mac (Unix seconds).
   keepUntil: number | null;
+  // After a failed try: why, and when it tries again (Unix seconds).
+  lastError: string | null;
+  retryAt: number | null;
 };
 
 export type StorageOverview = {
@@ -36,6 +39,8 @@ export type StorageOverview = {
   disconnecting: boolean;
   online: boolean;
   signedIn: boolean;
+  // The sign-in hasn't been read yet (macOS may be asking for Keychain access).
+  signInPending: boolean;
   revoked: boolean;
   cloudFull: boolean;
   uploadBytesLeft: number;
