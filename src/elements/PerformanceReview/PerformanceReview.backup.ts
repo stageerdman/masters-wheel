@@ -55,12 +55,13 @@ const MARKS: Record<Exclude<BackupState, "unknown">, { label: string; icon: Stor
   cloud_only: { icon: "cloud", label: "In OneDrive only. Plays from the cloud" },
   cloud_and_local: { icon: "cloudDevice", label: "On OneDrive and this Mac" },
   local_only: { icon: "device", label: "Only on this Mac. Not uploaded yet" },
-  // Also covers waiting and paused, so the words never claim it's moving.
+  // Also covers waiting, checking and paused, so the words stay true for
+  // all of them (the header popover never calls a paused upload "uploading").
   uploading: { icon: "cloudUp", label: "Not in OneDrive yet. On its way" },
   stuck: { icon: "cloudAlert", label: "Upload stuck. Open the cloud icon at the top to see why" },
 };
 
 export function backupMark(state: BackupState): BackupMark {
   if (state === "unknown") return null;
-  return MARKS[state];
+  return { ...MARKS[state] };
 }

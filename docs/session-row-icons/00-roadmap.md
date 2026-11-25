@@ -47,10 +47,10 @@ Rules:
 | `cloud_only` | `cloud`: cloud alone | `In OneDrive only. Plays from the cloud` |
 | `cloud_and_local` | `cloudDevice`: cloud plus small laptop | `On OneDrive and this Mac` |
 | `local_only` | `device`: laptop alone | `Only on this Mac. Not uploaded yet` |
-| `uploading` | `cloudUp`: cloud with up arrow | `Not in OneDrive yet. On its way` |
+| `uploading` | `cloudUp`: cloud with up arrow | `Not in OneDrive yet. On its way` (true for waiting, checking and paused too) |
 | `stuck` | `cloudAlert`: cloud with `!` | `Upload stuck. Open the cloud icon at the top to see why` |
 
-The screen-reader-only text path goes away, since every state now has a real icon with an `aria-label`. The `uploading` label also covers waiting, checking and paused, so it never says "uploading" (the header popover doesn't either).
+There is no `visible` field: the screen-reader-only text path goes away, since every state now has a real icon with an `aria-label`. The `uploading` label never says "uploading" (the header popover doesn't either).
 
 ### Reviewed mark: `VideoListItem.tsx`
 - Shown only when `video.reviewed` is true. Nothing is drawn when false: an empty slot means "still to do".
@@ -108,6 +108,7 @@ The screen-reader-only text path goes away, since every state now has a real ico
    - [ ] Start opens the new version: `npm run app:start` rebuilds and launches, and the open window shows the new row icons (not the old `•` / `✓`).
    - [ ] All states can be told apart at a glance: cloud only, cloud + this Mac, this Mac only, uploading, stuck and Reviewed each look different by shape, also in greyscale. Hovering each one shows its words.
    - Status (Eraser, 2026-11-25): RETURNED to Jony for F1 (cut the dead `visible` field) and F2 ("Uploading" label shown when paused or waiting); see `04-cleanup-review.md`.
+   - Integration (Columbo, 2026-11-25): F1 and F2 fixed (no `visible` field; uploading label "Not in OneDrive yet. On its way"). `npm run test:all` (67 JS, 111 Rust) and lint pass; `npm run app:start` rebuilt, installed and launched the new version (the first try stops once on the Next.js advisory notice, and the retry passes). The bundle has the new label and not the old one.
    - Status (Eraser, 2026-11-25, recheck of `1cde8e0`): F1 and F2 are fixed, and the review is APPROVED and signed. `npm run test:all` passes (71 JS, 111 Rust), lint is clean, and `npm run app:start` built, installed and launched the new version. The built JS has "Not in OneDrive yet. On its way" and none of "Uploading to OneDrive…" or "Not backed up yet". Nobody has looked at the window yet (there's no screenshot tool here), so the last two boxes stay open for a person to check at Start.
    - **Check:** the review is written and signed off, and every phase above is ticked. If nobody has looked at the window, say so here and leave the last two boxes open.
 
