@@ -11,14 +11,29 @@
   font-weight: 600;
 }
 
-.text {
-  font-size: var(--text-size-label);
+.title:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
 }
 
-.error {
+.body {
+  font-size: var(--text-size-body);
+}
+
+/* On this glass, the muted token is the panel's own text at 75% (as in
+   ScoreRow): --color-text-muted alone doesn't reach 4.5:1 here. */
+.bodyMuted {
+  font-size: var(--text-size-body);
+  color: color-mix(in srgb, var(--color-on-chip) 75%, transparent);
+}
+
+.micro {
+  font-size: var(--text-size-micro);
+  color: color-mix(in srgb, var(--color-on-chip) 75%, transparent);
+}
+
+.accentLine {
   font-size: var(--text-size-label);
-  color: var(--color-on-chip);
-  border-left: 3px solid var(--color-accent);
+  border-left: 2px solid var(--color-accent);
 }
 
 .button {
@@ -27,6 +42,7 @@
   border-radius: 6px;
   color: var(--color-on-chip);
   font-size: var(--text-size-label);
+  font-family: inherit;
   cursor: pointer;
 }
 
@@ -39,10 +55,6 @@
   cursor: default;
 }
 
-.button:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-accent);
-}
-
 .primary {
   background: var(--color-accent);
   border-color: var(--color-accent);
@@ -50,4 +62,20 @@
 
 .primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-accent) 85%, var(--color-on-chip));
+}
+
+.textButton {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--color-on-chip);
+  font-size: var(--text-size-label);
+  font-family: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.button:focus-visible,
+.textButton:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
 }

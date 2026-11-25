@@ -1,0 +1,19 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.text {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.button {
+  min-height: 1.75rem;
+  padding: 0.3rem 0.8rem;
+}

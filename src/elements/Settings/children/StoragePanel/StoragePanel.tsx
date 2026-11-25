@@ -1,120 +1,157 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import {
-  cancelConnectOneDrive,
-  connectOneDrive,
-  disconnectOneDrive,
-  ensureAppFolder,
-  getOneDriveStatus,
-  type OneDriveStatus,
+  numbersLine,
+  openManageStorage,
+  problemNotice,
+  retryUnreadableVideos,
+  showFolderInOneDrive,
+  stopDisconnecting,
+  type NoticeAction,
+  type StorageOverview,
 } from "@/lib/onedrive";
+import { useStorageOverview } from "@/lib/onedrive/useStorageOverview";
+import { AccountBlock } from "./children/AccountBlock/AccountBlock";
+import { ConfirmSheet } from "./children/ConfirmSheet/ConfirmSheet";
+import { ModePicker } from "./children/ModePicker/ModePicker";
+import { ProblemNotice } from "./children/ProblemNotice/ProblemNotice";
+import { useConfigured, useConnect, useRecordTitles, useSheets, type PanelLine } from "./StoragePanel.script";
 import position from "./StoragePanel.position.module.css";
 import styles from "./StoragePanel.styles.module.css";
 
-type Busy = "loading" | "connecting" | "preparing" | "disconnecting" | null;
-
-// Settings → Storage: optional OneDrive connection. Connecting signs in
-// through the browser, then creates the app's folder in OneDrive.
+// Settings › Storage (docs/onedrive-storage/SPEC.md §5): optional OneDrive.
+// Every storage action lives here; the engine (src-tauri/src/storage) does
+// the work and reports back through the overview.
 export function StoragePanel() {
-  const [status, setStatus] = useState<OneDriveStatus | null>(null);
-  const [busy, setBusy] = useState<Busy>("loading");
-  const [error, setError] = useState<string | null>(null);
-  const [folderReady, setFolderReady] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const { overview, refresh } = useStorageOverview();
+  const configured = useConfigured();
+  const connection = useConnect();
 
-  useEffect(() => {
-    if (!isTauri()) return;
-    getOneDriveStatus()
-      .then(setStatus)
-      .catch((e) => setError(String(e)))
-      .finally(() => setBusy(null));
-  }, []);
-
-  async function run(next: Busy, task: () => Promise<void>) {
-    setBusy(next);
-    setError(null);
-    try {
-      await task();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(null);
+  async function connect() {
+    if (await connection.connect()) {
+      refresh();
+      heading.current?.focus();
     }
   }
 
-  async function prepareFolder() {
-    setBusy("preparing");
-    await ensureAppFolder();
-    setFolderReady(true);
-  }
-
-  const connect = () =>
-    run("connecting", async () => {
-      setStatus(await connectOneDrive());
-      await prepareFolder();
-    });
-
-  const disconnect = () =>
-    run("disconnecting", async () => {
-      setStatus(await disconnectOneDrive());
-      setFolderReady(false);
-    });
-
   return (
     <div className={`${styles.root} ${position.root}`} data-construction>
-      <h2 className={`${styles.title} ${position.title}`} data-construction>
-        OneDrive
-      </h2>
-      <p className={`${styles.text} ${position.text}`} data-construction role="status">
-        {describe(status, busy, folderReady)}
-      </p>
-      {error && (
-        <p className={`${styles.error} ${position.text}`} data-construction role="alert">
-          {error}
+      <div className={position.header} data-construction>
+        <h2 ref={heading} tabIndex={-1} className={`${styles.title} ${position.text}`} data-construction>
+          Storage
+        </h2>
+        <p className={`${styles.micro} ${position.text}`} data-construction>
+          For all Spaces.
         </p>
-      )}
-      <div className={position.actions} data-construction>
-        {status?.connected ? (
-          <>
-            <button type="button" className={`${styles.button} ${position.button}`} data-construction disabled={busy !== null} onClick={disconnect}>
-              Disconnect
-            </button>
-            {error && (
-              <button type="button" className={`${styles.button} ${position.button}`} data-construction disabled={busy !== null} onClick={() => run("preparing", prepareFolder)}>
-                Retry folder setup
-              </button>
-            )}
-          </>
-        ) : busy === "connecting" ? (
-          <button type="button" className={`${styles.button} ${position.button}`} data-construction onClick={() => cancelConnectOneDrive()}>
-            Cancel
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={`${styles.button} ${styles.primary} ${position.button}`}
-            data-construction
-            disabled={busy !== null || !status?.configured}
-            onClick={connect}
-          >
-            Connect OneDrive
-          </button>
-        )}
       </div>
+      {!isTauri() ? (
+        <p className={`${styles.body} ${position.text}`} data-construction>
+          Available in the Mac app.
+        </p>
+      ) : overview === null ? null : overview.connected ? (
+        <Connected overview={overview} connection={connection} onSignIn={connect} />
+      ) : (
+        <NotConnected configured={configured !== false} connection={connection} onConnect={connect} />
+      )}
     </div>
   );
 }
 
-function describe(status: OneDriveStatus | null, busy: Busy, folderReady: boolean): string {
-  if (!isTauri()) return "Available in the Mac app.";
-  if (busy === "loading") return "Checking…";
-  if (busy === "connecting") return "Finish signing in in your browser.";
-  if (busy === "preparing") return "Creating the app folder in your OneDrive…";
-  if (busy === "disconnecting") return "Disconnecting…";
-  if (!status) return "OneDrive status is unavailable.";
-  if (!status.configured) return "OneDrive isn't set up in this build yet.";
-  if (!status.connected) return "Optional. Keep your videos in your own OneDrive. Videos stay on this Mac until you connect.";
-  const folder = folderReady ? " Folder ready: OneDrive › Apps › Master's Wheel." : "";
-  return `Connected as ${status.account ?? "your Microsoft account"}.${folder}`;
+type Connection = ReturnType<typeof useConnect>;
+
+function Line({ line }: { line: PanelLine | null }) {
+  if (!line) return null;
+  return (
+    <p
+      className={`${line.tone === "accent" ? `${styles.accentLine} ${position.accentLine}` : styles.micro} ${position.text}`}
+      data-construction
+      role={line.tone === "accent" ? "alert" : "status"}
+    >
+      {line.text}
+    </p>
+  );
+}
+
+// 5.2 and 5.3: what everyone sees until they connect.
+function NotConnected({ configured, connection, onConnect }: { configured: boolean; connection: Connection; onConnect: () => void }) {
+  return (
+    <>
+      <div className={position.section} data-construction>
+        <p className={`${styles.body} ${position.text}`} data-construction>
+          Your videos are stored on this Mac.
+        </p>
+        <p className={`${styles.bodyMuted} ${position.text}`} data-construction>
+          Connect OneDrive to keep a copy safe in OneDrive, or to free up space on this Mac. Master&apos;s Wheel works fully without it.
+        </p>
+      </div>
+      <div className={position.section} data-construction>
+        <div className={position.actions} data-construction>
+          <button
+            type="button"
+            className={`${styles.button} ${styles.primary} ${position.button}`}
+            data-construction
+            disabled={connection.waiting || !configured}
+            onClick={onConnect}
+          >
+            {connection.waiting ? "Waiting for Microsoft sign-in…" : "Connect OneDrive"}
+          </button>
+          {connection.waiting && (
+            <button type="button" className={`${styles.textButton} ${position.textButton}`} data-construction onClick={connection.cancel}>
+              Cancel
+            </button>
+          )}
+        </div>
+        <Line line={configured ? connection.line : { text: "OneDrive isn't set up in this build yet.", tone: "muted" }} />
+        <p className={`${styles.micro} ${position.text}`} data-construction>
+          Works with personal and work Microsoft accounts. Only videos are uploaded. Notes, transcripts and scores stay on this Mac.
+        </p>
+      </div>
+    </>
+  );
+}
+
+// 5.4: the connected panel. Nothing to do here in normal use.
+function Connected({ overview, connection, onSignIn }: { overview: StorageOverview; connection: Connection; onSignIn: () => void }) {
+  const titleOf = useRecordTitles();
+  const sheets = useSheets(overview);
+  const notice = problemNotice(overview, titleOf);
+
+  function handleNoticeAction(action: Exclude<NoticeAction, null>) {
+    if (action === "signIn") onSignIn();
+    else if (action === "manageStorage") sheets.attempt("manageStorage", openManageStorage);
+    else sheets.attempt("retry", retryUnreadableVideos);
+  }
+
+  return (
+    <>
+      <AccountBlock account={overview.account} onShowInOneDrive={() => sheets.attempt("showInOneDrive", showFolderInOneDrive)} />
+      {notice && <ProblemNotice notice={notice} busy={connection.waiting} onAction={handleNoticeAction} />}
+      <Line line={connection.line} />
+      <ModePicker mode={sheets.shownMode ?? overview.mode} onPick={sheets.pickMode} />
+      <p className={`${styles.micro} ${position.text}`} data-construction aria-live="polite">
+        {numbersLine(overview)}
+      </p>
+      <Line line={sheets.error} />
+      <div className={position.bottom} data-construction>
+        {overview.disconnecting ? (
+          <button
+            type="button"
+            className={`${styles.textButton} ${position.textButton}`}
+            data-construction
+            onClick={() => sheets.attempt("stopDisconnecting", stopDisconnecting)}
+          >
+            Stop disconnecting
+          </button>
+        ) : (
+          <button type="button" className={`${styles.textButton} ${position.textButton}`} data-construction onClick={sheets.askDisconnect}>
+            Disconnect OneDrive…
+          </button>
+        )}
+      </div>
+      {sheets.sheet && <ConfirmSheet sheet={sheets.sheet} onConfirm={sheets.confirm} onCancel={sheets.cancel} />}
+    </>
+  );
 }

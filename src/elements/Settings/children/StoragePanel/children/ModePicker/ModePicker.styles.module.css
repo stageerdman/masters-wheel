@@ -1,0 +1,53 @@
+.heading {
+  font-size: var(--text-size-label);
+  font-weight: 600;
+}
+
+.row {
+  border: 1px solid var(--color-glass-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: color-mix(in srgb, var(--color-on-chip) 10%, transparent);
+}
+
+.row:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.rowChecked {
+  border-color: var(--color-on-chip);
+  background: color-mix(in srgb, var(--color-on-chip) 12%, transparent);
+}
+
+.radio {
+  border: 2px solid var(--color-on-chip);
+  border-radius: 50%;
+}
+
+.radioChecked {
+  background: radial-gradient(var(--color-on-chip) 0 40%, transparent 45%);
+}
+
+.name {
+  font-size: var(--text-size-label);
+  font-weight: 600;
+}
+
+.tag {
+  font-size: var(--text-size-micro);
+  font-weight: 500;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+}
+
+.line {
+  font-size: var(--text-size-body);
+}
+
+.hint {
+  font-size: var(--text-size-micro);
+  color: color-mix(in srgb, var(--color-on-chip) 75%, transparent);
+}

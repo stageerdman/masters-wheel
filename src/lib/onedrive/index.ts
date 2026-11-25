@@ -11,6 +11,7 @@ import { wakeStorage } from "./storage";
 
 export * from "./commandError";
 export * from "./layout";
+export * from "./panelText";
 export * from "./storage";
 
 export type OneDriveStatus = {

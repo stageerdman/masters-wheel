@@ -1,0 +1,68 @@
+.backdrop {
+  background: color-mix(in srgb, var(--color-text) 40%, transparent);
+}
+
+.root {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.title {
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+}
+
+.body {
+  font-size: var(--text-size-body);
+}
+
+.primary,
+.secondary,
+.quiet {
+  border-radius: 6px;
+  font-size: var(--text-size-label);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--color-accent);
+  color: var(--color-on-chip);
+  border: 1px solid var(--color-accent);
+  font-weight: 600;
+}
+
+.secondary {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.quiet {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid transparent;
+}
+
+.primary:hover:not(:disabled),
+.secondary:hover,
+.quiet:hover {
+  opacity: 0.9;
+}
+
+.quiet:hover {
+  color: var(--color-text);
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.quiet:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
