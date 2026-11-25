@@ -275,6 +275,8 @@ phase of work.
   data, but nothing populates it with a real model pass yet. (The
   Scorecard's own generation is real now — see "Current architecture at a
   glance" below.)
-- Auth, a remote database, Windows/Linux packaging, code signing/
-  notarization — all out of scope so far; `.env`/`secrets` in `.project`
-  stay empty until a phase actually needs one.
+- App accounts/auth of its own, a remote database, Windows/Linux
+  packaging, code signing/notarization — all out of scope so far. The one
+  sign-in that exists is the optional Microsoft/OneDrive connection
+  (Settings → Storage; see `updates/2026-11-25 ONEDRIVE - OPEN/`), which
+  needs `ONEDRIVE_CLIENT_ID` in `.env`.

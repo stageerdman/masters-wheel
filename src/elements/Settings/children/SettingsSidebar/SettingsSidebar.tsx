@@ -1,10 +1,10 @@
 "use client";
 
-import { UserCircle, ChartBar } from "@phosphor-icons/react";
+import { UserCircle, ChartBar, Cloud } from "@phosphor-icons/react";
 import position from "./SettingsSidebar.position.module.css";
 import styles from "./SettingsSidebar.styles.module.css";
 
-export type SettingsCategory = "profile" | "score";
+export type SettingsCategory = "profile" | "score" | "storage";
 
 type SettingsSidebarProps = {
   active: SettingsCategory;
@@ -14,6 +14,7 @@ type SettingsSidebarProps = {
 const CATEGORIES: { id: SettingsCategory; label: string; icon: typeof UserCircle }[] = [
   { id: "profile", label: "Profile", icon: UserCircle },
   { id: "score", label: "Score", icon: ChartBar },
+  { id: "storage", label: "Storage", icon: Cloud },
 ];
 
 // Left icon rail, single-select — same role="radiogroup"/aria-checked

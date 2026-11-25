@@ -9,7 +9,9 @@
     "lint": "eslint",
     "app:dev": "tauri dev",
     "app:build": "tauri build",
-    "test": "node --test 'src/lib/**/*.test.mjs'"
+    "test": "node --test 'src/lib/**/*.test.mjs'",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+    "test:all": "npm test && npm run test:rust"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

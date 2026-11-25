@@ -129,14 +129,17 @@ dependencies = [
  "anyhow",
  "base64 0.23.1",
  "fastembed",
+ "getrandom 0.3.4",
  "image",
  "log",
  "pdf-extract",
  "rmcp",
  "rusqlite",
  "schemars 1.2.3",
+ "security-framework",
  "serde",
  "serde_json",
+ "sha2",
  "sqlite-vec",
  "tauri",
  "tauri-build",
@@ -147,6 +150,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tiny_http",
  "tokio",
+ "url",
 ]
 
 [[package]]

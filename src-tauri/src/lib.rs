@@ -4,6 +4,7 @@ mod claude_cli;
 mod knowledge;
 mod media_server;
 pub mod mcp;
+mod onedrive;
 mod rnnoise;
 mod roleplay;
 mod spaces;
@@ -47,6 +48,7 @@ pub fn run() {
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_clipboard_manager::init())
     .manage(transcribe::TranscribeJobs::default())
+    .manage(onedrive::OneDriveSession::default())
     .invoke_handler(tauri::generate_handler![
       transcribe::probe_audio_tracks,
       transcribe::generate_transcript,
@@ -60,6 +62,13 @@ pub fn run() {
       knowledge::commands::remove_knowledge_file,
       avatar::read_image_as_data_url,
       mcp::bridge::sync_mcp_tags,
+      onedrive::commands::onedrive_status,
+      onedrive::commands::onedrive_connect,
+      onedrive::commands::onedrive_cancel_connect,
+      onedrive::commands::onedrive_disconnect,
+      onedrive::commands::onedrive_ensure_folder,
+      onedrive::commands::onedrive_read_text,
+      onedrive::commands::onedrive_write_text,
       roleplay::generate_setup_reply,
       roleplay::generate_persona,
       roleplay::generate_roleplay_turn,

@@ -1061,9 +1061,30 @@ See `updates/2026-11-16 FRAME-DRILLS - OPEN/`.
 ### Built (UI shell only — no real functionality behind it)
 - [x] Full-bleed themed background image (Hogwarts-Legacy-styled,
       `public/settings-background.webp`) behind a left icon sidebar
-      (Profile / Score categories, Phosphor duotone icons) — see
+      (Profile / Score / Storage categories, Phosphor duotone icons) — see
       `updates/2026-11-10 SETTINGS-REDESIGN - OPEN/update v1.md`. Profile's
       business-description field and Score's criteria list are both real
       (see "Built — real backend" above); only the visual shell itself
       (background, sidebar, glass-tinted row chrome) is new UI with no
       separate backend behind the shell itself.
+
+## OneDrive video storage
+
+### Built — real backend (phase 1, 2026-11-25)
+- [x] Optional Microsoft sign-in from Settings → Storage: OAuth 2.0 auth
+      code + PKCE through the browser and a loopback redirect, Microsoft
+      Graph, scopes `Files.ReadWrite.AppFolder User.Read offline_access`.
+      Rust owns the tokens: the refresh token sits in the macOS Keychain,
+      the access token stays in memory. Disconnect removes both. See
+      `src-tauri/src/onedrive/`.
+- [x] Connecting creates the app's own OneDrive folder
+      (`Apps/<app name>/`) with `<Space>/<Section>/` folders (Performance
+      Reviews, Voice Training, Frame Drills) and a `manifest.json` — see
+      `src/lib/onedrive/layout.ts`.
+- Needs `ONEDRIVE_CLIENT_ID` in `.env` (setup steps in
+  `updates/2026-11-25 ONEDRIVE - OPEN/update v1.md`).
+
+### To build (real functionality — not started)
+- [ ] Upload engine, Backup / Always in cloud / Smart modes, playing
+      cloud-only videos, cloud status per video — phases 2–5 of the same
+      update.

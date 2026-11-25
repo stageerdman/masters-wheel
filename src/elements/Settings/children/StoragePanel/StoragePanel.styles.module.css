@@ -1,0 +1,53 @@
+.root {
+  background: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface) 55%);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--color-glass-border);
+  border-radius: 8px;
+  color: var(--color-on-chip);
+}
+
+.title {
+  font-size: var(--text-size-heading);
+  font-weight: 600;
+}
+
+.text {
+  font-size: var(--text-size-label);
+}
+
+.error {
+  font-size: var(--text-size-label);
+  color: var(--color-on-chip);
+  border-left: 3px solid var(--color-accent);
+}
+
+.button {
+  background: color-mix(in srgb, var(--color-on-chip) 12%, transparent);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 6px;
+  color: var(--color-on-chip);
+  font-size: var(--text-size-label);
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-on-chip) 22%, transparent);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.button:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 85%, var(--color-on-chip));
+}

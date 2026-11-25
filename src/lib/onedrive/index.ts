@@ -1,0 +1,47 @@
+// OneDrive from the webview's side: thin calls into the Rust `onedrive`
+// module (src-tauri/src/onedrive), which owns the sign-in and every token.
+// This side only decides *what* goes where (layout.ts).
+
+import { invoke } from "@tauri-apps/api/core";
+import { listSpaces } from "@/lib/spaces";
+import { MANIFEST_PATH, buildManifest, parseManifest, skeletonFolders } from "./layout";
+
+export * from "./layout";
+
+export type OneDriveStatus = {
+  // false when this build has no ONEDRIVE_CLIENT_ID (no app registration).
+  configured: boolean;
+  connected: boolean;
+  account: string | null;
+};
+
+export function getOneDriveStatus(): Promise<OneDriveStatus> {
+  return invoke<OneDriveStatus>("onedrive_status");
+}
+
+// Opens the browser for Microsoft sign-in and resolves once it's done.
+export function connectOneDrive(): Promise<OneDriveStatus> {
+  return invoke<OneDriveStatus>("onedrive_connect");
+}
+
+export function cancelConnectOneDrive(): Promise<void> {
+  return invoke("onedrive_cancel_connect");
+}
+
+export function disconnectOneDrive(): Promise<OneDriveStatus> {
+  return invoke<OneDriveStatus>("onedrive_disconnect");
+}
+
+// Creates the Space/Section folders for every Space and refreshes
+// manifest.json. Safe to run again: existing folders are left alone.
+export async function ensureAppFolder(): Promise<void> {
+  const spaces = await listSpaces();
+  for (const path of skeletonFolders(spaces)) {
+    await invoke("onedrive_ensure_folder", { path }).catch((error) => {
+      throw new Error(`Couldn't create the OneDrive folder "${path}": ${error}`);
+    });
+  }
+  const previous = parseManifest(await invoke<string | null>("onedrive_read_text", { path: MANIFEST_PATH }));
+  const manifest = buildManifest(previous, spaces, new Date().toISOString());
+  await invoke("onedrive_write_text", { path: MANIFEST_PATH, text: JSON.stringify(manifest, null, 2) });
+}
