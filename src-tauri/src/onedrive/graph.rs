@@ -32,25 +32,56 @@ pub fn app_folder_web_url(token: &str) -> Result<String, OneDriveError> {
 }
 
 // Creates every missing folder along `path`. Existing folders are fine.
+// Folders are created under their parent's item id: Graph rejects a POST to
+// a path-addressed `special/approot/children` with 400 "Invalid request".
 pub fn ensure_folder(token: &str, path: &str) -> Result<(), OneDriveError> {
     let segments = split_path(path)?;
-    if call(token, "GET", &item_url(&segments), None)?.is_success() {
+    if find_id(token, &segments)?.is_some() {
         return Ok(());
     }
+    let mut parent = find_id(token, &[])?.ok_or_else(|| OneDriveError::Internal("the app folder has no id".into()))?;
     for depth in 0..segments.len() {
-        let body = serde_json::json!({
-            "name": segments[depth],
-            "folder": {},
-            "@microsoft.graph.conflictBehavior": "fail",
-        })
-        .to_string();
-        let url = format!("{}/children", item_url(&segments[..depth]));
-        let response = call(token, "POST", &url, Some(&body))?;
-        if !response.is_success() && response.status != 409 {
-            return Err(graph_error(&response).context(&format!("creating folder {}", segments[..=depth].join("/"))));
-        }
+        let here = &segments[..=depth];
+        parent = match find_id(token, here)? {
+            Some(id) => id,
+            None => create_folder(token, &parent, &segments[depth], here)?,
+        };
     }
     Ok(())
+}
+
+// The item id at `segments`, or `None` when nothing is there.
+fn find_id(token: &str, segments: &[String]) -> Result<Option<String>, OneDriveError> {
+    let response = call(token, "GET", &format!("{}?$select=id", item_url(segments)), None)?;
+    if response.status == 404 {
+        return Ok(None);
+    }
+    json(&response)
+        .map_err(|e| e.context(&format!("looking up {}", segments.join("/"))))
+        .map(|v| id_of(&v))
+}
+
+fn create_folder(token: &str, parent_id: &str, name: &str, path: &[String]) -> Result<String, OneDriveError> {
+    let body = serde_json::json!({ "name": name, "folder": {}, "@microsoft.graph.conflictBehavior": "fail" }).to_string();
+    let response = call(token, "POST", &format!("{}/children", item_id_url(parent_id)), Some(&body))?;
+    let lost_race = response.status == 409;
+    if lost_race {
+        if let Some(id) = find_id(token, path)? {
+            return Ok(id);
+        }
+    }
+    let context = format!("creating folder {}", path.join("/"));
+    let created = json(&response).map_err(|e| e.context(&context))?;
+    id_of(&created).ok_or_else(|| OneDriveError::Internal(format!("{context}: no id in the reply")))
+}
+
+fn id_of(item: &serde_json::Value) -> Option<String> {
+    item.get("id").and_then(|v| v.as_str()).map(str::to_string)
+}
+
+pub(super) fn item_id_url(id: &str) -> String {
+    let safe: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '!' | '-' | '_')).collect();
+    format!("{GRAPH}/me/drive/items/{safe}")
 }
 
 // `None` when the file doesn't exist yet.
@@ -146,6 +177,12 @@ mod tests {
     #[test]
     fn segments_are_percent_encoded_as_utf8() {
         assert_eq!(encode_segment("Bob's #1 ü"), "Bob%27s%20%231%20%C3%BC");
+    }
+
+    #[test]
+    fn item_ids_cannot_escape_the_items_path() {
+        assert_eq!(item_id_url("8A3F!123"), "https://graph.microsoft.com/v1.0/me/drive/items/8A3F!123");
+        assert_eq!(item_id_url("../x?y"), "https://graph.microsoft.com/v1.0/me/drive/items/xy");
     }
 
     #[test]
