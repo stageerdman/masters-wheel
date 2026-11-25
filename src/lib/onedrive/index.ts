@@ -19,10 +19,6 @@ export type OneDriveStatus = {
   account: string | null;
 };
 
-export function getOneDriveStatus(): Promise<OneDriveStatus> {
-  return invoke<OneDriveStatus>("onedrive_status");
-}
-
 // The storage engine reads the account itself; this tells it to look now.
 async function thenWakeStorage(status: Promise<OneDriveStatus>): Promise<OneDriveStatus> {
   const result = await status;

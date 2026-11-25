@@ -63,7 +63,6 @@ pub fn run() {
       knowledge::commands::remove_knowledge_file,
       avatar::read_image_as_data_url,
       mcp::bridge::sync_mcp_tags,
-      onedrive::commands::onedrive_status,
       onedrive::commands::onedrive_connect,
       onedrive::commands::onedrive_cancel_connect,
       onedrive::commands::onedrive_show_folder,

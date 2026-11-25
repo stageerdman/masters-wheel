@@ -99,7 +99,7 @@ impl OneDriveSession {
             }
         }
         let account = cached_account(&mut state)?.ok_or(OneDriveError::NotConnected)?;
-        let tokens = match request_tokens(&auth::refresh_form(&client_id(),&account.refresh_token)) {
+        let tokens = match request_tokens(&auth::refresh_form(&client_id(), &account.refresh_token)) {
             Err(OneDriveError::SignInExpired) => {
                 // The refresh token is dead; keeping it would fail forever.
                 token_store::clear()?;

@@ -34,11 +34,6 @@ fn open_in_browser(app: &AppHandle, url: &str) -> Result<(), OneDriveError> {
 }
 
 #[tauri::command]
-pub async fn onedrive_status(app: AppHandle) -> Result<Status, CommandError> {
-    with_session(app, |session| session.status()).await
-}
-
-#[tauri::command]
 pub async fn onedrive_connect(app: AppHandle) -> Result<Status, CommandError> {
     blocking(app, |app| app.state::<OneDriveSession>().sign_in(|url| open_in_browser(app, url))).await
 }
