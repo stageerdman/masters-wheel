@@ -23,12 +23,15 @@ const UNSET_META = { glyph: "○", color: "var(--color-text-muted)" };
 // arrives live (upload finished, review ticked) settles in, and one that
 // was already there on open just sits.
 // Adjusted during render (React's pattern for this, as in Hero).
-function useArrivedLive(value: boolean): boolean {
+// `from` limits which earlier value counts as "live": the backed-up mark
+// settles only from `pending`, never from `not_connected` — the storage
+// overview loads after first paint, and every row would fade in at once.
+function useArrivedLive<T>(value: T, on: T, from?: T): boolean {
   const [previous, setPrevious] = useState(value);
   const [arrived, setArrived] = useState(false);
   if (value !== previous) {
     setPrevious(value);
-    setArrived(value);
+    setArrived(value === on && (from === undefined || previous === from));
   }
   return arrived;
 }
@@ -40,9 +43,8 @@ function useArrivedLive(value: boolean): boolean {
 export function VideoListItem({ video, active, onClick, onContextMenu }: VideoListItemProps) {
   const meta = video.state ? CALL_STATE_META[video.state] : UNSET_META;
   const mark = backupMark(video.backup);
-  const backedUp = Boolean(mark?.visible);
-  const reviewSettles = useArrivedLive(video.reviewed);
-  const backupSettles = useArrivedLive(backedUp);
+  const reviewSettles = useArrivedLive(video.reviewed, true);
+  const backupSettles = useArrivedLive(video.backup, "backed_up", "pending");
 
   return (
     <button
