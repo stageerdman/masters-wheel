@@ -23,6 +23,6 @@ mod pkce;
 mod session;
 mod token_store;
 
-pub use error::OneDriveError;
+pub use error::{CommandError, OneDriveError};
 pub use graph::ensure_folder;
 pub use session::OneDriveSession;

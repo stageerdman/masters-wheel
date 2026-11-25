@@ -14,6 +14,13 @@ use super::scan::Found;
 pub struct Ledger {
     pub mode: Mode,
     pub account: Option<String>,
+    // The user connected and hasn't disconnected. Connected but not signed
+    // in means the sign-in expired (SPEC 5.6), not "never connected".
+    #[serde(default)]
+    pub connected: bool,
+    // "Download and disconnect" is running (SPEC 5.7); survives a quit.
+    #[serde(default)]
+    pub disconnecting: bool,
     pub videos: BTreeMap<String, Video>,
 }
 

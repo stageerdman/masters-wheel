@@ -40,11 +40,17 @@ pub struct VideoStatus {
 #[serde(rename_all = "camelCase")]
 pub struct Overview {
     pub mode: Mode,
+    // Connected on purpose; with `signed_in` false that means signed out.
+    pub connected: bool,
+    pub account: Option<String>,
+    pub disconnecting: bool,
     pub online: bool,
     pub signed_in: bool,
     pub revoked: bool,
     pub cloud_full: bool,
     pub upload_bytes_left: u64,
+    // What the current mode (or a running disconnect) still has to move.
+    pub pending: SwitchPreview,
     pub videos: Vec<VideoStatus>,
 }
 
@@ -69,18 +75,25 @@ pub fn overview(engine: &Engine, now: u64) -> Overview {
         .filter(|v| v.on_mac && !v.is_safe() && v.problem.is_none())
         .map(|v| v.size - v.upload.as_ref().map_or(0, |s| s.next_offset.min(v.size)))
         .sum();
+    let ledger = &engine.ledger;
+    let moving_to = if ledger.disconnecting { Mode::Backup } else { ledger.mode };
     Overview {
-        mode: engine.ledger.mode,
+        mode: ledger.mode,
+        connected: ledger.connected,
+        account: ledger.account.clone(),
+        disconnecting: ledger.disconnecting,
         online: engine.online(now),
         signed_in: engine.health.signed_in,
         revoked: engine.health.revoked,
         cloud_full: engine.cloud_full(now),
         upload_bytes_left,
+        pending: preview_switch(engine, moving_to, now, None),
         videos,
     }
 }
 
-// Rule 6: a switch that downloads checks for room before it starts.
+// Rule 6: a switch that downloads checks for room before it starts. A
+// disconnect previews as a switch to Backup: everything comes home.
 pub fn preview_switch(engine: &Engine, mode: Mode, now: u64, disk: Option<DiskSpace>) -> SwitchPreview {
     let mut preview = SwitchPreview {
         to_cloud: 0,

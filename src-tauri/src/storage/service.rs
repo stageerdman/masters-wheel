@@ -10,7 +10,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::onedrive::OneDriveSession;
+use crate::onedrive::{OneDriveError, OneDriveSession};
 
 use super::cloud::{Cloud, GraphCloud};
 use super::engine::Engine;
@@ -95,6 +95,13 @@ impl StorageService {
         self.poke();
     }
 
+    // Deletes the sign-in now; anything only in OneDrive stays there.
+    pub fn disconnect_now(&self, session: &OneDriveSession) -> Result<(), OneDriveError> {
+        session.sign_out().map_err(|e| e.context("disconnecting"))?;
+        self.update(Engine::disconnected);
+        Ok(())
+    }
+
     // For the media server: `path` is where the video would be on this Mac.
     pub fn stream_url_for_path(&self, path: &std::path::Path, session: &OneDriveSession) -> Option<String> {
         let key = self.read(|e| e.key_for_path(path).filter(|key| !e.ledger.videos[key].on_mac))?;
@@ -144,6 +151,10 @@ impl StorageService {
                 self.rescan();
                 last_scan = Some(Instant::now());
             }
+            if self.read(Engine::disconnect_ready) {
+                self.finish_disconnect(&session, app);
+                continue;
+            }
             let (now, disk) = (unix_now(), self.disk());
             let Some(job) = self.engine().plan(now, disk) else {
                 self.idle();
@@ -154,6 +165,17 @@ impl StorageService {
             self.save();
             let _ = app.emit(CHANGED_EVENT, ());
         }
+    }
+
+    // "Download and disconnect" brought the last video home.
+    fn finish_disconnect(&self, session: &OneDriveSession, app: &AppHandle) {
+        if let Err(e) = self.disconnect_now(session) {
+            // Stay in "disconnecting" so the panel keeps its Stop button;
+            // the next pass tries again.
+            log::error!(target: "storage", "[disconnect] {e}");
+            self.idle();
+        }
+        let _ = app.emit(CHANGED_EVENT, ());
     }
 
     fn refresh_account(&self, session: &OneDriveSession) {

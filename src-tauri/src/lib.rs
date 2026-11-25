@@ -66,7 +66,7 @@ pub fn run() {
       onedrive::commands::onedrive_status,
       onedrive::commands::onedrive_connect,
       onedrive::commands::onedrive_cancel_connect,
-      onedrive::commands::onedrive_disconnect,
+      onedrive::commands::onedrive_show_folder,
       onedrive::commands::onedrive_ensure_folder,
       onedrive::commands::onedrive_read_text,
       onedrive::commands::onedrive_write_text,
@@ -83,6 +83,8 @@ pub fn run() {
       storage::commands::storage_video_removed,
       storage::commands::storage_wake,
       storage::commands::storage_retry_unreadable,
+      storage::commands::storage_disconnect,
+      storage::commands::storage_stop_disconnect,
       spaces::migrate_legacy_data_to_default_space,
       spaces::switch_space_media_root,
       transcode::transcode_to_mp4

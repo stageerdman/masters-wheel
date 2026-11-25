@@ -21,6 +21,16 @@ pub fn me(token: &str) -> Result<Account, OneDriveError> {
     Ok(Account { name })
 }
 
+// The app folder on OneDrive web ("Show in OneDrive").
+pub fn app_folder_web_url(token: &str) -> Result<String, OneDriveError> {
+    let response = call(token, "GET", &format!("{GRAPH}/me/drive/special/approot?$select=webUrl"), None)?;
+    json(&response)?
+        .get("webUrl")
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| OneDriveError::Internal("the app folder has no web address".into()))
+}
+
 // Creates every missing folder along `path`. Existing folders are fine.
 pub fn ensure_folder(token: &str, path: &str) -> Result<(), OneDriveError> {
     let segments = split_path(path)?;

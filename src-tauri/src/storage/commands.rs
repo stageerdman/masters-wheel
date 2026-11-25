@@ -1,7 +1,10 @@
 // Tauri commands for storage. Videos are named by Space id + record id
 // (folders can be renamed, ids can't).
 
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
+
+use crate::onedrive::commands::blocking;
+use crate::onedrive::{CommandError, OneDriveSession};
 
 use super::model::{Mode, video_key};
 use super::service::{StorageService, unix_now};
@@ -43,6 +46,24 @@ pub fn storage_video_removed(storage: State<'_, StorageService>, space_id: Strin
 #[tauri::command]
 pub fn storage_wake(storage: State<'_, StorageService>) {
     storage.recheck();
+}
+
+// "Download and disconnect" brings every video home first; the worker
+// signs out once the last one lands. Otherwise it signs out now, and
+// anything only in OneDrive stays there ("Disconnect anyway").
+#[tauri::command]
+pub async fn storage_disconnect(app: AppHandle, download_first: bool) -> Result<(), CommandError> {
+    let storage = app.state::<StorageService>().inner().clone();
+    if download_first {
+        storage.update(|engine| engine.set_disconnecting(true));
+        return Ok(());
+    }
+    blocking(app, move |app| storage.disconnect_now(&app.state::<OneDriveSession>())).await
+}
+
+#[tauri::command]
+pub fn storage_stop_disconnect(storage: State<'_, StorageService>) {
+    storage.update(|engine| engine.set_disconnecting(false));
 }
 
 #[tauri::command]

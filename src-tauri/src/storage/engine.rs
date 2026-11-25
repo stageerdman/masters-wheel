@@ -77,6 +77,7 @@ impl Engine {
             }
         }
         self.ledger.account = Some(name);
+        self.ledger.connected = true;
     }
 
     pub fn set_mode(&mut self, mode: Mode) {
@@ -147,6 +148,8 @@ impl Engine {
 
     pub fn conditions(&self, video: &Video, now: u64, disk: Option<DiskSpace>) -> Conditions {
         let mode = self.ledger.mode;
+        let disconnecting = self.ledger.disconnecting;
+        let room_mode = if disconnecting { Mode::Backup } else { mode };
         Conditions {
             mode,
             now,
@@ -154,8 +157,35 @@ impl Engine {
             signed_in: self.health.signed_in && !self.health.revoked,
             cloud_full: self.cloud_full(now),
             in_use: self.pins.contains_key(&video.key()),
-            room_ok: room_for(video, mode, disk),
+            room_ok: room_for(video, room_mode, disk),
+            disconnecting,
         }
+    }
+
+    // Videos that would be stranded if OneDrive disconnected right now.
+    pub fn only_in_cloud(&self) -> impl Iterator<Item = &Video> {
+        self.ledger.videos.values().filter(|v| !v.removed && !v.on_mac && v.is_safe() && v.problem.is_none())
+    }
+
+    // "Download and disconnect" (start) or "Stop disconnecting".
+    pub fn set_disconnecting(&mut self, on: bool) {
+        log::info!(target: "storage", "[disconnect] download first: {on}");
+        self.ledger.disconnecting = on;
+    }
+
+    // Everything that can come home is home.
+    pub fn disconnect_ready(&self) -> bool {
+        self.ledger.disconnecting && self.only_in_cloud().next().is_none()
+    }
+
+    // Signed out on purpose, which is not the same as "signed out" by an
+    // expired sign-in. The receipts and their account stay, so reconnecting
+    // the same account uploads nothing twice and stranded videos play again.
+    pub fn disconnected(&mut self) {
+        log::info!(target: "storage", "[disconnect] done");
+        self.ledger.disconnecting = false;
+        self.ledger.connected = false;
+        self.set_account(None);
     }
 
     pub fn plan(&self, now: u64, disk: Option<DiskSpace>) -> Option<Job> {

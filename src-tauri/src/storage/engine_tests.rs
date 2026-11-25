@@ -314,3 +314,39 @@ fn a_different_account_uploads_on_mac_videos_again() {
     w.settle(T0, ROOMY);
     assert!(w.video().is_safe());
 }
+
+#[test]
+fn download_and_disconnect_brings_every_video_home_first() {
+    let mut w = World::new(Mode::AlwaysInCloud);
+    w.settle(T0, ROOMY);
+    assert!(!w.local_exists());
+    w.engine.set_disconnecting(true);
+    assert!(!w.engine.disconnect_ready());
+    assert_eq!(w.settle(T0, ROOMY), vec![Step::Download]);
+    assert!(w.local_exists() && !w.webloc_exists());
+    assert!(w.engine.disconnect_ready());
+    w.engine.disconnected();
+    assert!(!w.engine.ledger.connected && !w.engine.health.signed_in && !w.engine.ledger.disconnecting);
+    assert_eq!(w.cloud.item_count(), 1, "nothing in OneDrive is deleted");
+}
+
+#[test]
+fn disconnecting_pauses_uploads_and_offloads_until_stopped() {
+    let mut w = World::new(Mode::AlwaysInCloud);
+    w.engine.set_disconnecting(true);
+    assert!(w.engine.plan(T0, ROOMY).is_none());
+    w.engine.set_disconnecting(false);
+    w.settle(T0, ROOMY);
+    assert!(!w.local_exists() && w.video().is_safe());
+}
+
+#[test]
+fn an_expired_sign_in_is_not_a_disconnect() {
+    let mut w = World::new(Mode::Backup);
+    w.engine.set_account(None);
+    assert!(w.engine.ledger.connected, "signed out, still connected");
+    w.engine.disconnected();
+    assert!(!w.engine.ledger.connected);
+    w.engine.set_account(Some("me@example.com".into()));
+    assert!(w.engine.ledger.connected);
+}

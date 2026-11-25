@@ -10,6 +10,9 @@ pub enum OneDriveError {
     SignInCancelled,
     SignInTimedOut,
     SignInExpired,
+    // The account's organization doesn't allow this app (admin consent,
+    // conditional access).
+    OrgBlocked(String),
     Auth(String),
     Http(String),
     Graph { status: u16, message: String },
@@ -28,6 +31,41 @@ impl OneDriveError {
             other => other,
         }
     }
+
+    // A Microsoft sign-in error, told apart by its AADSTS code.
+    pub fn from_microsoft(description: &str) -> Self {
+        const ORG_BLOCKS: [&str; 5] = ["AADSTS65001", "AADSTS90094", "AADSTS90095", "AADSTS50105", "AADSTS53003"];
+        if ORG_BLOCKS.iter().any(|code| description.contains(code)) {
+            Self::OrgBlocked(description.to_string())
+        } else {
+            Self::Auth(description.to_string())
+        }
+    }
+
+    // What the Settings panel needs to pick its line (SPEC 5.3).
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::NotConfigured => "notConfigured",
+            Self::SignInCancelled => "cancelled",
+            Self::OrgBlocked(_) => "orgBlocked",
+            Self::Http(_) => "offline",
+            _ => "other",
+        }
+    }
+}
+
+// How a command error reaches the webview: a kind to branch on and the
+// full message for the log.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CommandError {
+    pub kind: &'static str,
+    pub message: String,
+}
+
+impl From<OneDriveError> for CommandError {
+    fn from(error: OneDriveError) -> Self {
+        Self { kind: error.kind(), message: error.to_string() }
+    }
 }
 
 impl fmt::Display for OneDriveError {
@@ -41,6 +79,7 @@ impl fmt::Display for OneDriveError {
             Self::SignInCancelled => write!(f, "Sign-in was cancelled."),
             Self::SignInTimedOut => write!(f, "Sign-in took too long, so it was stopped. Try again."),
             Self::SignInExpired => write!(f, "Your OneDrive sign-in expired. Connect again."),
+            Self::OrgBlocked(m) => write!(f, "Your organization doesn't allow this app ({m})."),
             Self::Auth(m) => write!(f, "Microsoft sign-in failed ({m})."),
             Self::Http(m) => write!(f, "Couldn't reach Microsoft ({m})."),
             Self::Graph { status, message } => write!(f, "OneDrive returned an error ({status}: {message})."),

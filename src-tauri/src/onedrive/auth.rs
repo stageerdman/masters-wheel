@@ -46,7 +46,7 @@ pub fn code_from_redirect(path_and_query: &str, expected_state: &str) -> Result<
             return Err(OneDriveError::SignInCancelled);
         }
         let description = params.get("error_description").unwrap_or(error);
-        return Err(OneDriveError::Auth(description.clone()));
+        return Err(OneDriveError::from_microsoft(description));
     }
     if params.get("state").map(String::as_str) != Some(expected_state) {
         return Err(OneDriveError::Auth("the sign-in response didn't match this request".into()));
@@ -98,7 +98,7 @@ pub fn parse_token_response(body: &str) -> Result<TokenSet, OneDriveError> {
         // Microsoft appends trace/correlation ids on new lines; the first
         // line is the readable part.
         let first_line = description.lines().next().unwrap_or(error);
-        return Err(OneDriveError::Auth(first_line.to_string()));
+        return Err(OneDriveError::from_microsoft(first_line));
     }
     let access_token = value
         .get("access_token")
@@ -146,6 +146,8 @@ mod tests {
             code_from_redirect("/?error=server_error&error_description=Down%20for%20now", "s1"),
             Err(OneDriveError::Auth("Down for now".into()))
         );
+        let blocked = code_from_redirect("/?error=consent_required&error_description=AADSTS65001%3A%20needs%20admin", "s1");
+        assert_eq!(blocked.map_err(|e| e.kind()), Err("orgBlocked"));
     }
 
     #[test]

@@ -15,6 +15,9 @@ pub struct Conditions {
     pub in_use: bool,
     // There's room on this Mac to bring it home (rule 5).
     pub room_ok: bool,
+    // Bringing everything home before disconnecting: nothing goes up or
+    // leaves this Mac meanwhile (SPEC 5.7).
+    pub disconnecting: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,8 +50,9 @@ pub fn next_step(video: &Video, c: &Conditions) -> Step {
     if video.awaiting_check.is_some() {
         return Step::Check;
     }
-    let wants = wants_on_mac(video, c.mode, c.now);
+    let wants = c.disconnecting || wants_on_mac(video, c.mode, c.now);
     match (video.on_mac, video.is_safe()) {
+        _ if c.disconnecting && video.on_mac => Step::Wait,
         (true, false) if video.problem != Some(Problem::Unreadable) && !c.cloud_full => Step::Upload,
         (true, true) if !wants && !c.in_use => Step::Offload,
         (false, true) if wants && c.room_ok && video.problem != Some(Problem::Missing) => Step::Download,
@@ -82,7 +86,27 @@ pub mod tests {
     }
 
     fn online(mode: Mode, now: u64) -> Conditions {
-        Conditions { mode, now, online: true, signed_in: true, cloud_full: false, in_use: false, room_ok: true }
+        Conditions {
+            mode,
+            now,
+            online: true,
+            signed_in: true,
+            cloud_full: false,
+            in_use: false,
+            room_ok: true,
+            disconnecting: false,
+        }
+    }
+
+    #[test]
+    fn disconnecting_only_brings_videos_home() {
+        let mut c = online(Mode::AlwaysInCloud, 1_000 * DAY);
+        c.disconnecting = true;
+        assert_eq!(next_step(&video(false, true), &c), Step::Download);
+        assert_eq!(next_step(&video(true, false), &c), Step::Wait);
+        assert_eq!(next_step(&video(true, true), &c), Step::Wait);
+        c.room_ok = false;
+        assert_eq!(next_step(&video(false, true), &c), Step::Wait);
     }
 
     #[test]
