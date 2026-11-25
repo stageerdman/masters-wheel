@@ -32,30 +32,44 @@ Each phase ends with tests that lock in what it built.
    - [x] Tests: Rust (PKCE, authorize URL, redirect parsing, token
          response parsing, Graph path encoding, curl config escaping); TS
          (folder layout, manifest build/parse).
-2. **Upload engine**
-   - [ ] Resumable Graph upload sessions streamed from disk in chunks
-         (multi-GB recordings), in Rust, with progress events.
-   - [ ] Persistent upload queue (survives app restarts) and retry with
-         backoff. Resume a half-done session from its next offset.
-   - [ ] Per-video cloud state in its own meta (`cloud: { itemId, path,
-         uploadedAt, size }`).
-   - [ ] Tests: chunk ranges, resume offset, retry policy, queue state
-         transitions.
-3. **Storage modes**
-   - [ ] Mode setting (Off / Backup / Always in cloud / Smart) per Space.
-   - [ ] Backup: queue every new and existing video.
-   - [ ] Always in cloud: after a verified upload (size matches), delete
-         the local copy.
-   - [ ] Smart: keep videos opened or created in the last N days locally,
-         offload the rest. Never offload something that isn't uploaded.
-   - [ ] Tests: the policy function (video state + mode + now → keep /
-         upload / offload), with the "never delete an un-uploaded file"
-         rule as its own test.
-4. **Play from the cloud**
-   - [ ] Opening a cloud-only video downloads it into the local cache
-         (with progress), then plays it through the existing media server.
-   - [ ] Smart mode evicts the cache again later.
-   - [ ] Tests: cache bookkeeping, download resume.
+2. **Upload engine** (built: `src-tauri/src/storage/`)
+   - [x] Resumable Graph upload sessions streamed from disk in 10 MiB
+         chunks (multi-GB recordings), in Rust, in a background worker.
+         `storage://changed` fires after each step.
+   - [x] Persistent ledger (`<app data>/onedrive/videos.json`, written
+         atomically) survives restarts. A half-done session resumes from
+         its next offset. Retries back off up to 15 minutes; offline
+         retries every 30 s, a full OneDrive every 10 min.
+   - [x] Per-video cloud state (item id, size, receipt) lives in the
+         ledger, not in the record's meta.json.
+   - [x] Tests: chunked upload, resume after restart, offline, full,
+         signed out, a different account, unreadable file.
+3. **Storage modes** (built)
+   - [x] One mode for the whole app: Backup (default), Smart, Always in
+         cloud.
+   - [x] Backup: every video on this Mac is uploaded and kept.
+   - [x] Always in cloud: the local copy is deleted only after a receipt
+         *and* a fresh size check against OneDrive, and never while the
+         video is open. A `Video is in OneDrive.webloc` placeholder stays
+         in the record folder.
+   - [x] Smart: a video stays on this Mac for 14 days after it was added or
+         last opened. Opening a cloud video brings it back (if there's
+         room: 10% and 5 GB free) and restarts its 14 days.
+   - [x] Tests: the policy function per mode, the "never delete an
+         unconfirmed copy" rule in every mode, and switches Backup →
+         Always → Backup, Always → Smart, mid-upload switches.
+4. **Play from the cloud** (built)
+   - [x] A cloud-only video plays at once: the media server answers a 302
+         to OneDrive's short-lived download URL (cached 30 min), so the
+         player streams with Range requests.
+   - [x] Smart downloads it home in the background (`.hero-download.part`,
+         size-checked, then renamed) and offloads it again after 14 days.
+   - [x] Records list a cloud-only video's hero name from the storage
+         overview, so Performance Review shows and plays it. Opening a
+         record pins its video; deleting a record or its video deletes
+         the OneDrive copy too.
+   - [ ] Generate Transcript on a cloud-only video (ffmpeg needs a local
+         file). Not built yet.
 5. **UI and verification**
    - [ ] A cloud status badge per video (local / uploading / in cloud /
          both) and a mode picker in Settings → Storage.
@@ -67,6 +81,15 @@ Each phase ends with tests that lock in what it built.
 Built. See "How to set up" below. Not verified live: a real sign-in needs
 `ONEDRIVE_CLIENT_ID` (an Azure app registration) and a browser login by the
 user.
+
+## Phases 2–4 status
+Built and covered by 40 Rust storage tests (fake OneDrive + temp folders).
+The engine only runs once someone is signed in, so a user who never
+connects sees no change. Not verified live: no real Microsoft account has
+signed in yet (needs `ONEDRIVE_CLIENT_ID`). There is no UI for the mode
+yet; the commands exist (`storage_set_mode`, `storage_preview_switch`,
+`storage_overview`) for phase 5. Also still open: disconnect with
+download-back (SPEC 5.7) and the "Playing from OneDrive" label.
 
 ### How to set up (one time)
 1. Register an app at https://entra.microsoft.com → App registrations → New

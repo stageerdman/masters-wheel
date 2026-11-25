@@ -20,7 +20,8 @@ import type { Scorecard, ScorecardItem } from "@/lib/scorecard";
 import type { QuestionAnalysis, QuestionAnswerPair } from "@/lib/questionAnalysis";
 import { CLIENT_CARD_FIELDS, type ClientCard } from "@/lib/clientCard";
 import { BASE_DIR, spaceRecordsDir, STORAGE_DIR_NAME } from "@/lib/spaces/paths";
-import { getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
+import { getActiveSpace, getActiveSpaceFolder } from "@/lib/spaces/activeSpaceStore";
+import { getStorageOverview, videoRemoved } from "@/lib/onedrive/storage";
 import { readExternalTextFile } from "@/lib/readExternalTextFile";
 
 function recordsRoot() {
@@ -204,14 +205,25 @@ function parseMeta(text: string): RecordMetaFields | null {
   };
 }
 
-async function findHeroFileName(id: string): Promise<string | null> {
+// A video kept only in OneDrive still has a hero name: the media server
+// streams it from there (see src-tauri/src/storage).
+async function findHeroFileName(id: string, cloudHeroNames: Map<string, string>): Promise<string | null> {
   try {
     const entries = await readDir(recordDir(id), { baseDir: BASE_DIR });
     const hero = entries.find((entry) => entry.isFile && entry.name.toLowerCase().startsWith("hero."));
-    return hero?.name ?? null;
+    return hero?.name ?? cloudHeroNames.get(id) ?? null;
   } catch {
     return null;
   }
+}
+
+// Record id -> hero file name, for the active Space's cloud-only videos.
+// Storage being unavailable just means no cloud videos, never a failed list.
+async function cloudHeroNames(): Promise<Map<string, string>> {
+  const spaceId = getActiveSpace().id;
+  const overview = await getStorageOverview().catch(() => null);
+  const videos = overview?.videos.filter((v) => v.spaceId === spaceId && v.state === "inCloud") ?? [];
+  return new Map(videos.map((v) => [v.recordId, v.fileName]));
 }
 
 // Creates ~/Documents/Master's Wheel if it doesn't exist yet. Safe to
@@ -227,6 +239,7 @@ export async function listRecords(): Promise<RecordSummary[]> {
   await ensureStorageRoot();
   const entries = await readDir(recordsRoot(), { baseDir: BASE_DIR });
   const summaries: RecordSummary[] = [];
+  const cloudNames = await cloudHeroNames();
   for (const entry of entries) {
     if (!entry.isDirectory) continue;
     const id = entry.name;
@@ -238,7 +251,7 @@ export async function listRecords(): Promise<RecordSummary[]> {
       meta = null;
     }
     if (!meta) continue;
-    const heroFileName = await findHeroFileName(id);
+    const heroFileName = await findHeroFileName(id, cloudNames);
     summaries.push({ id, heroFileName, ...meta });
   }
   return summaries;
@@ -443,13 +456,30 @@ export async function createRecordFromFile(sourcePath: string): Promise<RecordSu
 // the caller is responsible for confirming with the user first.
 export async function deleteRecord(id: string): Promise<void> {
   await remove(recordDir(id), { baseDir: BASE_DIR, recursive: true });
+  await forgetStoredVideo(id);
 }
+
+// Left in a record whose video lives only in OneDrive; must match
+// WEBLOC_NAME in src-tauri/src/storage/model.rs.
+const CLOUD_PLACEHOLDER_NAME = "Video is in OneDrive.webloc";
 
 // Deletes just a record's hero media file, leaving the record (and its
 // notes/transcript/meta) intact so a new video can be uploaded in its
-// place.
+// place. A cloud-only video has no local file, only its placeholder.
 export async function deleteHeroFile(id: string, heroFileName: string): Promise<void> {
-  await remove(`${recordDir(id)}/${heroFileName}`, { baseDir: BASE_DIR });
+  for (const name of [heroFileName, CLOUD_PLACEHOLDER_NAME]) {
+    const path = `${recordDir(id)}/${name}`;
+    if (await exists(path, { baseDir: BASE_DIR })) await remove(path, { baseDir: BASE_DIR });
+  }
+  await forgetStoredVideo(id);
+}
+
+// Tells the storage engine to delete the OneDrive copy too. The local
+// delete already happened, so a storage failure is reported, not thrown.
+async function forgetStoredVideo(id: string): Promise<void> {
+  await videoRemoved({ spaceId: getActiveSpace().id, recordId: id }).catch((error) => {
+    console.error(`[records] deleteHeroFile/deleteRecord: OneDrive copy of "${id}" not marked for removal`, error);
+  });
 }
 
 // Copies a video file in as a record's hero file — same cross-filesystem

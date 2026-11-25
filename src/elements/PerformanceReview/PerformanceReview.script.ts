@@ -44,6 +44,8 @@ import { generateClientCard as generateRealClientCard } from "@/lib/clientCard/g
 import type { ClientCard } from "@/lib/clientCard";
 import { readSettings, type ScorecardCriterionDef } from "@/lib/settings";
 import { setActiveTaggedResource } from "@/lib/mcp/activeTaggedResource";
+import { videoClosed, videoOpened } from "@/lib/onedrive/storage";
+import { getActiveSpace } from "@/lib/spaces/activeSpaceStore";
 import {
   GENERATE_CANCELLED,
   cancelGenerateTranscript,
@@ -301,6 +303,19 @@ export function usePerformanceReviewData() {
       unlisten?.();
     };
   }, []);
+
+  // An open record counts as watched for Smart storage and keeps its video
+  // on this Mac until it's closed (see src-tauri/src/storage).
+  useEffect(() => {
+    if (!selectedId || !isTauri()) return;
+    const video = { spaceId: getActiveSpace().id, recordId: selectedId };
+    const report = (action: string) => (error: unknown) =>
+      console.error(`[PerformanceReview] storage ${action} failed for "${video.recordId}"`, error);
+    videoOpened(video).catch(report("videoOpened"));
+    return () => {
+      videoClosed(video).catch(report("videoClosed"));
+    };
+  }, [selectedId]);
 
   // The selected record's hero file, as a URL onto the local media server
   // (see src/lib/records' heroStreamUrl) — a synchronous string build, no

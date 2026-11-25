@@ -11,8 +11,18 @@ Durable decisions and lessons. The roadmap and live status live in
   calls: `me`, `special/approot`, create folder), `token_store.rs`
   (Keychain), `session.rs` (in-memory access token plus refresh),
   `commands.rs` (the Tauri commands the webview calls), `error.rs`.
-- `src/lib/onedrive/`: `layout.ts` (folder paths and manifest, pure) and
-  `index.ts` (the webview's typed wrappers around the commands).
+- `src-tauri/src/storage/`: the video storage engine. `model.rs` (Video,
+  Mode), `policy.rs` (pure: video + conditions → next step), `ledger.rs`
+  (persisted state + reconcile with a disk scan), `scan.rs`, `layout.rs`
+  (cloud paths, mirrors layout.ts), `room.rs` (free-space rules),
+  `cloud.rs` (the `Cloud` trait + Graph implementation + error sorting),
+  `engine.rs` (plans the next job, applies results), `work.rs` (runs a
+  job: upload chunk, check, offload, download, delete), `service.rs`
+  (worker thread, Tauri state), `status.rs` (what the UI reads),
+  `commands.rs`. Tests: `engine_tests.rs` with `fake_cloud.rs`.
+- `src/lib/onedrive/`: `layout.ts` (folder paths and manifest, pure),
+  `storage.ts` (storage command wrappers) and `index.ts` (sign-in
+  wrappers; connect/disconnect wake the storage engine).
 - UI: `src/elements/Settings/children/StoragePanel/`.
 
 ## Decisions
@@ -29,12 +39,20 @@ Durable decisions and lessons. The roadmap and live status live in
 - **Layout**: `<Space>/<Section>/<YYYY-MM>/` plus `manifest.json` at the
   app-folder root. Connecting creates the Space and section folders. Month
   folders come with the first upload (phase 2).
-- **Space renames (open for phase 2).** The manifest records each Space's
-  id, name and cloud folder. Today `buildManifest` refreshes the folder
-  from the Space's current folder name on every connect, so a renamed
-  Space would get a new cloud folder. Before uploads land, phase 2 must
-  either keep the first folder per Space id or rename the cloud folder,
-  and look folders up by Space id through the manifest.
+- **Space renames.** Videos are keyed by Space id + record id, and an
+  uploaded video is found again by its OneDrive item id, so renaming a
+  Space never loses one. New uploads after a rename go under the new
+  folder name.
+- **The one safety rule.** A local copy is deleted only when the video has
+  a receipt, a fresh check says OneDrive's copy has the same size, the
+  video isn't open, and we're online. Every mode goes through
+  `policy::next_step`, so the rule lives in one place; a changed local
+  file loses its receipt and is uploaded again.
+- **Streaming = 302.** The media server redirects a missing hero file to
+  OneDrive's pre-signed download URL. No proxy, no cache to evict, and
+  Range requests work.
+- **One mode for the app**, not per Space (simpler; nobody asked for
+  per-Space modes).
 
 ## Lessons and gotchas
 - **Keychain prompts on rebuilds.** The app is unsigned, so every rebuild

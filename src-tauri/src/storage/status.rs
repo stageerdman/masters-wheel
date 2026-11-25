@@ -27,6 +27,8 @@ pub enum VideoState {
 pub struct VideoStatus {
     pub space_id: String,
     pub record_id: String,
+    // e.g. "hero.mp4": lets the UI build the player URL for a cloud-only video.
+    pub file_name: String,
     pub state: VideoState,
     pub percent: u8,
     pub size: u64,
@@ -128,5 +130,13 @@ fn video_status(engine: &Engine, v: &Video, now: u64) -> VideoStatus {
         VideoState::Waiting
     };
     let keep_until = (engine.ledger.mode == Mode::Smart && v.on_mac).then(|| v.smart_keep_until());
-    VideoStatus { space_id: v.space_id.clone(), record_id: v.record_id.clone(), state, percent, size: v.size, keep_until }
+    VideoStatus {
+        space_id: v.space_id.clone(),
+        record_id: v.record_id.clone(),
+        file_name: v.file_name.clone(),
+        state,
+        percent,
+        size: v.size,
+        keep_until,
+    }
 }

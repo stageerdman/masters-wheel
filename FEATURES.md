@@ -1084,7 +1084,20 @@ See `updates/2026-11-16 FRAME-DRILLS - OPEN/`.
 - Needs `ONEDRIVE_CLIENT_ID` in `.env` (setup steps in
   `updates/2026-11-25 ONEDRIVE - OPEN/update v1.md`).
 
+### Built — real backend (phases 2–4, 2026-11-25)
+- [x] Background, resumable upload of every Performance Review video
+      (10 MiB chunks, survives restarts, backs off when offline or full) —
+      `src-tauri/src/storage/`.
+- [x] Backup / Smart (14 days after added or last opened) / Always in
+      cloud modes. A local copy is only deleted after OneDrive's copy is
+      confirmed and size-checked, never while the video is open.
+- [x] Cloud-only videos still list and play in Performance Review (the
+      media server redirects to OneDrive); Smart brings an opened one
+      home. Deleting a record or its video deletes the OneDrive copy.
+- Not verified with a real Microsoft account yet.
+
 ### To build (real functionality — not started)
-- [ ] Upload engine, Backup / Always in cloud / Smart modes, playing
-      cloud-only videos, cloud status per video — phases 2–5 of the same
-      update.
+- [ ] Settings mode picker, per-video cloud glyphs and the status line
+      (phase 5; the `storage_*` commands are ready).
+- [ ] Disconnect with download-back, transcribing a cloud-only video,
+      Voice Training and Frame Drills videos.

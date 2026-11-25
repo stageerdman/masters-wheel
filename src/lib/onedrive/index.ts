@@ -5,8 +5,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listSpaces } from "@/lib/spaces";
 import { MANIFEST_PATH, buildManifest, parseManifest, skeletonFolders } from "./layout";
+import { wakeStorage } from "./storage";
 
 export * from "./layout";
+export * from "./storage";
 
 export type OneDriveStatus = {
   // false when this build has no ONEDRIVE_CLIENT_ID (no app registration).
@@ -19,9 +21,16 @@ export function getOneDriveStatus(): Promise<OneDriveStatus> {
   return invoke<OneDriveStatus>("onedrive_status");
 }
 
+// The storage engine reads the account itself; this tells it to look now.
+async function thenWakeStorage(status: Promise<OneDriveStatus>): Promise<OneDriveStatus> {
+  const result = await status;
+  await wakeStorage();
+  return result;
+}
+
 // Opens the browser for Microsoft sign-in and resolves once it's done.
 export function connectOneDrive(): Promise<OneDriveStatus> {
-  return invoke<OneDriveStatus>("onedrive_connect");
+  return thenWakeStorage(invoke<OneDriveStatus>("onedrive_connect"));
 }
 
 export function cancelConnectOneDrive(): Promise<void> {
@@ -29,7 +38,7 @@ export function cancelConnectOneDrive(): Promise<void> {
 }
 
 export function disconnectOneDrive(): Promise<OneDriveStatus> {
-  return invoke<OneDriveStatus>("onedrive_disconnect");
+  return thenWakeStorage(invoke<OneDriveStatus>("onedrive_disconnect"));
 }
 
 // Creates the Space/Section folders for every Space and refreshes
