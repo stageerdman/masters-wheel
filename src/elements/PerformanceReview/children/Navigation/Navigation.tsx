@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SearchBar } from "@/elements/SearchBar/SearchBar";
 import { ContextMenu, type ContextMenuItem } from "@/elements/ContextMenu/ContextMenu";
 import { compareNewestFirst, type VideoRecord } from "@/elements/PerformanceReview/PerformanceReview.data";
+import { StorageStatusLine } from "./children/StorageStatusLine/StorageStatusLine";
 import { VideoListItem } from "./children/VideoListItem/VideoListItem";
 import position from "./Navigation.position.module.css";
 import styles from "./Navigation.styles.module.css";
@@ -53,6 +54,7 @@ export function Navigation({
           </li>
         ))}
       </ul>
+      <StorageStatusLine />
       {menuTarget && (
         <ContextMenu
           x={menuTarget.x}

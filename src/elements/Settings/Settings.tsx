@@ -34,6 +34,8 @@ export function Settings() {
     let cancelled = false;
     readSettings().then((settings) => {
       if (cancelled) return;
+      // The video list's storage status line links here (?section=storage).
+      if (new URLSearchParams(window.location.search).get("section") === "storage") setActiveCategory("storage");
       setBusinessDescription(settings.businessDescription);
       setScorecardCriteria(settings.scorecardCriteria);
       setScorecardSummaryPrompt(settings.scorecardSummaryPrompt);
