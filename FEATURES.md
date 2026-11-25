@@ -1096,8 +1096,16 @@ See `updates/2026-11-16 FRAME-DRILLS - OPEN/`.
       home. Deleting a record or its video deletes the OneDrive copy.
 - Not verified with a real Microsoft account yet.
 
+### Built — real backend (phase 5, 2026-11-25)
+- [x] Settings › Storage: connect, account, problem notice with its fix,
+      Keep videos mode picker with switch preview, numbers line,
+      disconnect (keep in OneDrive or download first) — wired to the
+      `storage_*` commands.
+- [x] Video-list storage status line; clicking it opens Settings › Storage.
+- Not verified with a real Microsoft account yet.
+
 ### To build (real functionality — not started)
-- [ ] Settings mode picker, per-video cloud glyphs and the status line
-      (phase 5; the `storage_*` commands are ready).
-- [ ] Disconnect with download-back, transcribing a cloud-only video,
-      Voice Training and Frame Drills videos.
+- [ ] Per-video cloud glyphs, player "Playing from OneDrive" lines,
+      remove-confirm copy, "wrong account" notice.
+- [ ] Transcribing a cloud-only video, Voice Training and Frame Drills
+      videos.

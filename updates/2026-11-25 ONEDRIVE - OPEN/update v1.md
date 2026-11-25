@@ -91,6 +91,16 @@ yet; the commands exist (`storage_set_mode`, `storage_preview_switch`,
 `storage_overview`) for phase 5. Also still open: disconnect with
 download-back (SPEC 5.7) and the "Playing from OneDrive" label.
 
+## Phase 5 status
+Built: Settings › Storage (connect, account block, one problem notice,
+Keep videos radiogroup, numbers line, switch and disconnect sheets incl.
+download-and-disconnect) and the video-list status line that opens
+Settings › Storage. All sentences live in `src/lib/onedrive/panelText.ts`
+(tested). Not verified live (still no `ONEDRIVE_CLIENT_ID`). Not built yet:
+per-row glyphs (SPEC 6.1), player lines (6.4), remove-confirm copy (6.3),
+the "wrong account" notice, and the "Moving N · M left" total (the
+engine doesn't keep the switch's starting count, so only "left" shows).
+
 ### How to set up (one time)
 1. Register an app at https://entra.microsoft.com → App registrations → New
    registration. Name it "Master's Wheel" (OneDrive uses this name for the
