@@ -1,5 +1,16 @@
 # Known issues and TODOs (newest first)
 
+2026-11-25  ISSUE: Next.js 16.4.3 has a known security advisory. The first
+            `next build` in a fresh shell (and so the first `npm run app:start`)
+            stops once with "SecurityFatalError". Retrying the same command
+            passes. Upgrading Next is outside the session-row icons item and
+            needs the orchestrator to decide.
+2026-11-25  TODO: Session row icons are signed, but no person has looked at
+            the window yet. At Start, check that cloud only, cloud + this Mac,
+            this Mac only, uploading, stuck and Reviewed look different, also
+            in greyscale. These are the last two boxes in
+            docs/session-row-icons/00-roadmap.md phase 5.
+
 2026-10-27  TODO: INIT only built the app shell + element convention. Nothing
             real is dictated yet (no lessons/videos/performance/refocus UI).
             Next real element gets added when it's dictated — see

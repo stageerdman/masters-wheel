@@ -101,13 +101,14 @@ The screen-reader-only text path goes away, since every state now has a real ico
    - **Check:** `npx tsc --noEmit`, `npm run lint` and `npm test` pass.
 
 5. **Cleanup review and integration (Eraser)** · `04-cleanup-review.md`
-   - [ ] No leftovers: no `•` or `✓` glyphs on the row, no dead labels, no old `BackupState` values, no unused CSS.
-   - [ ] No fact is said twice: the row shows this video's state only. Progress, reasons and Retry stay in the cloud popover.
+   - [x] No leftovers: no `•` or `✓` glyphs on the row, no dead labels, no old `BackupState` values, no unused CSS.
+   - [x] No fact is said twice: the row shows this video's state only. Progress, reasons and Retry stay in the cloud popover.
    - [x] Tests pass: `npm run test:all`.
    - [x] Build passes: `npm run build` and `npm run app:build`.
    - [ ] Start opens the new version: `npm run app:start` rebuilds and launches, and the open window shows the new row icons (not the old `•` / `✓`).
    - [ ] All states can be told apart at a glance: cloud only, cloud + this Mac, this Mac only, uploading, stuck and Reviewed each look different by shape, also in greyscale. Hovering each one shows its words.
-   - Status (Eraser, 2026-11-25): RETURNED to Jony for F1 (cut the dead `visible` field) and F2 ("Uploading" label shown when paused or waiting); see `04-cleanup-review.md`. The first two boxes wait on those fixes. Start built, installed and launched the new version, but nobody has looked at the window yet, so the last two boxes stay open.
+   - Status (Eraser, 2026-11-25): RETURNED to Jony for F1 (cut the dead `visible` field) and F2 ("Uploading" label shown when paused or waiting); see `04-cleanup-review.md`.
+   - Status (Eraser, 2026-11-25, recheck of `1cde8e0`): F1 and F2 are fixed, and the review is APPROVED and signed. `npm run test:all` passes (71 JS, 111 Rust), lint is clean, and `npm run app:start` built, installed and launched the new version. The built JS has "Not in OneDrive yet. On its way" and none of "Uploading to OneDrive…" or "Not backed up yet". Nobody has looked at the window yet (there's no screenshot tool here), so the last two boxes stay open for a person to check at Start.
    - **Check:** the review is written and signed off, and every phase above is ticked. If nobody has looked at the window, say so here and leave the last two boxes open.
 
 ## Done for the whole item

@@ -47,3 +47,29 @@ That's 2 glances and 0 clicks, with 1 optional hover. Before this change it was 
 The flow is lean: 2 glances, 0 clicks. There's one dead field to cut (F1) and one label that isn't true (F2). Reworking them is Jony's job. When both are in, I check them and sign. A person still has to look at the window for the last two roadmap boxes.
 
 Signed: not yet.
+
+## Recheck of `1cde8e0` (Jony's fixes)
+
+| Finding | Result |
+|---|---|
+| F1: cut `visible` | Done. `BackupMark` is `{ label, icon } \| null`, `backupMark()` returns `MARKS[state]`, the tests no longer assert `visible`, and nothing in `src/elements/PerformanceReview` reads `.visible`. |
+| F2: true label for uploading, waiting, checking and paused | Done. The label is now "Not in OneDrive yet. On its way". It's the same icon and the same state, with no sixth state added. A new test checks that the label never says "uploading", which matches the popover's rule. |
+| Open questions | Recorded as decided in `03-ui-spec.md`: the laptop stays on every row when not connected, and paused is covered by F2. |
+
+Step count is unchanged: 2 glances, 0 clicks, 1 optional hover. Target met.
+
+Integration (rerun on this branch):
+- `npm run test:all`: pass (71 JS, 111 Rust).
+- `npm run lint`: clean.
+- `npm run app:start`: built, installed to `/Applications` and launched. As before, the first `next build` stops once on the Next 16.4.3 security notice, and the retry passes.
+- The built JS has "Not in OneDrive yet. On its way". It has neither "Uploading to OneDrive…" nor "Not backed up yet".
+- **Still open:** no person has looked at the window yet. Someone needs to check at Start that the six shapes can be told apart at a glance, also in greyscale.
+
+## Verdict: APPROVED
+Final step count: 2 glances, 0 clicks. Each row has one storage icon and one Reviewed icon, every icon has words, and nothing old is left.
+
+Watch for later:
+- If a per-row percent or Retry is ever asked for, send it to the header popover. It shouldn't go on the row.
+- If a seventh storage state is ever proposed, check first whether one of the five existing labels can honestly cover it.
+
+Signed: Eraser, 2026-11-25.
