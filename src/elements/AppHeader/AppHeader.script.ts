@@ -7,11 +7,14 @@ export function isHeaderHidden(pathname: string): boolean {
   return HEADER_HIDDEN_ROUTES.includes(pathname);
 }
 
-type Router = { push(href: string): void };
+export type Navigate = (href: string) => void;
 
-// Goes through router.push, the same path Main Menu uses. A <Link> here
-// prefetches with a HEAD request plus a segment-tree fetch, and in the
-// packaged Tauri app (static export on tauri://) that click went nowhere.
-export function goHome(router: Router): void {
-  router.push(HOME_ROUTE);
+// A full page load, not Next's client router: in the packaged app (static
+// export on tauri://) router.push("/") fetches /index.txt?_rsc=… and that
+// request never resolves, so the transition never commits and the user stays
+// on Performance Review. Loading index.html directly always lands home.
+export const hardNavigate: Navigate = (href) => window.location.assign(href);
+
+export function goHome(navigate: Navigate = hardNavigate): void {
+  navigate(HOME_ROUTE);
 }

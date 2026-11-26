@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useHeaderActions } from "./AppHeader.context";
 import { goHome, isHeaderHidden } from "./AppHeader.script";
 import { ActionIsland } from "./children/ActionIsland/ActionIsland";
@@ -11,7 +11,6 @@ import styles from "./AppHeader.styles.module.css";
 export function AppHeader() {
   const { island, brand, accessory } = useHeaderActions();
   const pathname = usePathname();
-  const router = useRouter();
   const label = brand?.label ?? "Master's Wheel";
   const showLogo = brand?.showLogo ?? false;
 
@@ -24,7 +23,7 @@ export function AppHeader() {
       <div className={position.logoArea} data-construction>
         <button
           type="button"
-          onClick={() => goHome(router)}
+          onClick={() => goHome()}
           aria-label={`${label} — back to Main Menu`}
           title="Back to Main Menu"
           className={`${styles.wordmarkLink} ${position.wordmarkLink}`}
